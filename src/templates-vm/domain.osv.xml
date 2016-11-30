@@ -34,7 +34,7 @@ __VCPU_PINNING__
 
     <disk type='block' device='disk'>
       <driver name='qemu' type='qcow2' cache='none' io='native'/>
-      <source dev='/home/justin/osv-work/osv-963488475-usr.img'/>
+      <source dev='__IMG__'/>
       <backingStore/>
       <target dev='vda' bus='virtio'/>
     </disk>
@@ -45,7 +45,7 @@ __METADATA_XML__
 __DISK_XML__
 
     <interface type='bridge'>
-      <mac address='52:54:00:00:01:43'/>
+      <mac address='__MAC__'/>
       <source bridge='br0'/>
       <model type='virtio'/>
     </interface>

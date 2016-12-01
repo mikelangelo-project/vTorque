@@ -700,9 +700,21 @@ _generateMetaDataFiles() {
     if [ -f "$metaDataDisk" ]; then
       logErrorMsg "Something is wrong, the metaDataDisk '$metaDataDisk' already exists ?!";
     fi
-    mkdir -p $metamataDiskDir;
-    cloud-localds $metaDataDisk $metadataFile;
-    res=$?;
+
+    if [ ${VM_PARAMS[$keyOne, 'DISTRO']} == "osv" ]; then
+      logTraceMsg "Creating OSv metaDataDisk.";
+      mkdir -p $metamataDiskDir;
+      $SCRIPT_BASE_DIR/../lib/osv/file2img $metadataFile > $metaDataDisk;
+      res=$?;
+    elif [[ ${VM_PARAMS[$keyOne, 'DISTRO']} =~ $SUPPORTED_STANDARD_LINUX_GUESTS ]]; then
+      logTraceMsg "Creating standard linux guest metaDataDisk.";
+      mkdir -p $metamataDiskDir;
+      cloud-localds $metaDataDisk $metadataFile;
+      res=$?;
+    else
+      logErrorMsg "Unsupported OS: '${VM_PARAMS[$keyOne, 'DISTRO']}' !";
+      res=1;
+    fi
 
     # success ?
     if [ $res -ne 0 ]; then

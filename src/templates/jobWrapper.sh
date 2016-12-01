@@ -347,6 +347,23 @@ runBatchJob_osv(){
   cmd=`cat $JOB_SCRIPT`
   # TODO insert VM IPs for mpirun. Or will this be automagicaly picked up from
   # PBS environment variables?
+
+  #-------------------------------------------------------------
+  # copy $PBS_VM_NODEFILE to /pbs_vm_nodefile. User cmd is assumed to be like
+  # "mpirun -np NP -hostfile /pbs_vm_nodefile mpi_app.so"
+  # curl -v -X POST http://192.168.122.90:8000/file/%2Ftmp%2Faa --form file=@aa
+  echo "----------------------------"
+  # TODO FIX PBS_NODEFILE contains host IPs, not VM IPs.
+  # Q: why is PBS_VM_NODEFILE unset? It would be handy if it contained VM IPs.
+  CURL_CMD="curl -X POST http://$FIRST_VM:8000/file//pbs_vm_nodefile --form file=@\"$PBS_VM_NODEFILE\" -v"
+  logDebugMsg "Upload PBS_VM_NODEFILE $PBS_VM_NODEFILE to /pbs_vm_nodefile: '$CURL_CMD'";
+  $CURL_CMD
+  echo "----------------------------"
+  # debug GET
+  CURL_CMD="curl -X GET http://$FIRST_VM:8000/file//pbs_vm_nodefile?op=GET -v"
+  $CURL_CMD
+  echo "----------------------------"
+
   # execute command
   logDebugMsg "Command to execute: 'PUT http://$FIRST_VM:8000/app \"$cmd\"'";
   logDebugMsg "===============JOB_OUTPUT_BEGIN====================";

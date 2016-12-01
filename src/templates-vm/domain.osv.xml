@@ -50,6 +50,12 @@ __DISK_XML__
       <model type='virtio'/>
     </interface>
 
+    <!-- console log file -->
+    <console type='file'>
+      <source path='__CONSOLE_LOG__'/>
+      <target type='serial' port='0'/>
+    </console>
+
     <graphics type='vnc' autoport='yes' listen='0.0.0.0'>
       <listen type='address' address='0.0.0.0'/>
     </graphics>

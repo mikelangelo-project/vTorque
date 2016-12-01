@@ -187,7 +187,7 @@ IOCM_MAX_CORES=__IOCM_MAX_CORES__;
 #
 # keys that needs to be replaced in generateDomainXML (note: it's not all KEYS, some are replaces elsewhere)
 #
-KEYS="HYPERVISOR UUID RAM VCPUS MAC ARCH IMG METADATA_DISK DISK";
+KEYS="HYPERVISOR UUID RAM VCPUS MAC ARCH IMG METADATA_DISK DISK CONSOLE_LOG";
 
 #
 # 2D map for the vm paramers (used to replace the place holders in the template)
@@ -458,6 +458,7 @@ generateVMParameterSets() {
       VM_PARAMS[$keyOne, "ARCH"]="$ARCH";
       VM_PARAMS[$keyOne, "HYPERVISOR"]="$HYPERVISOR";
       VM_PARAMS[$keyOne, "VCPU_PINNING"]="$VCPU_PINNING";
+      VM_PARAMS[$keyOne, "CONSOLE_LOG"]="$VM_JOB_DIR/$computeNode/$number-console.log";
 
       VM_PARAMS[$keyOne, "VRDMA"]="$VRDMA";
 

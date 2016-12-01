@@ -43,5 +43,5 @@ files:
 # 'arp -an's and create a profile for the virtual job environment
 #
 run:
- - [ ping, -c1, __HOSTNAME__ ]
+# - [ ping, -c1, __HOSTNAME__ ]
 

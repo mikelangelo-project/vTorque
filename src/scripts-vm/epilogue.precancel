@@ -1,0 +1,114 @@
+#!/bin/bash
+#
+# Copyright 2016 HLRS, University of Stuttgart
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+#
+# DESCRIPTION
+#  Root epilogue.precancel for VM.
+#  Intended for cluster admins, not users,
+#  like the scripts in /var/spool/torque/mom_priv/
+#
+#
+
+# bash strict mode
+set -euo pipefail;
+
+
+#============================================================================#
+#                                                                            #
+#                          GLOBAL CONFIGURATION                              #
+#                                                                            #
+#============================================================================#
+
+#
+# Placeholders
+#
+SCRIPT_BASE_DIR=__SCRIPT_BASE_DIR__;
+DEBUG=__DEBUG__;
+TRACE=__TRACE__;
+SHOW_LOG=__SHOW_LOG__;
+
+#
+# source config, consts and functions
+#
+source "$SCRIPT_BASE_DIR/common/const.sh";
+source "$SCRIPT_BASE_DIR/common/root-config.sh" $@;
+source "$SCRIPT_BASE_DIR/common/root-functions.sh";
+
+
+#============================================================================#
+#                                                                            #
+#                          SCRIPT CONFIGURATION                              #
+#                                                                            #
+#============================================================================#
+
+if [ $# -lt 1 ] \
+    && [ -z $PBS_JOBID ] ; then
+  echo "usage: $(basename ${BASH_SOURCE[0]}) <jobID> <userName>"; # relevant if not executed by Torque, but manually
+  exit 1;
+fi
+
+#
+# set job id
+#
+if [ -n "$PBS_JOBID" ]; then
+  JOBID=$PBS_JOBID;
+else
+  JOBID=$1;
+fi
+
+#
+# set user name
+#
+if [ ! -n "$USERNAME" ]; then
+  if [ $# -gt 1 ]; then
+    USERNAME=$2;
+  else
+    logErrorMsg "No User known!";
+    exit 1;
+  fi
+fi
+
+#
+LOG_FILE=/var/log/pbs_root_epilogue.precancel.log;
+
+
+#============================================================================#
+#                                                                            #
+#                               FUNCTIONS                                    #
+#                                                                            #
+#============================================================================#
+
+
+#============================================================================#
+#                                                                            #
+#                                 MAIN                                       #
+#                                                                            #
+#============================================================================#
+
+logDebugMsg "Running VM Epilogue-Precancel as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
+logInfoMsg "Root VM epilogue.precancel script started.";
+
+# capture STDOUT/STDERR outputs to log file
+captureOutputStreams;
+
+# print info
+logInfoMsg "Root VM epilogue.precancel finished.";
+
+# print the consumed time in debug mode
+runTimeStats;
+
+# exit the job
+exit 0;

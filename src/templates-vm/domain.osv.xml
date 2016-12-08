@@ -1,0 +1,58 @@
+<domain type='kvm'  xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
+
+  <!-- basic VM properties -->
+  <name>__NAME__</name>
+  <uuid>__UUID__</uuid>
+  <memory unit='MiB'>__RAM__</memory>
+  <currentMemory unit='MiB'>__RAM__</currentMemory>
+  <vcpu placement='static'>__VCPUS__</vcpu>
+__VCPU_PINNING__
+
+  <!--  OS type and boot -->
+  <os>
+    <type arch='__ARCH__'>hvm</type>
+    <boot dev='hd'/>
+  </os>
+
+  <!-- available hardware features -->
+  <features>
+    <acpi/>
+    <apic/>
+    <pae/>
+  </features>
+
+  <!--  CPU mode -->
+  <cpu mode='host-passthrough'>
+  </cpu>
+
+  <pm>
+    <suspend-to-mem enabled='no'/>
+    <suspend-to-disk enabled='no'/>
+  </pm>
+
+  <devices>
+
+    <disk type='block' device='disk'>
+      <driver name='qemu' type='qcow2' cache='none' io='native'/>
+      <source dev='/home/justin/osv-work/osv-963488475-usr.img'/>
+      <backingStore/>
+      <target dev='vda' bus='virtio'/>
+    </disk>
+
+    <!-- seed img for cloud-init as data source -->
+__METADATA_XML__
+    <!-- optional, persistent user disk (for rank0 VM) -->
+__DISK_XML__
+
+    <interface type='bridge'>
+      <mac address='52:54:00:00:01:43'/>
+      <source bridge='br0'/>
+      <model type='virtio'/>
+    </interface>
+
+    <graphics type='vnc' autoport='yes' listen='0.0.0.0'>
+      <listen type='address' address='0.0.0.0'/>
+    </graphics>
+
+  </devices>
+</domain>

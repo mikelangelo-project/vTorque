@@ -1,0 +1,92 @@
+#cloud-config
+#
+# Copyright 2016 HLRS, University of Stuttgart
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+#
+# set the hostname the same as the physical node, but prefix it with 'v'
+#
+hostname: __VHOSTNAME__
+
+
+__DEBUG_OR_PROD__
+
+
+#
+# add the user and its group with exactly same UID/GID (crucial for NFS access)
+#
+bootcmd:
+ #
+ # Create the workspace mount point in case it is not present
+ #
+ - mkdir /workspace
+ - rm -f /scratch
+ - ln -s /workspace /scratch
+ - mkdir -p /var/spool/torque/aux
+ # following line makes PBS_NODEFILE available inside VM
+ - mount --bind __VM_NODE_FILE_DIR__ /var/spool/torque/aux
+ # make the pbs env available via profile.d (other part see below and domain.xml)
+ - mount --bind __VM_DIR__ /var/spool/torque/vm
+
+
+#
+# mount the NFS shares
+#
+mounts:
+ - [ "__VM_NFS_HOME__", /home, "nfs", "rw,intr,noatime", "0", "0" ]
+ - [ "__VM_NFS_OPT__", /opt, "nfs", "rw,intr,noatime", "0", "0" ]
+ - [ "__VM_NFS_WS__", /workspace, "nfs", "rw,intr,noatime", "0", "0" ]
+
+
+
+#
+# DNS
+#
+manage-resolv-conf: true
+resolv_conf:
+  nameservers:
+    - '__NAME_SERVER__'
+  searchdomains:
+    - '__SEARCH_DOMAIN__'
+  domain: '__DOMAIN__'
+
+
+#
+# create files
+#
+write_files:
+ # NTP config
+ - path: "/etc/ntp.conf"
+   permissions: "0644"
+   owner: "root"
+   encoding: "text/plain"
+   content: |
+     # Common pool
+     server __NTP_SERVER_1__
+     server __NTP_SERVER_2__
+     # - Allow only time queries, at a limited rate.
+     restrict default nomodify nopeer noquery limited kod
+     # - Allow all local queries (IPv4, IPv6)
+     restrict 127.0.0.1
+     restrict [::1]
+
+#
+# write everything into a dedicated log file
+#
+output: {all: '| tee -a /var/log/cloud-init-output.log'}
+
+# final_message
+final_message: "The system is finally up, after $UPTIME seconds"
+

@@ -1,0 +1,88 @@
+#!/bin/bash
+#
+# Copyright 2016 HLRS, University of Stuttgart
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+
+#============================================================================#
+#                                                                            #
+#                          GLOBAL CONFIGURATION                              #
+#                                                                            #
+#============================================================================#
+
+# source the global profile, for getting DEBUG and TRACE flags if set
+source /etc/profile.d/99-mikelangelo-hpc_stack.sh;
+
+#
+# source the global functions and configuration
+# order below is as required, do not change
+#
+source "$SCRIPT_BASE_DIR/common/const.sh";
+source "$SCRIPT_BASE_DIR/common/root-config.sh" $@;
+source "$SCRIPT_BASE_DIR/common/root-functions.sh";
+
+
+#============================================================================#
+#                                                                            #
+#                          SCRIPT CONFIGURATION                              #
+#                                                                            #
+#============================================================================#
+
+
+#============================================================================#
+#                                                                            #
+#                               FUNCTIONS                                    #
+#                                                                            #
+#============================================================================#
+
+
+#============================================================================#
+#                                                                            #
+#                                 MAIN                                       #
+#                                                                            #
+#============================================================================#
+
+logDebugMsg "Running Epilogue-Parallel as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
+logInfoMsg "Root epilogue.parallel script started.";
+
+# capture STDOUT/STDERR outputs to log file
+captureOutputStreams;
+
+# clean up
+cleanUp;
+
+# stop snap monitoring task
+stopSnapTask;
+
+# clear up vRDMA config
+tearDownvRDMA_P1;
+
+# clear up IOcm config
+teardownIOcm;
+
+# copy libvirt log from global logs dir to vm job dir (for vm jobs)
+copyVMlogFile;
+
+# in case there was a script for this in the $TORQUE_HOME/mom_priv
+# that has been renamed (by the Makefile) to *.orig, call it now
+runScriptPreviouslyInPlace "$(basename ${BASH_SOURCE[0]})";
+
+logInfoMsg "Root epilogue.parallel finished.";
+
+# print the consumed time in debug mode
+runTimeStats;
+
+# exit the job
+exit 0;

@@ -1,0 +1,314 @@
+#cloud-config
+#
+# Copyright 2016 HLRS, University of Stuttgart
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+#
+# set the hostname the same as the physical node, but prefix it with 'v'
+#
+hostname: __VHOSTNAME__
+
+
+__DEBUG_OR_PROD__
+
+#
+# update VM
+#  security wise it is very desired, however it cannot be recommended
+#  since it may break user compiled binaries inside the VM
+#  (and delays the boot time)
+#
+package_upgrade: false
+
+
+#
+# add the user and its group with exactly same UID/GID (crucial for NFS access)
+#
+bootcmd:
+ - groupadd -g __GROUP_ID__ __USER_NAME__
+ - useradd -u __USER_ID__ -g __GROUP_ID__ -s /bin/bash -M __USER_NAME__
+ #
+ # Create the workspace mount point in case it is not present
+ #
+ - mkdir /workspace
+ #
+ # rename '/scratch' in VMs to '/workspace' and make it a hard requirement for images
+ # for now support both via a symlink
+ - rmdir /scratch
+ - ln -s /workspace /scratch
+ - modprobe 9p
+ - modprobe 9pnet
+ - modprobe 9pnet_virtio
+
+
+#
+# install missing packages
+# for ex: NFS, OpenMPI, libMetis and 9p support
+#
+__SW_PACKAGES__
+
+
+#
+# mount the NFS shares
+#
+mounts:
+ - [ "__VM_NFS_HOME__", /home, "nfs", "rw,intr,noatime", "0", "0" ]
+ - [ "__VM_NFS_OPT__", /opt, "nfs", "rw,intr,noatime", "0", "0" ]
+ - [ "__VM_NFS_WS__", /workspace, "nfs", "rw,intr,noatime", "0", "0" ]
+ # make PBS_NODEFILE available inside VM
+ - [ "__VM_NODE_FILE_DIR__", "/var/spool/torque/aux", "9p", "trans=virtio,version=9p2000.L,ro,chmod=0444,uid=0,guid=0", "0", "0" ]
+ # make the pbs env available via profile.d (other part see below and domain.xml)
+ - [ "/var/spool/torque/vm", "/var/spool/torque/vm", "9p", "trans=virtio,version=9p2000.L,ro,chmod=0444,uid=0,guid=0", "0", "0" ]
+
+
+
+#
+# DNS
+#
+manage-resolv-conf: true
+resolv_conf:
+  nameservers:
+    - '__NAME_SERVER__'
+  searchdomains:
+    - '__SEARCH_DOMAIN__'
+  domain: '__DOMAIN__'
+
+
+#
+# create files
+#
+write_files:
+ # NTP config
+ - path: "/etc/ntp.conf"
+   permissions: "0644"
+   owner: "root"
+   encoding: "text/plain"
+   content: |
+     # Common pool
+     server __NTP_SERVER_1__
+     server __NTP_SERVER_2__
+     # - Allow only time queries, at a limited rate.
+     restrict default nomodify nopeer noquery limited kod
+     # - Allow all local queries (IPv4, IPv6)
+     restrict 127.0.0.1
+     restrict [::1]
+ #
+ # SSH server config
+ #
+ - path: /etc/ssh/sshd_config
+   content: |
+         Port 22
+         Protocol 2
+         HostKey /etc/ssh/ssh_host_rsa_key
+         HostKey /etc/ssh/ssh_host_dsa_key
+         HostKey /etc/ssh/ssh_host_ecdsa_key
+         HostKey /etc/ssh/ssh_host_ed25519_key
+         UsePrivilegeSeparation yes
+         KeyRegenerationInterval 3600
+         ServerKeyBits 1024
+         SyslogFacility AUTH
+         LogLevel INFO
+         LoginGraceTime 120
+         PermitRootLogin yes
+         StrictModes yes
+         RSAAuthentication yes
+         PubkeyAuthentication yes
+         PasswordAuthentication no
+         IgnoreRhosts yes
+         RhostsRSAAuthentication no
+         HostbasedAuthentication no
+         PermitEmptyPasswords no
+         ChallengeResponseAuthentication no
+         X11Forwarding yes
+         X11DisplayOffset 10
+         PrintMotd no
+         PrintLastLog yes
+         TCPKeepAlive yes
+         AcceptEnv LANG LC_*
+         Subsystem sftp /usr/lib/openssh/sftp-server
+         UsePAM yes
+         AllowUsers __USER_NAME__
+         AllowUsers root
+ #
+ # PBS job env file
+ #
+ - path: "/etc/profile.d/pbsVirtualJobEnv.sh"
+   permissions: "0644"
+   owner: "root"
+   encoding: "text/plain"
+   content: |
+     #!bin/bash
+     file="/var/spool/torque/vm/vmJobEnvironment";
+     [ -f "$file" ] && source "$file";
+ #
+ # create starter script for root VM {pro,epi}logue[.parallel]
+ # this way we do not need a root access afterwards to the VM instance
+ #
+ - path: "/usr/local/sbin/pbs-vm-scripts"
+   permissions: "0774"
+   owner: "root"
+   encoding: "text/plain"
+   content: |
+     #!bin/bash
+     RUID=__RUID__;
+     #? source /etc/profile.d/pbsVirtualJobEnv.sh;
+     JOBID=$PBS_JOBID;
+     SCRIPT_BASE_DIR=__SCRIPT_BASE_DIR__;
+     # load config and constants
+     source "$SCRIPT_BASE_DIR/common/const.sh";
+     source "$SCRIPT_BASE_DIR/common/config.sh";
+     source "$SCRIPT_BASE_DIR/common/functions.sh";
+     if [ -f "$PBS_NODEFILE" ]; then
+       rank0VM="$(head -n1 $PBS_NODEFILE)";
+     else
+       rank0VM="";
+     fi
+     if [ ! -n "$rank0VM" ]; then
+       logErrorMsg "Failed to get rank0";
+     fi
+     if [ $# -ne 1 ];then
+       logErrorMsg "usage: $0 [epilogue|prologue]";
+     fi
+     if [ "$1" == "prologue" ] \
+          && [ systemctl list-units --type target | grep runlevel4.target ] \
+          && [ systemctl list-units --type target | grep multi-user.target ]; then #assume we are booting
+       scriptPrefix="pro";
+     elif [ "$1" == "epilogue" ] \
+          && [ systemctl list-units --type target | grep multi-user.target ] \
+          && [ systemctl list-units --type target | grep runlevel0.target ]; then #assume we are stopping
+       scriptPrefix="epi";
+     else
+       logErrorMsg "Wrong system state for requested script execution.";
+     fi
+     if [ -n "$(ip a | grep $rank0VM)" ] \
+          || [ -n "$(hostname | grep $rank0VM)" ]; then
+       $SCRIPT_BASE_DIR/vm_scripts/${scriptPrefix}logue;
+     else
+       $SCRIPT_BASE_DIR/vm_scripts/${scriptPrefix}logue.parallel;
+     fi
+     dhclient -r;
+ #
+ # create systemd service script for VM {pro,epi}logue.parallel runner
+ #
+ - path: "/lib/systemd/system/pbs-vm-prologue.service"
+   permissions: "0664"
+   owner: "root"
+   encoding: "text/plain"
+   content: |
+     [Unit]
+     Description=PBS VM script runner service for prologue
+     After=syslog.target network.target auditd.service sshd.service cloud-init.service
+     Conflicts=/usr/local/sbin/pbs-vm-epilogue.precancel
+
+     [Service]
+     ExecStart=/usr/local/sbin/pbs-vm-scripts prologue
+     ExecStop=kill $(cat /var/spool/pbs_vm_scriptd/pid) && /usr/local/sbin/pbs-vm-epilogue.precancel
+     Type=forking
+     KillMode=process
+     PIDFile=/var/spool/pbs_vm_scriptd/pid
+
+     [Install]
+     WantedBy=multi-user.target
+ #
+ # create systemd service script for VM {pro,epi}logue.parallel runner
+ #
+ - path: "/lib/systemd/system/pbs-vm-epilogue.service"
+   permissions: "0664"
+   owner: "root"
+   encoding: "text/plain"
+   content: |
+     [Unit]
+     Description=PBS VM script runner service for epilogue
+     After=syslog.target network.target auditd.service sshd.service cloud-init.service
+     Conflicts=/usr/local/sbin/pbs-vm-epilogue.precancel
+
+     [Service]
+     ExecStart=/usr/local/sbin/pbs-vm-scripts epilogue
+     Type=forking
+     KillMode=process
+     PIDFile=/var/spool/pbs_vm_scriptd/pid
+
+     [Install]
+     WantedBy=multi-user.target
+ #
+ # create wrapper script for mpirun
+ #
+ - path: "/usr/local/bin/mpirun"
+   permissions: "0555"
+   owner: "root"
+   encoding: "text/plain"
+   content: |
+     #!/bin/bash
+     set +o nounset;
+     params=$@;
+     nodeFile=$PBS_NODEFILE;
+     # ensure we call the binary in case the runcmd doesn't work as desired
+     if [ ! -n "$(which mpirun)" ]; then
+       echo "VM mpirun wrapper ERROR: No mpirun found.";
+       exit 1;
+     fi
+     #unset all PBS env vars in script's scope (parent scope is not affected)
+     for enVar in $(env | grep PBS_); do
+       unset "$( echo $enVar | cut -d'=' -f1)";
+     done
+     if [[ $params =~ -H|-host|--host|-hostfile|--hostfile-default-hostfile|--default-hostfile ]]; then
+       # no need to do anything else
+       /usr/bin/mpirun $params;
+     else # append hostsfile to mpirun cmd
+       /usr/bin/mpirun --hostfile $nodeFile $params;
+     fi
+     exit $?;
+ #
+ # profile for mpirun
+ #
+ - path: /etc/profile.d/00-mpirun_wrapper.sh
+   permissions: 0644
+   content: |
+     # ensure the wrapper is found before the mpirun executable
+     export PATH=/usr/local/bin/mpirun:$PATH;
+ #
+ # profile for HPC stack
+ #
+ - path: /etc/profile.d/99-mikelangelo-hpc_stack.sh
+   permissions: 0644
+   content: |
+     export SCRIPT_BASE_DIR=__SCRIPT_BASE_DIR__;
+
+#
+# Executed once on first boot
+#
+runcmd:
+ # make the syslog readable, so it can be fetched in DEBUG mode
+ - [ chmod, 0644, /var/log/syslog ]
+ # generate SSH yerver keys
+ - [ dpkg-reconfigure, openssh-server ]
+ # starter script for root VM {pro,epi}logue[.parallel]
+ - [ /usr/local/bin/pbs-vm-scripts ]
+ # enable required services
+ - [ systemctl, enable, ssh.service ]
+ - [ systemctl, start, ssh.service ]
+ - [ systemctl, start, pbs-vm-prologue.service ]
+ - [ systemctl, enable, pbs-vm-epilogue.service ]
+ # ping the physical host, otherwise it cannot see the VM's IP with the help of
+ # 'arp -an's and create a profile for the virtual job environment
+ - [ ping, -c1, __HOSTNAME__ ]
+
+#
+# write everything into a dedicated log file
+#
+output: {all: '| tee -a /var/log/cloud-init-output.log'}
+
+# final_message
+final_message: "The system is finally up, after $UPTIME seconds"
+

@@ -1,0 +1,12 @@
+    <memoryBacking>
+      <hugepages>
+        <page size='2' unit='MiB'/>
+      </hugepages>
+    </memoryBacking>
+    <interface type='vhostuser'>
+      <mac address='__MAC_VRDMA__'/>
+      <!-- host-ibport-[0|1]: 'host' is your local host name, and ibport is the IB port (RoCe mode) -->
+      <source type='unix' path='/opt/openVSwich/var/run/openvswitch/ovs-db-__HOSTNAME__-__JOBID__' mode='client'/>
+      <model type='virtio'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x03' function='0x0'/>
+    </interface>

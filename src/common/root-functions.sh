@@ -222,7 +222,7 @@ _killLocalJobVMs() {
 #
 _flushARPcache() {
   if [ -f "$LOCAL_VM_IP_FILE" ]; then
-    vmIPs="$(cat '$LOCAL_VM_IP_FILE')";
+    vmIPs=$(cat "$LOCAL_VM_IP_FILE");
     logDebugMsg "Clearing VM IPs from local arp cache: $vmIPs";
     if [ -n "$vmIPS" ]; then
       for vmIP in $vmIPs; do

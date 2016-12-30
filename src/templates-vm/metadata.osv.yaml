@@ -25,8 +25,8 @@ hostname: __VHOSTNAME__
 #
 mounts:
  - [ "__VM_NFS_HOME__", /home, "nfs", "uid=__USER_ID__,gid=__GROUP_ID__,rw,intr,noatime", "0", "0" ]
- - [ "__VM_NFS_OPT__", /opt, "nfs", "uid=__USER_ID__,gid=__GROUP_ID__,rw,intr,noatime", "0", "0" ]
- - [ "__VM_NFS_WS__", /workspace, "nfs", "uid=__USER_ID__,gid=__GROUP_ID__,rw,intr,noatime", "0", "0" ]
+# - [ "__VM_NFS_OPT__", /opt, "nfs", "uid=__USER_ID__,gid=__GROUP_ID__,rw,intr,noatime", "0", "0" ]
+# - [ "__VM_NFS_WS__", /workspace, "nfs", "uid=__USER_ID__,gid=__GROUP_ID__,rw,intr,noatime", "0", "0" ]
 
 #
 # create files

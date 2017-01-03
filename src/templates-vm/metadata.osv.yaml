@@ -43,5 +43,6 @@ files:
 # 'arp -an's and create a profile for the virtual job environment
 #
 run:
-# - [ ping, -c1, __HOSTNAME__ ]
+  - PUT: /app/
+    command: "/usr/bin/udpping.so __HOSTNAME__ 3333 5 500"
 

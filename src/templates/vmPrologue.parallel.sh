@@ -400,7 +400,7 @@ and VM '$vhostName' with MAC='$mac' is still not available via SSH/HTTP.";
     destFile="$VM_JOB_DIR/$LOCALHOST/cloud-init_$vhostName.log";
     logDebugMsg "Fetching cloud-init.log from '$vmIP' as '$destFile'.".
     # standard linux or OSv ?
-    if [[ "$DISTRO" =~ REGEX_OSV ]]; then
+    if [[ "$DISTRO" =~ $REGEX_OSV ]]; then
       # OSv doesn't have a dedicated cloud-init log.
       # Relevant info is written to console.
       :
@@ -408,9 +408,9 @@ and VM '$vhostName' with MAC='$mac' is still not available via SSH/HTTP.";
       scp $SCP_OPTS $vmIP:$CLOUD_INIT_LOG $destFile;
 
       # determine syslog filename
-      if [[ "$DISTRO" =~ REGEX_DEBIAN ]]; then
+      if [[ "$DISTRO" =~ $REGEX_DEBIAN ]]; then
         sysLogFile=$SYS_LOG_FILE_DEBIAN;
-      elif  [[ "$DISTRO" =~ REGEX_REDHAT ]]; then
+      elif  [[ "$DISTRO" =~ $REGEX_REDHAT ]]; then
         sysLogFile=$SYS_LOG_FILE_RH;
       else
         logErrorMsg "Unknown distro '$DISTRO'!";

@@ -360,7 +360,16 @@ and VM '$vhostName' with MAC='$mac' is still not available.";
   logTraceMsg "VM IPs cached in file '$LOCAL_VM_IP_FILE':\n-----\n$(cat $LOCAL_VM_IP_FILE)\n-----";
 
   # now wait until the VM becomes available via SSH
-  while [ 255 -eq $(ssh -n -o BatchMode=yes -o ConnectTimeout=2 $vmIP exit; echo $?) ]; do
+  if [[ $DISTRO =~ $REGEX_OSV ]]; then
+    logDebugMsg "DISTRO '$DISTRO' is OSv, using HTTP check"
+    CONN_TEST_CMD="curl --connect-timeout 2 http://$vmIP:8000"
+    ERR_CODE_TIMEOUT=28
+  else
+    logDebugMsg "DISTRO '$DISTRO' is linux, using SSH check"
+    CONN_TEST_CMD="ssh -n -o BatchMode=yes -o ConnectTimeout=2 $vmIP exit"
+    ERR_CODE_TIMEOUT=255
+  fi
+  while [ $($CONN_TEST_CMD; echo $?) -eq $ERR_CODE_TIMEOUT  ]; do
 
     # cancelled meanwhile ?
     checkCancelFlag;
@@ -369,7 +378,7 @@ and VM '$vhostName' with MAC='$mac' is still not available.";
     checkRemoteNodes;
 
     # wait a moment before we try it again
-    logDebugMsg "Waiting for VM's ($mac / $vmIP) SSH server to become available..";
+    logDebugMsg "Waiting for VM's ($mac / $vmIP) SSH/HTTP server to become available..";
     sleep 1;
 
     # timeout reached ?
@@ -377,25 +386,26 @@ and VM '$vhostName' with MAC='$mac' is still not available.";
     res=$?;
     if [ $res -eq 0 ]; then
       msg="Aborting.\n Timeout of '$TIMEOUT' sec reached \
-and VM '$vhostName' with MAC='$mac' is still not available via SSH.";
+and VM '$vhostName' with MAC='$mac' is still not available via SSH/HTTP.";
       indicateRemoteError "$lockFile" "$msg";
     fi
 
   done
 
   # success
-  logDebugMsg "VM's ($mac / $vmIP) SSH server is now available.";
+  logDebugMsg "VM's ($mac / $vmIP) SSH/HTTP server is now available.";
 
   # fetch the cloud-init log if debugging
   if $DEBUG; then
     destFile="$VM_JOB_DIR/$LOCALHOST/cloud-init_$vhostName.log";
     logDebugMsg "Fetching cloud-init.log from '$vmIP' as '$destFile'.".
-    scp $SCP_OPTS $vmIP:$CLOUD_INIT_LOG $destFile;
     # standard linux or OSv ?
     if [[ "$DISTRO" =~ REGEX_OSV ]]; then
-      # TODO replace SSH by HTTP RESTful call
-      ssh $SSH_OPTS $vmIP 'dmesg' > $VM_JOB_DIR/$LOCALHOST/syslog_$vhostName.log;
+      # OSv doesn't have a dedicated cloud-init log.
+      # Relevant info is written to console.
+      :
     else
+      scp $SCP_OPTS $vmIP:$CLOUD_INIT_LOG $destFile;
 
       # determine syslog filename
       if [[ "$DISTRO" =~ REGEX_DEBIAN ]]; then

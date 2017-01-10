@@ -655,7 +655,7 @@ _generateMetaDataFiles() {
     sed -i "s,__USER_ID__,$(id -u),g" $metadataFile; #required for nfs access
     sed -i "s,__USER_NAME__,$JOB_OWNER,g" $metadataFile;
     sed -i "s,__VM_JOB_DIR__,$VM_JOB_DIR,g" $metadataFile;
-    sed -i "s,__VM_NODE_FILE__,$VM_NODE_FILE,g" $metadataFile;
+    # sed -i "s,__VM_NODE_FILE__,$VM_NODE_FILE,g" $metadataFile; // not used in any template, and VM_NODE_FILE in not set
     sed -i "s,__VM_NODE_FILE_DIR__,$VM_NODE_FILE_DIR,g" $metadataFile;
     sed -i "s,__VM_ENV_FILE_DIR__,$VM_ENV_FILE_DIR/$computeNode/$vhostName,g" $metadataFile;
     sed -i "s,__SCRIPT_BASE_DIR__,$SCRIPT_BASE_DIR/$computeNode/$vhostName,g" $metadataFile;

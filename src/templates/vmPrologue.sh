@@ -869,7 +869,7 @@ _generateDomainXML() {
     # is there a metadata seed.img disk ?
     if [ -n "${VM_PARAMS[$keyOne, 'METADATA_DISK']}" ]; then
       logDebugMsg "Generated metadata disk found, merging into domain XML";
-      sed -i "s,__METADATA_XML__,$(cat $DOMAIN_METADATA_XML_TEMPLATE | tr '\r\n' ' '),g" $domainXMLtmpFile;
+      sed -i -e "/__METADATA_XML__/e cat $DOMAIN_METADATA_XML_TEMPLATE" -e "s,__METADATA_XML__,,g" $domainXMLtmpFile;
     else
       logErrorMsg "Mandatory metadata disk is missing!";
     fi
@@ -879,7 +879,7 @@ _generateDomainXML() {
       # there should only one for rank0
       [ $number -ne 0 ] && logWarnMsg "HINT: Current VM is not rank0, but it has an user disk defined!";
       logDebugMsg "Optional user disk found, merging into domain XML";
-      sed -i "s,__DISK_XML__,$(cat $DOMAIN_DISK_XML_TEMPLATE | tr '\r\n' ' '),g" $domainXMLtmpFile;
+      sed -i -e "/__DISK_XML__/e cat $DOMAIN_DISK_XML_TEMPLATE" -e "s,__DISK_XML__,,g" $domainXMLtmpFile;
     else
       sed -i "s,__DISK_XML__,,g" $domainXMLtmpFile;
     fi
@@ -899,7 +899,7 @@ _generateDomainXML() {
         && ${VM_PARAMS[$keyOne, 'VRDMA']} \
         && [[ "$LOCALHOST" =~ ^$VRDMA_NODES$ ]]; then
       logDebugMsg "VRDMA requested, merging into domain XML";
-      sed -i "s,__VRDMA_XML__,$(cat $DOMAIN_VRDMA_XML_TEMPLATE | tr '\r\n' ' '),g" $domainXMLtmpFile;
+      sed -i -e "/__VRDMA_XML__/e cat $DOMAIN_VRDMA_XML_TEMPLATE" -e "s,__VRDMA_XML__,,g" $domainXMLtmpFile;
     else
       logDebugMsg "VRDMA disabled, removing place-holder from domain XML";
       sed -i "s,__VRDMA_XML__,,g" $domainXMLtmpFile;
@@ -1028,7 +1028,7 @@ least '$(($previousCPUs + ${VM_PARAMS[$keyOne, VCPUS]}))'";
   # complete the pinning xml section
   echo -e "  <vcpu placement='static'>${VM_PARAMS[$keyOne, VCPUS]}</vcpu>\n  <cputune>\n  $pinning\n  </cputune>" > $PINNING_FILE;
   # apply mapping to domain XML
-  sed -i "s,__VCPU_PINNING__,$(cat $PINNING_FILE | tr '\r\n' ' '),g" $domainXML;
+  sed -i -e "/__VCPU_PINNING__/e cat $PINNING_FILE" -e "s,__VCPU_PINNING__,,g" $domainXML;
 }
 
 

@@ -122,6 +122,12 @@ VCPUS=__VCPUS__;
 #
 FIRST_VM="";
 
+#
+# Value is used to determine how to contrl the VM -
+# via ssh (SLG) or via HTTP REST API (OSv).
+# This is determined at template instantiation time.
+#
+DISTRO=__DISTRO__;
 
 ##############################################################################
 #                                                                            #
@@ -299,8 +305,19 @@ $(ssh $SSH_OPTS $vNodeName 'source /etc/profile; env;')\
 # Executes user's batch job.
 #
 runBatchJob(){
+  if [[ $DISTRO =~ $REGEX_OSV ]]; then
+    runBatchJob_osv
+  else
+    runBatchJob_slg
+  fi
+}
+
+
+#---------------------------------------------------------
+#
+runBatchJob_slg(){
   # the first node in the list is 'rank 0'
-  logDebugMsg "Executing BATCH job script '$JOB_SCRIPT' on first vNode '$FIRST_VM'.";
+  logDebugMsg "Executing SLG BATCH job script '$JOB_SCRIPT' on first vNode '$FIRST_VM'.";
   # test if job script is available inside VM, if not stage it
   ensureFileIsAvailableOnHost $JOB_SCRIPT $FIRST_VM;
   # construct the command to execute via ssh
@@ -323,9 +340,50 @@ runBatchJob(){
 
 #---------------------------------------------------------
 #
-# Executes user's STDIN job.
+runBatchJob_osv(){
+  # the first node in the list is 'rank 0'
+  logDebugMsg "Executing OSv BATCH job script '$JOB_SCRIPT' on first vNode '$FIRST_VM'.";
+  # TODO set env variables
+  cmd=`cat $JOB_SCRIPT`
+  # TODO insert VM IPs for mpirun. Or will this be automagicaly picked up from
+  # PBS environment variables?
+  # execute command
+  logDebugMsg "Command to execute: 'PUT http://$FIRST_VM:8000/app \"$cmd\"'";
+  logDebugMsg "===============JOB_OUTPUT_BEGIN====================";
+  # But job output is in VM console.log only. Most of it is on head node,
+  # but some parts are only on worker nodes (stdout/err).
+  curl -X PUT http://$FIRST_VM:8000/app/ --data-urlencode command="$cmd"
+  if $DEBUG; then
+    # TODO tail -f vm-console-log
+    echo -n ''
+  fi
+  # store the return code (ssh returns the return value of the command in
+  # question, or 255 if an error occurred in ssh itself.)
+  # TODO what does curl return on error?
+  # TODO how to detect that program was run, but failed immediately?
+  # On OSv, HTTP REST will return 200/OK, and error is shown only on
+  # stderr/console. So it seems we cannot detect failure at all.
+  result=$?
+  logDebugMsg "================JOB_OUTPUT_END=====================";
+  return $result;
+}
+
+
+#---------------------------------------------------------
 #
+# Executes user's STDIN job.
 runSTDinJob(){
+  if [[ $DISTRO =~ $REGEX_OSV ]]; then
+    logErrorMsg "Executing STDIN job on OSv is unsupported"
+  else
+    runSTDinJob_slg
+  fi
+}
+
+
+#---------------------------------------------------------
+#
+runSTDinJob_slg(){
   # the first node in the list is 'rank 0'
   logDebugMsg "Executing STDIN job '$JOB_SCRIPT' on first vNode '$FIRST_VM'.";
   # construct the command to execute via ssh
@@ -345,8 +403,18 @@ runSTDinJob(){
 #---------------------------------------------------------
 #
 # Executes user's interactive job.
-#
 runInteractiveJob(){
+  if [[ $DISTRO =~ $REGEX_OSV ]]; then
+    logErrorMsg "Executing INTERACTIVE job on OSv is unsupported"
+  else
+    runInteractiveJob_slg
+  fi
+}
+
+
+#---------------------------------------------------------
+#
+runInteractiveJob_slg(){
   # the first node in the list is 'rank 0'
   logDebugMsg "Executing INTERACTIVE job on first vNode '$FIRST_VM'.";
   # construct the command to execute via ssh

@@ -423,7 +423,7 @@ generateVMParameterSets() {
       logTraceMsg "Generated UUID='$UUID' for VM '$number/$vmsPerHost' on node '$computeNode' '$total/$amountOfVMs'.";
 
       # VM's MAC
-      MAC=$(generateMAC);
+      MAC=$(generateMAC $vmsPerHost $number);
       logTraceMsg "Generated MAC='$MAC' for VM '$number/$vmsPerHost' on node '$computeNode' '$total/$amountOfVMs'.";
 
       #

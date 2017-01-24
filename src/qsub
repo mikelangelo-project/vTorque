@@ -555,7 +555,7 @@ _parseVMparameters() {
       logDebugMsg "Detected flag '-gf' to generate files, only.";
       # generate files for manual debugging, only
       DO_NOT_SUBMIT_JOB=true;
-    else if [ "$arg" == "-listImages" ]; then
+    elif [ "$arg" == "-listImages" ]; then
       listImages;
     else # neither a defined PBS key[/value], not a vm key
       # we assume it's the last one, the optional job script file

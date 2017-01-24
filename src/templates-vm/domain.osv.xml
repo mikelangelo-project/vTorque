@@ -5,7 +5,6 @@
   <uuid>__UUID__</uuid>
   <memory unit='MiB'>__RAM__</memory>
   <currentMemory unit='MiB'>__RAM__</currentMemory>
-  <vcpu placement='static'>__VCPUS__</vcpu>
 __VCPU_PINNING__
 
   <!--  OS type and boot -->

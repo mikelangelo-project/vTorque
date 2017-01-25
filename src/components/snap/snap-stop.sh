@@ -40,8 +40,7 @@ untagTask() {
 
 
   # check if binaries are available and executable
-  if [ ! -x $SNAP_BIN_DIR/snapcontroller ] \
-      || [ ! -x $SNAP_BIN_DIR/snapctl ]; then
+  if [ ! -x $SNAPCTL ]; then
     logWarnMsg "Snap Monitoring is enabled, but its binaries cannot be found or executed! SNAP_BIN_DIR='$SNAP_BIN_DIR'";
     return -1;
   fi
@@ -49,14 +48,25 @@ untagTask() {
   # release tag the snap monitoring task
   logDebugMsg "Release snap monitoring task for job '$JOBID' with tag '$SNAP_TASK_TAG' using format '$SNAP_TAG_FORMAT'";
   logTraceMsg "~~~~~~~~~~Environment_Start~~~~~~~~~~\n$(env)\n~~~~~~~~~~~Environment_End~~~~~~~~~~~";
-  if $DEBUG; then
-    # show what's happening
-    $SNAP_BIN_DIR/snapcontroller --snapctl $SNAP_BIN_DIR/snapctl dt SNAP_TASK_TAG |& tee -a $LOG_FILE;
-    res=$?;
-  else
-    # be quiet
-    $SNAP_BIN_DIR/snapcontroller --snapctl $SNAP_BIN_DIR/snapctl dt SNAP_TASK_TAG > /dev/null 2>&1;
-    res=$?;
+
+  # Get snap task name
+  SNAP_TASK_ID="$(cat $SNAP_TASK_ID_FILE)"
+  logDebugMsg "Looking into cached task id, file '$SNAP_TASK_ID_FILE' found id '$SNAP_TASK_ID'";
+
+  # Stop task
+  logDebugMsg "Stopping snap task with ID '$SNAP_TASK_ID'"
+  snapCtlOutput="$(SNAPCTL task stop ${SNAP_TASK_ID})";
+  res=$?;
+  if [ $res -ne 0 ]; then
+    logInfoMsg "Stopping snap task with ID '$SNAP_TASK_ID' failed:\n\t$snapCtlOutput";
+  fi
+
+  # Remove task
+  logDebugMsg "Removing snap task with ID '$SNAP_TASK_ID'";
+  snapCtlOutput="$(SNAPCTL task remove ${SNAP_TASK_ID})";
+  res=$?;
+  if [ $res -ne 0 ]; then
+    logWarnMsg "Removing snap task with ID '$SNAP_TASK_ID' failed:\n\t$snapCtlOutput";
   fi
 
   # pass on return code

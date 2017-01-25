@@ -1,0 +1,142 @@
+{
+    "version": 1,
+    "schedule": {
+        "type": "simple",
+        "interval": "2s"
+    },
+    "workflow": {
+        "collect": {
+            "metrics": {
+
+            "/intel/iostat/avg-cpu/%idle" : {},
+            "/intel/iostat/avg-cpu/%iowait" : {},
+            "/intel/iostat/avg-cpu/%nice" : {},
+            "/intel/iostat/avg-cpu/%steal" : {},
+            "/intel/iostat/avg-cpu/%system" : {},
+            "/intel/iostat/avg-cpu/%user" : {},
+            "/intel/iostat/device/*/%util" : {},
+            "/intel/iostat/device/*/avgqu-sz" : {},
+            "/intel/iostat/device/*/avgrq-sz" : {},
+            "/intel/iostat/device/*/await" : {},
+
+
+            "/intel/libvirt/*/cpu/*/cputime" : {},
+            "/intel/libvirt/*/cpu/cputime" : {},
+            "/intel/libvirt/*/disk/*/rdbytes" : {},
+            "/intel/libvirt/*/disk/*/rdreq" : {},
+            "/intel/libvirt/*/disk/*/wrbytes" : {},
+            "/intel/libvirt/*/disk/*/wrreq" : {},
+            "/intel/libvirt/*/memory/actual_balloon" : {},
+            "/intel/libvirt/*/memory/available" : {},
+            "/intel/libvirt/*/memory/major_fault" : {},
+            "/intel/libvirt/*/memory/max" : {},
+            "/intel/libvirt/*/memory/mem" : {},
+            "/intel/libvirt/*/memory/min_fault" : {},
+            "/intel/libvirt/*/memory/swap_in" : {},
+            "/intel/libvirt/*/memory/swap_out" : {},
+            "/intel/libvirt/*/network/*/rxbytes" : {},
+            "/intel/libvirt/*/network/*/rxdrop" : {},
+            "/intel/libvirt/*/network/*/rxerrs" : {},
+            "/intel/libvirt/*/network/*/rxpackets" : {},
+            "/intel/libvirt/*/network/*/txbytes" : {},
+            "/intel/libvirt/*/network/*/txdrop" : {},
+            "/intel/libvirt/*/network/*/txerrs" : {},
+            "/intel/libvirt/*/network/*/txpackets" : {},
+
+
+            "/intel/procfs/cpu/*/active_jiffies" : {},
+            "/intel/procfs/cpu/*/active_percentage" : {},
+            "/intel/procfs/cpu/*/guest_jiffies" : {},
+            "/intel/procfs/cpu/*/guest_nice_jiffies" : {},
+            "/intel/procfs/cpu/*/guest_nice_percentage" : {},
+            "/intel/procfs/cpu/*/guest_percentage" : {},
+            "/intel/procfs/cpu/*/idle_jiffies" : {},
+            "/intel/procfs/cpu/*/idle_percentage" : {},
+            "/intel/procfs/cpu/*/iowait_jiffies" : {},
+            "/intel/procfs/cpu/*/iowait_percentage" : {},
+            "/intel/procfs/cpu/*/steal_jiffies" : {},
+            "/intel/procfs/cpu/*/steal_percentage" : {},
+            "/intel/procfs/cpu/*/system_jiffies" : {},
+            "/intel/procfs/cpu/*/system_percentage" : {},
+            "/intel/procfs/cpu/*/user_jiffies" : {},
+            "/intel/procfs/cpu/*/user_percentage" : {},
+            "/intel/procfs/cpu/*/utilization_jiffies" : {},
+            "/intel/procfs/cpu/*/utilization_percentage" : {},
+
+
+            "/intel/psutil/cpu/*/guest" : {},
+            "/intel/psutil/cpu/*/guest_nice" : {},
+            "/intel/psutil/cpu/*/idle" : {},
+            "/intel/psutil/cpu/*/iowait" : {},
+            "/intel/psutil/cpu/*/irq" : {},
+            "/intel/psutil/cpu/*/nice" : {},
+            "/intel/psutil/cpu/*/softirq" : {},
+            "/intel/psutil/cpu/*/steal" : {},
+            "/intel/psutil/cpu/*/stolen" : {},
+            "/intel/psutil/cpu/*/system" : {},
+            "/intel/psutil/cpu/*/user" : {},
+            "/intel/psutil/cpu/cpu-total/guest" : {},
+            "/intel/psutil/cpu/cpu-total/guest_nice" : {},
+            "/intel/psutil/cpu/cpu-total/idle" : {},
+            "/intel/psutil/cpu/cpu-total/iowait" : {},
+            "/intel/psutil/cpu/cpu-total/irq" : {},
+            "/intel/psutil/cpu/cpu-total/nice" : {},
+            "/intel/psutil/cpu/cpu-total/softirq" : {},
+            "/intel/psutil/cpu/cpu-total/steal" : {},
+            "/intel/psutil/cpu/cpu-total/stolen" : {},
+            "/intel/psutil/cpu/cpu-total/system" : {},
+            "/intel/psutil/cpu/cpu-total/user" : {},
+            "/intel/psutil/load/load1" : {},
+            "/intel/psutil/load/load15" : {},
+            "/intel/psutil/load/load5" : {},
+            "/intel/psutil/net/*/bytes_recv" : {},
+            "/intel/psutil/net/*/bytes_sent" : {},
+            "/intel/psutil/net/*/dropin" : {},
+            "/intel/psutil/net/*/dropout" : {},
+            "/intel/psutil/net/*/errin" : {},
+            "/intel/psutil/net/*/errout" : {},
+            "/intel/psutil/net/*/packets_recv" : {},
+            "/intel/psutil/net/*/packets_sent" : {},
+            "/intel/psutil/net/all/bytes_recv" : {},
+            "/intel/psutil/net/all/bytes_sent" : {},
+            "/intel/psutil/net/all/dropin" : {},
+            "/intel/psutil/net/all/dropout" : {},
+            "/intel/psutil/net/all/errin" : {},
+            "/intel/psutil/net/all/errout" : {},
+            "/intel/psutil/net/all/packets_recv" : {},
+            "/intel/psutil/net/all/packets_sent" : {},
+            "/intel/psutil/vm/active" : {},
+            "/intel/psutil/vm/available" : {},
+            "/intel/psutil/vm/buffers" : {},
+            "/intel/psutil/vm/cached" : {},
+            "/intel/psutil/vm/free" : {},
+            "/intel/psutil/vm/inactive" : {},
+            "/intel/psutil/vm/total" : {},
+            "/intel/psutil/vm/used" : {},
+            "/intel/psutil/vm/used_percent" : {},
+            "/intel/psutil/vm/wired" : {},
+
+            },
+            "process": [
+              {
+                "plugin_name": "tag",
+                  "config": {
+                         "tags": __SNAP_TASK_NAME__
+                  },
+                "publish": [
+                  {
+                    "plugin_name": "influxdb",
+                    "config": {
+                        "host": "172.18.2.74",
+                        "port": 8086,
+                        "database": "snap",
+                        "user": "admin",
+                        "password": "admin"
+                     }
+                  }
+                ]
+              }
+            ]
+        }
+    }
+}

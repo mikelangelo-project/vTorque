@@ -39,8 +39,7 @@ source $ABSOLUTE_PATH/snap-common.sh;
 tagTask() {
 
   # check if binaries are available and executable
-  if [ ! -x $SNAP_BIN_DIR/snapcontroller ] \
-      || [ ! -x $SNAP_BIN_DIR/snapctl ]; then
+  if [ ! -x $SNAPCTL ]; then
     logWarnMsg "Snap Monitoring is enabled, but its binaries cannot be found or executed! SNAP_BIN_DIR='$SNAP_BIN_DIR'";
     return -1;
   fi
@@ -49,30 +48,49 @@ tagTask() {
   logDebugMsg "Tagging snap monitoring task for job '$JOBID' with tag '$SNAP_TASK_TAG' using format '$SNAP_TAG_FORMAT'";
   logTraceMsg "~~~~~~~~~~Environment_Start~~~~~~~~~~\n$(env)\n~~~~~~~~~~~Environment_End~~~~~~~~~~~";
 
-  #
-  # dirty quick fix for:
-  #  InfluxDB connector opens too many files and dies after ~30min
-  #
-  ulimit -n 6000; #INTEL uses 6000 successfully
+  # move template
+  logDebugMsg "Moving template file '$SNAP_TASK_TEMPLATE_FILE' to job folder '$SNAP_TASK_JSON_FILE'";
+  cp $SNAP_TASK_TEMPLATE_FILE $SNAP_TASK_JSON_FILE
+  # create Task from template
+  sed -i 's,__SNAP_TASK_NAME__,$SNAP_TASK_TAG,g' $SNAP_TASK_JSON_FILE;
+  logTraceMsg "~~~~~~~~~~SNAP_TASK_JASON_Start~~~~~~~~~~\n$(cat $SNAP_TASK_JSON_FILE | python -m json.tool)\n~~~~~~~~~~SNAP_TASK_JASON_End~~~~~~~~~~";
 
-  if $DEBUG; then
-    # show what's happening
-    $SNAP_BIN_DIR/snapcontroller --snapctl $SNAP_BIN_DIR/snapctl ct $SNAP_TASK_TAG |& tee -a $LOG_FILE;
+  # create Task
+  logDebugMsg "Tagging snap monitoring task for job '$JOBID' with tag '$SNAP_TASK_TAG' using format '$SNAP_TAG_FORMAT'";
+  logTraceMsg "~~~~~~~~~~Environment_Start~~~~~~~~~~\n$(env)\n~~~~~~~~~~~Environment_End~~~~~~~~~~~";
+
+  # verbose logging
+  logTraceMsg "Content of snap's JSON config file\
+\n~~~~~~~~~~~Snap_Config_File_BEGIN~~~~~~~~~~~\n\
+$(cat $SNAP_TASK_TEMPLATE_FILE | python -m json.tool)\
+\n~~~~~~~~~~~~Snap_Config_File_END~~~~~~~~~~~~";
+
+  # create and start task
+  snapCtlOutput="$($SNAPCTL task create -t $SNAP_TASK_JSON_FILE)"
+  res=$?
+
+  # logging
+  if [ $res -ne 0 ]; then
+    logWarnMsg "Snap task creation failed:\n\t$snapCtlOutput\nreturn code is '$res'";
   else
-    # be quiet
-    $SNAP_BIN_DIR/snapcontroller --snapctl $SNAP_BIN_DIR/snapctl ct $SNAP_TASK_TAG > /dev/null 2>&1;
+    logDebugMsg "Snap task successfully created: $snapCtlOutput";
+
+    # determine snap task's name
+    snapTaskName="$(echo $snapCtlOutput | grep Name)"
+
+    # determine task ID
+    logDebugMsg "Snap task '$snapTaskName' created and started";
+    snapTaskID=$(echo ${snapTaskName} | awk -F'Name: Task-' '{print $2}')
+    logDebugMsg "Snap task 'snapTaskName' has ID '$snapTaskID'";
+
+    # cache task ID
+    echo $snapTaskID > $SNAP_TASK_ID_FILE
+    logTraceMsg "Caching Snap ID '$snapTaskID' in file '$SNAP_TASK_ID_FILE'";
+    logTraceMsg "~~~~~~~~~~SNAP_TASK_ID_FILE_Start~~~~~~~~~~\n$(cat $SNAP_TASK_ID_FILE)\n~~~~~~~~~~~SNAP_TASK_ID_FILE_End~~~~~~~~~~~";
   fi
-  res=$?;
-
-  # debug + trace logging
-  logDebugMsg "Snap controller's return code: '$res'";
-  logTraceMsg "Content of snap's JSON\
-\n~~~~~~~~~~~Snap_Temp_File_BEGIN~~~~~~~~~~~\n\
-$(cat /tmp/task_${SNAP_TASK_TAG}.json | python -m json.tool)\
-\n~~~~~~~~~~~~Snap_Temp_File_END~~~~~~~~~~~~";
-
   # pass on return code
   return $res;
+
 }
 
 

@@ -358,6 +358,11 @@ runBatchJob_osv(){
   CURL_CMD="curl -X POST http://$FIRST_VM:8000/file//pbs_vm_nodefile --form file=@\"$PBS_VM_NODEFILE\" -v"
   logDebugMsg "Upload PBS_VM_NODEFILE $PBS_VM_NODEFILE to /pbs_vm_nodefile: '$CURL_CMD'";
   $CURL_CMD
+  result=$?
+  if [ $result -ne 0 ]; then
+    logErrorMsg "Failed to upload PBS_VM_NODEFILE $PBS_VM_NODEFILE"
+    return $result
+  fi
   echo "----------------------------"
   # debug GET
   CURL_CMD="curl -X GET http://$FIRST_VM:8000/file//pbs_vm_nodefile?op=GET -v"
@@ -366,10 +371,37 @@ runBatchJob_osv(){
 
   # execute command
   logDebugMsg "Command to execute: 'PUT http://$FIRST_VM:8000/app \"$cmd\"'";
+  tid=$(curl -X PUT http://$FIRST_VM:8000/app/ --data-urlencode command="$cmd")
+  result=$?
+  if [ $result -ne 0 ]; then
+    logErrorMsg "Failed to start application \"$cmd\""
+    return $result
+  fi
+  tid=$(echo $tid | sed -e 's/^\"//' -e 's/\"$//')  # remove "" enclosing thread id.
+  logDebugMsg "Command is running with tid=$tid";
+  # Check that tid is actually a number
+  number_regexp='^[0-9]+$'
+  if ! [[ $tid =~ $number_regexp ]]; then
+    logErrorMsg "Returned tid=\"$tid\" is not a number"
+    return 1
+  fi
+
+  # wait on executed app to finish
+  app_finished="0"
+  logDebugMsg "Command tid=$tid wait to finish...";
+  while [[ "$app_finished" != "1" ]]; do
+    sleep 5
+    app_finished=$(curl -X GET http://$FIRST_VM:8000/app/finished --data-urlencode tid="$tid" | sed -e 's/^\"//' -e 's/\"$//')
+    result=$?
+    if [ $result -ne 0 ]; then
+      logErrorMsg "Failed to check if application with tid=$tid is finished"
+      return $result
+    fi
+  done
+  logDebugMsg "Command tid=$tid finished";
   logDebugMsg "===============JOB_OUTPUT_BEGIN====================";
   # But job output is in VM console.log only. Most of it is on head node,
   # but some parts are only on worker nodes (stdout/err).
-  curl -X PUT http://$FIRST_VM:8000/app/ --data-urlencode command="$cmd"
   if $DEBUG; then
     # TODO tail -f vm-console-log
     echo -n ''

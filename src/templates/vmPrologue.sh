@@ -774,7 +774,7 @@ _copyImageFile() {
   else
     cp_cmd_tmplate="rsync -perms -q";
   fi
-  cp_cmd_tmplate="$cp_cmd_tmplate --chmod=ug+rw,o-rw --usermap=*:$JOB_OWNER --groupmap=*:$JOB_OWNER -L $srcFileName";
+  cp_cmd_tmplate="$cp_cmd_tmplate --chmod=ug+rw,o-rw --chown=$JOB_OWNER:$JOB_OWNER -L $srcFileName";
 
   # build copy cmd(s)
   counter=1;

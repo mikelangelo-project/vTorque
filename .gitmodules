@@ -1,9 +1,6 @@
 [submodule "src/components/iocm/static-iomanager"]
 	path = src/components/iocm/static-iomanager
 	url = ssh://git@gitlab.xlab.si:13022/mikelangelo/static-iomanager.git
-[submodule "src/components/snap/snap"]
-	path = src/components/snap/snap
-	url = https://github.com/intelsdi-x/snap.git
 [submodule "lib/log4bsh"]
 	path = lib/log4bsh
 	url = ssh://git@gitlab.xlab.si:13022/mikelangelo/Log4bsh.git

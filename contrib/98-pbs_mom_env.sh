@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-if [ -z ${TORQUE_HOME-}; then
+if [ -z ${TORQUE_HOME-} ]; then
   export TORQUE_HOME="/var/spool/torque";
 fi
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:/opt/torque/current/client/lib";

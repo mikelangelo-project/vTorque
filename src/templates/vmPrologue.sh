@@ -805,12 +805,21 @@ _copyImageFile() {
   logDebugMsg "Transferring file '$srcFileName' in total '$vmsPerHost' times to '$destDir'";
 
   # transfer files on remote node to avoid local io-bottleneck in parallel exec)
-  output=$(ssh $computeNode "eval $cmd");
-  res=$?;
-  logTraceMsg "Output of transfer-cmd on node '$computeNode': $output";
+  logTraceMsg "Executing cmd on '$computeNode':\n\t$cmd";
+  if $TRACE; then
+    ssh $computeNode -v "$cmd";
+    res=$?;
+  else
+    output=$(ssh $computeNode "$cmd");
+    res=$?;
+    logTraceMsg "Output of transfer-cmd on node '$computeNode':\n\t$output";
+  fi
+  logTraceMsg "Transfer-cmd on node '$computeNode' completed with result: '$res'";
 
   # check return code
-  if [ $res -ne 0 ]; then
+  if [ $res -eq 255 ]; then
+    logErrorMsg "SSH connection to node '$computeNode' failed!";
+  elif [ $res -ne 0 ]; then
     logErrorMsg "Copying image file '$srcFileName' to '$destDir' on node '$computeNode' failed!";
   fi
 

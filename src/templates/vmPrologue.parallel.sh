@@ -290,7 +290,7 @@ and VM '$vhostName' with MAC='$mac' is still not available.";
     if [ -n "$arpOut" ]; then
 
       # grep VM's IP from arp output
-      vmIP=$(echo -n $arpOut | cut -d' ' -f2 | sed 's,(,,g' | sed 's,),,g');
+      vmIP=$(echo -n "$arpOut" | cut -d' ' -f2 | sed 's,(,,g' | sed 's,),,g');
       if [ ! -n "$vmIP" ]; then
         logErrorMsg "Command 'arp -an' failed, output: '$arpOut'";
       fi
@@ -310,11 +310,7 @@ and VM '$vhostName' with MAC='$mac' is still not available.";
       # found ?
       if [ -n "$vmIP" ]; then
         logTraceMsg "Seems like we can ping VM's hostname '$vhostName' and it resolves to '$vmIP'";
-      fi
-
-      # if we have found an IP let's check the mac of this host
-      if [ -n "$vmIP" ]; then
-
+      
         # check if arp knowns already the MAC for VM's IP
         tmp=$(/usr/sbin/arp -an | grep -i "$vmIP");
 

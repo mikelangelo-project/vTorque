@@ -285,7 +285,7 @@ export PBS_VMS_PN='VMS_PER_NODE';" > $pbsVMsEnvFile;
       number=$(($number + 1));
 
       # logging
-      logTraceMsg "Created PBS environment for VM '':¸\n-----\n$(cat $destDir/vmJobEnvironment)\n-----";
+      logTraceMsg "Created PBS environment for VM '$vNodeName':¸\n-----\n$(cat $destDir/vmJobEnvironment)\n-----";
 
       # stage file in case file-sys is not shared with VMs
       #ensureFileIsAvailableOnHost $pbsVMsEnvFile $vNode; #FIXME: destination path is another one: see metadata mountpoint
@@ -306,9 +306,9 @@ $(ssh $SSH_OPTS $vNodeName 'source /etc/profile; env;')\
 #
 runBatchJob(){
   if [[ $DISTRO =~ $REGEX_OSV ]]; then
-    runBatchJob_osv
+    runBatchJob_osv;
   else
-    runBatchJob_slg
+    runBatchJob_slg;
   fi
 }
 

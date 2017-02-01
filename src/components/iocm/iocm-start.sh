@@ -1,5 +1,6 @@
 #!/bin/bash
 #
+# filename: /usr/local/fixKernelOptions-iocm.sh
 #
 
 
@@ -21,7 +22,7 @@ source "$ABSOLUTE_PATH/../common.sh";
 #
 setCores() {
   echo "TODO impl iocm core set cmd dynamically";
-  $ABSOLUTE_PATH/static-iomanager/set_iocores.py 0-2 3-7;
+  $ABSOLUTE_PATH/dynamic-io-manager/src/start_io_manager.py -p -c $ABSOLUTE_PATH/iocm-conf.json --min 0 --max 2;
 }
 
 

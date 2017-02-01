@@ -19,7 +19,7 @@ source "$ABSOLUTE_PATH/../common.sh";
 #
 unsetCores() {
   logDebugMsg "Releasing iocm cores..";
-  $ABSOLUTE_PATH/static-iomanager/set_iocores.py -1;
+  $ABSOLUTE_PATH/dynamic-io-manager/src/stop_io_manager.py;
 }
 
 #============================================================================#

@@ -20,6 +20,7 @@ src/ All source code
 Requirements
 ============
 * cloud-utils on all compute hosts
+* curl on all compute hosts
 * guest os must be Debian-, RedHat-based or OSv
 * guest image file must contain the os name (ubuntu/debian,redhat/centos,osv)
 * disable known hosts file for ssh (physical hosts)

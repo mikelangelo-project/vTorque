@@ -296,7 +296,7 @@ checkPreconditions() {
     exit 7;
   fi
 
-  $templates="vmPrologue.sh \
+  templates="vmPrologue.sh \
 vmPrologue.parallel.sh \
 vmEpilogue.sh \
 vmEpilogue.parallel.sh \

@@ -296,6 +296,22 @@ checkPreconditions() {
     exit 7;
   fi
 
+  $templates="vmPrologue.sh \
+vmPrologue.parallel.sh \
+vmEpilogue.sh \
+vmEpilogue.parallel.sh \
+jobWrapper.sh";
+
+  # check file permission, job will fail if not correct
+  for fileName in $templates; do
+    accessRights="$(stat -c %a $SCRIPT_BASE_DIR/templates/$fileName)";
+    # check access rights for the templates
+    if [ "$accessRights" != "655" ] \
+        && [ "$accessRights" != "650" ]; then
+      logErrorMsg "Permissions of template '$fileName' do not match, expected: '655' or '650'";
+    fi
+  done
+
   logDebugMsg "Preconditions check passed successfully.";
 }
 

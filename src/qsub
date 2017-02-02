@@ -296,16 +296,16 @@ checkPreconditions() {
     exit 7;
   fi
 
-  templates="$SCRIPT_PROLOGUE \
-$SCRIPT_PROLOGUE_PARALLEL \
-$SCRIPT_EPILOGUE \
-$SCRIPT_EPILOGUE_PARALLEL \
-$JOB_SCRIPT_WRAPPER";
+  templates="$SCRIPT_PROLOGUE_TEMPLATE \
+$SCRIPT_PROLOGUE_PARALLEL_TEMPLATE \
+$SCRIPT_EPILOGUE_TEMPLATE \
+$SCRIPT_EPILOGUE_PARALLEL_TEMPLATE \
+$JOB_SCRIPT_WRAPPER_TEMPLATE";
 
   # check file permission, job will fail if not correct
   for fileName in $templates; do
     # check access rights for the templates
-    if [ ! -r $SCRIPT_BASE_DIR/templates/$fileName ]; then
+    if [ ! -r $fileName ]; then
       logErrorMsg "Cannot read template '$fileName', wrong permissions!";
     fi
   done

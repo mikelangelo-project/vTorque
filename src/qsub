@@ -296,19 +296,17 @@ checkPreconditions() {
     exit 7;
   fi
 
-  templates="vmPrologue.sh \
-vmPrologue.parallel.sh \
-vmEpilogue.sh \
-vmEpilogue.parallel.sh \
-jobWrapper.sh";
+  templates="$SCRIPT_PROLOGUE \
+$SCRIPT_PROLOGUE_PARALLEL \
+$SCRIPT_EPILOGUE \
+$SCRIPT_EPILOGUE_PARALLEL \
+$JOB_SCRIPT_WRAPPER";
 
   # check file permission, job will fail if not correct
   for fileName in $templates; do
-    accessRights="$(stat -c %a $SCRIPT_BASE_DIR/templates/$fileName)";
     # check access rights for the templates
-    if [ "$accessRights" != "655" ] \
-        && [ "$accessRights" != "650" ]; then
-      logErrorMsg "Permissions of template '$fileName' do not match, expected: '655' or '650'";
+    if [ ! -r $SCRIPT_BASE_DIR/templates/$fileName ]; then
+      logErrorMsg "Cannot read template '$fileName', wrong permissions!";
     fi
   done
 
@@ -965,28 +963,28 @@ generateWrapperScripts() {
   mkdir -p $(dirname $SCRIPT_EPILOGUE) 2>/dev/null;
 
   # copy prologue template
-  cp $SCRIPT_PROLOGUE_TEMPLATE $SCRIPT_PROLOGUE && chmod +x $SCRIPT_PROLOGUE;
+  cp $SCRIPT_PROLOGUE_TEMPLATE $SCRIPT_PROLOGUE && chmod 650 $SCRIPT_PROLOGUE;
   if [ $? -ne 0 ]; then
     logErrorMsg "Make sure you have write access for dir \
 '$(dirname $SCRIPT_PROLOGUE)' and read access for file '$SCRIPT_PROLOGUE_TEMPLATE' !";
   fi
 
   # copy prologue.parallel template
-  cp $SCRIPT_PROLOGUE_PARALLEL_TEMPLATE $SCRIPT_PROLOGUE_PARALLEL && chmod +x $SCRIPT_PROLOGUE_PARALLEL;
+  cp $SCRIPT_PROLOGUE_PARALLEL_TEMPLATE $SCRIPT_PROLOGUE_PARALLEL && chmod 650 $SCRIPT_PROLOGUE_PARALLEL;
   if [ ! $? ]; then
     logErrorMsg "Make sure you have write access for dir \
 '$(dirname $SCRIPT_PROLOGUE_PARALLEL)' and read access for file '$SCRIPT_PROLOGUE_PARALLEL_TEMPLATE' !";
   fi
 
   # copy epilogue template
-  cp $SCRIPT_EPILOGUE_TEMPLATE $SCRIPT_EPILOGUE && chmod +x $SCRIPT_EPILOGUE;
+  cp $SCRIPT_EPILOGUE_TEMPLATE $SCRIPT_EPILOGUE && chmod 650 $SCRIPT_EPILOGUE;
   if [ ! $? ]; then
     logErrorMsg "Make sure you have write access for dir \
 '$(dirname $SCRIPT_EPILOGUE)' and read access for file '$SCRIPT_EPILOGUE_TEMPLATE' !";
   fi
 
   # copy epilogue.parallel template
-  cp $SCRIPT_EPILOGUE_PARALLEL_TEMPLATE $SCRIPT_EPILOGUE_PARALLEL && chmod +x $SCRIPT_EPILOGUE_PARALLEL;
+  cp $SCRIPT_EPILOGUE_PARALLEL_TEMPLATE $SCRIPT_EPILOGUE_PARALLEL && chmod 650 $SCRIPT_EPILOGUE_PARALLEL;
   if [ ! $? ]; then
     logErrorMsg "Make sure you have write access for dir \
 '$(dirname $SCRIPT_EPILOGUE_PARALLEL)' and read access for file '$SCRIPT_EPILOGUE_PARALLEL_TEMPLATE' !";
@@ -1285,7 +1283,7 @@ showLog() {
 #
 _abort() {
   exitCode=0;
-  if [ -z ${SHOW_LOG-false} ] || ! $SHOW_LOG ; then
+  if ! ${SHOW_LOG-false}; then
     logInfoMsg "Canceling job submission" true;
     # clean up the created tmp dir
     ! $DEBUG && logInfoMsg "Removing dir '$VM_JOB_DIR/'" true;

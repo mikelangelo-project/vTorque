@@ -128,7 +128,9 @@ fi
 #
 # Directory to store the job related files that are going to be generated
 #
-VM_JOB_DIR="$VM_JOB_DIR_PREFIX/$RUID";
+if [ -z ${VM_JOB_DIR-} ]; then
+  VM_JOB_DIR="$VM_JOB_DIR_PREFIX/$RUID";
+fi
 
 #
 # Flag file indicating type of storage to use for the job

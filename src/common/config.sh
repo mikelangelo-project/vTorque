@@ -28,7 +28,6 @@ set -o nounset;
 ABSOLUTE_PATH_CONFIG="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
 source "$ABSOLUTE_PATH_CONFIG/../../lib/log4bsh/src/log4bsh.sh";
 
-
 #============================================================================#
 #                                                                            #
 #                          GLOBAL DEFAULT CONFIG                             #

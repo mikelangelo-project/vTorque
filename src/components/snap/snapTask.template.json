@@ -114,14 +114,14 @@
             "/intel/psutil/vm/total" : {},
             "/intel/psutil/vm/used" : {},
             "/intel/psutil/vm/used_percent" : {},
-            "/intel/psutil/vm/wired" : {},
+            "/intel/psutil/vm/wired" : {}
 
             },
             "process": [
               {
                 "plugin_name": "tag",
                   "config": {
-                         "tags": __SNAP_TASK_NAME__
+                         "tags": "__SNAP_TASK_NAME__"
                   },
                 "publish": [
                   {

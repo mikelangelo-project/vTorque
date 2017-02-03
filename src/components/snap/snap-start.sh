@@ -18,6 +18,8 @@
 # under the License.
 #
 
+set -o nounset;
+shopt -s expand_aliases;
 
 # source the config and common functions
 ABSOLUTE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
@@ -50,9 +52,9 @@ tagTask() {
 
   # move template
   logDebugMsg "Moving template file '$SNAP_TASK_TEMPLATE_FILE' to job folder '$SNAP_TASK_JSON_FILE'";
-  cp $SNAP_TASK_TEMPLATE_FILE $SNAP_TASK_JSON_FILE
+  cp $SNAP_TASK_TEMPLATE_FILE $SNAP_TASK_JSON_FILE;
   # create Task from template
-  sed -i 's,__SNAP_TASK_NAME__,$SNAP_TASK_TAG,g' $SNAP_TASK_JSON_FILE;
+  sed -i "s,__SNAP_TASK_NAME__,$SNAP_TASK_TAG,g" $SNAP_TASK_JSON_FILE;
   logTraceMsg "~~~~~~~~~~SNAP_TASK_JASON_Start~~~~~~~~~~\n$(cat $SNAP_TASK_JSON_FILE | python -m json.tool)\n~~~~~~~~~~SNAP_TASK_JASON_End~~~~~~~~~~";
 
   # create Task

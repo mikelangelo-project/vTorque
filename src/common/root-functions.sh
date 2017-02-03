@@ -51,14 +51,14 @@ _log() {
   _unsetXFlag $cachedBashOpts;
 
   # check amount of params
-  if [ $# -ne 4 ]; then
-    logErrorMsg "Function '_log' called with '$#' arguments, '4' are expected.\nProvided params are: '$@'" 2;
+  if [ $# -ne 3 ]; then
+    logErrorMsg "Function '_log' called with '$#' arguments, '3' are expected.\nProvided params are: '$@'" 2;
   fi
 
   logLevel=$1;
-  color=$2;
-  logMsg=$3;
-  printToSTDout=$4;
+  color=${COLORS[$logLevel]};
+  logMsg=$2;
+  printToSTDout=$3;
 
   # get caller's name (script file name or parent process if remote)
   processName="$(getCallerName)";

@@ -83,6 +83,7 @@ fi
 # set the job dir based on passwd's user home
 #
 VM_JOB_DIR_PREFIX="$(grep $USERNAME /etc/passwd | cut -d':' -f6)/.vtorque";
+VM_JOB_DIR="$VM_JOB_DIR_PREFIX/$JOBID";
 
 #
 # as last source the config.sh

@@ -14,11 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+set -o nounset;
 shopt -s expand_aliases;
 
-# source the component config
-VRDMA_ABSOLUTE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
-source $VRDMA_ABSOLUTE_PATH/vrdma-common.sh;
+# source the config and common functions
+ABSOLUTE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
+source $ABSOLUTE_PATH/vrdma-common.sh;
 
 #
 # amount of VMs that are associated with the current job (if any)

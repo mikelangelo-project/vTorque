@@ -14,22 +14,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-set -o nounset;
 
-ABSOLUTE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
-source "$ABSOLUTE_PATH/../../common/const.sh";
-source "$ABSOLUTE_PATH/../../common/config.sh";
-source "$ABSOLUTE_PATH/../../common/functions.sh";
+set -o nounset;
+shopt -s expand_aliases;
+
+# source the config and common functions
+source /etc/profile.d/99-mikelangelo-hpc_stack.sh;
+source "$SCRIPT_BASE_DIR/common/const.sh";
+source "$SCRIPT_BASE_DIR/common/config.sh";
+source "$SCRIPT_BASE_DIR/common/functions.sh";
+
 
 #
 # snap monitoring compute node bin dir
 #
 SNAP_BIN_DIR="/usr/local/bin/";
 
-
 # construct the task tag
 SNAP_TASK_TAG="snapTask-$USERNAME-$JOBID";
-
 
 #
 # snap task tag format
@@ -39,19 +41,17 @@ SNAP_TAG_FORMAT="snapTask-[username]-[jobid]";
 #
 # snap task ID file
 #
-SNAP_TASK_ID_FILE="$VM_JOB_DIR/$LOCALHOST/snapID"
-
-
-#
-# snap task template file
-#
-SNAP_TASK_TEMPLATE_FILE="$ABSOLUTE_PATH../../templates/snapTask.json"
-
+SNAP_TASK_ID_FILE="$VM_JOB_DIR/$LOCALHOST/snapID";
 
 #
 # snap task template file
 #
-SNAP_TASK_JSON_FILE="$VM_JOB_DIR/$LOCALHOST/task.json"
+SNAP_TASK_TEMPLATE_FILE="$SCRIPT_BASE_DIR/components/snap/snapTask.template.json";
+
+#
+# snap task template file
+#
+SNAP_TASK_JSON_FILE="$VM_JOB_DIR/$LOCALHOST/snapTask.json";
 
 
 # define bin paths
@@ -67,8 +67,6 @@ export PATH="$PATH:$SNAP_BIN_DIR";
 #============================================================================#
 
 
-
-
 #---------------------------------------------------------
 #
 # Ensures all environment variables are in place.
@@ -76,36 +74,24 @@ export PATH="$PATH:$SNAP_BIN_DIR";
 #
 checkSnapPreconditions() {
 
-  if [ -z ${DB_HOST-} ]; then
-    logErrorMsg "Environment variable 'DB_HOST' is not set !";
-  fi
-
-  if [ -z ${DB_NAME-} ]; then
-    logErrorMsg "Environment variable 'DB_NAME' is not set !";
-  fi
-
-  if [ -z ${DB_USER-} ]; then
-    logErrorMsg "Environment variable 'DB_USER' is not set !";
-  fi
-
-  if [ -z ${DB_PASS-} ]; then
-    logErrorMsg "Environment variable 'DB_PASS' is not set !";
-  fi
-
-  if [ ! -n "${TAGS-}" ]; then
-    logErrorMsg "Environment variable 'TAGS' is not set !";
-  fi
-
   if [ -z ${SNAPCTL-} ]; then
     logErrorMsg "Environment variable 'SNAPCTL' is not set !";
   fi
-
-  if [ -z ${METRICS-} ]; then
-    logErrorMsg "Environment variable 'METRICS' is not set !";
+  
+  if [ -z ${SNAP_BIN_DIR-} ]; then
+    logErrorMsg "Environment variable 'SNAPCTL' is not set !";
   fi
-
-  if [ -z ${INTERVAL-} ]; then
-    logErrorMsg "Environment variable 'INTERVAL' is not set !";
+  
+  if [ -z ${SNAP_TASK_TAG-} ]; then
+    logErrorMsg "Environment variable 'SNAP_TASK_TAG' is not set !";
+  fi
+  
+  if [ -z ${SNAP_TAG_FORMAT-} ]; then
+    logErrorMsg "Environment variable 'SNAP_TAG_FORMAT' is not set !";
+  fi
+  
+  if [ -z ${SNAP_TASK_TEMPLATE_FILE-} ]; then
+    logErrorMsg "Environment variable 'SNAP_TASK_TEMPLATE_FILE' is not set !";
   fi
 
   if [ ! -n "$(echo $PATH | grep $SNAP_BIN_DIR)" ]; then

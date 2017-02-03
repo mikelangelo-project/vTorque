@@ -15,14 +15,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 set -o nounset;
 shopt -s expand_aliases;
 
-# source the common components.sh file
-ABSOLUTE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
-source "$ABSOLUTE_PATH/../../common/const.sh";
-source "$ABSOLUTE_PATH/../../common/config.sh";
-source "$ABSOLUTE_PATH/../../common/functions.sh";
+# source the config and common functions
+source /etc/profile.d/99-mikelangelo-hpc_stack.sh;
+source "$SCRIPT_BASE_DIR/common/const.sh";
+source "$SCRIPT_BASE_DIR/common/config.sh";
+source "$SCRIPT_BASE_DIR/common/functions.sh";
 
 
 #
@@ -89,7 +90,6 @@ IB_PCI_ADDR="0000:05:00.0";
 #
 RTE_TARGET="x86_64-ivshmem-linuxapp-gcc";
 
-
 ############################################################
 # The following settings should reamin unmodified normally #
 ############################################################
@@ -111,7 +111,6 @@ OVS_DB_SCHEMA_VSWITCH="$OVS_SHARE_DIR/vswitch.ovsschema";
 DB_SOCK_DIR="$OVS_DIR/var/run/openvswitch/";
 HOST_DB_SOCK="$DB_SOCK_DIR/ovs-db-${LOCALHOST}-${JOBID}.sock";
 
-
 #
 # Libvirtd related paths and files
 #
@@ -130,7 +129,6 @@ VRDMA_NET="10.0.0.1/24";
 # vRDAM bridge IP
 #
 VRDMA_BRIDGE_IP="10.0.0.1/24";
-
 
 #
 # ensure the correct binaries are found/used

@@ -85,6 +85,14 @@ fi
 VM_JOB_DIR_PREFIX="$(grep $USERNAME /etc/passwd | cut -d':' -f6)/.vtorque";
 VM_JOB_DIR="$VM_JOB_DIR_PREFIX/$JOBID";
 
+# check if trace/debug is enabled
+if [ -f $VM_JOB_DIR/.debug ]; then
+  DEBUG=true;
+fi
+if [ -f $VM_JOB_DIR/.trace ]; then
+  TRACE=true;
+fi
+
 #
 # as last source the config.sh
 #

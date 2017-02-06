@@ -76,7 +76,7 @@ $(cat $SNAP_TASK_TEMPLATE_FILE | python -m json.tool)\
 \n~~~~~~~~~~~~Snap_Config_File_END~~~~~~~~~~~~";
 
   # create and start task
-  snapCtlOutput="$($SNAPCTL task create -t $SNAP_TASK_JSON_FILE)"
+  snapCtlOutput="$($SNAPCTL task create -t $SNAP_TASK_JSON_FILE)";
   res=$?
 
   # logging
@@ -85,12 +85,9 @@ $(cat $SNAP_TASK_TEMPLATE_FILE | python -m json.tool)\
   else
     logDebugMsg "Snap task successfully created: $snapCtlOutput";
 
-    # determine snap task's name
-    snapTaskName="$(echo $snapCtlOutput | grep Name)"
-
     # determine task ID
-    logDebugMsg "Snap task '$snapTaskName' created and started";
-    snapTaskID=$(echo ${snapTaskName} | awk -F'Name: Task-' '{print $2}')
+    logDebugMsg "Snap task '$snapCtlOutput' created and started";
+    snapTaskID="$(echo ${snapCtlOutput} | awk -F'Name: Task-' '{print $2}' | cut -d' ' -f1)";
     logDebugMsg "Snap task 'snapTaskName' has ID '$snapTaskID'";
 
     # cache task ID

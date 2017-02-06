@@ -63,19 +63,16 @@ _log() {
   # get caller's name (script file name or parent process if remote)
   processName="$(getCallerName)";
 
-  if [ ! -n "${LOG_FILE-}" ]; then
-    # for interactive jobs, we cannot fetch the jobID, thus the sym-link is not in place yet
-    # in this case we export the RUID var
-    mkdir $logFileDir;
-    # set owner
-    chown -R $USERNAME:$USERNAME $logFileDir;
-    LOG_FILE=$logFileDir/debug.log;
-  fi
-  if [ ! -f $LOG_FILE ]; then
-    echo -e "$GREEN[$LOCALHOST|$(date +%H:%M:%S)|$processName|INFO]$NC Log file for root scripts: '$LOG_FILE'";
-    mkdir -p $(dirname $LOG_FILE);
+  # log file exists ?
+  if [ -z ${LOG_FILE-} ]; \
+       || [ ! -f $LOG_FILE ]; then
+    # get dir
+    logFileDir=$(dirname $LOG_FILE);
+    # ensure dir exists
+    [ ! -d $logFileDir ] && mkdir -p $logFileDir;
+    # create log file
     touch $LOG_FILE;
-    # set owner
+    # set correct owner
     chown $USERNAME:$USERNAME -R $(dirname $LOG_FILE);
   fi
 

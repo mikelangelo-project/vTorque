@@ -64,7 +64,7 @@ _log() {
   processName="$(getCallerName)";
 
   # log file exists ?
-  if [ -z ${LOG_FILE-} ]; \
+  if [ -z ${LOG_FILE-} ] \
        || [ ! -f $LOG_FILE ]; then
     # get dir
     logFileDir=$(dirname $LOG_FILE);

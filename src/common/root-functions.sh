@@ -486,6 +486,8 @@ getVMCountOnLocalhost() {
 # copy libvirt log from global logs dir to vm job dir (for vm jobs)
 #
 copyVMlogFile() {
-  cp /var/log/libvirt/qemu/${JOBID}*.log "$VM_JOB_DIR/$LOCALHOST/";
-  chown $USERNAME:$USERNAME "$VM_JOB_DIR/$LOCALHOST/${JOBID}*.log";
+  if [ -n "$(ls /var/log/libvirt/qemu/ | grep $JOBID | grep -E \.log$)" ]; then
+    cp /var/log/libvirt/qemu/${JOBID}*.log "$VM_JOB_DIR/$LOCALHOST/";
+    chown $USERNAME:$USERNAME "$VM_JOB_DIR/$LOCALHOST/${JOBID}*.log";
+  fi
 }

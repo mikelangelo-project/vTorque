@@ -58,7 +58,7 @@ untagTask() {
 
   # Stop task
   logDebugMsg "Stopping snap task with ID '$SNAP_TASK_ID'"
-  snapCtlOutput="$(SNAPCTL task stop ${SNAP_TASK_ID})";
+  snapCtlOutput="$($SNAPCTL task stop ${SNAP_TASK_ID})";
   res=$?;
   if [ $res -ne 0 ]; then
     logInfoMsg "Stopping snap task with ID '$SNAP_TASK_ID' failed:\n\t$snapCtlOutput";
@@ -66,7 +66,7 @@ untagTask() {
 
   # Remove task
   logDebugMsg "Removing snap task with ID '$SNAP_TASK_ID'";
-  snapCtlOutput="$(SNAPCTL task remove ${SNAP_TASK_ID})";
+  snapCtlOutput="$($SNAPCTL task remove ${SNAP_TASK_ID})";
   res=$?;
   if [ $res -ne 0 ]; then
     logWarnMsg "Removing snap task with ID '$SNAP_TASK_ID' failed:\n\t$snapCtlOutput";

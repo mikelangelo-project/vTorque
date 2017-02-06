@@ -50,6 +50,14 @@ tagTask() {
   logDebugMsg "Tagging snap monitoring task for job '$JOBID' with tag '$SNAP_TASK_TAG' using format '$SNAP_TAG_FORMAT'";
   logTraceMsg "~~~~~~~~~~Environment_Start~~~~~~~~~~\n$(env)\n~~~~~~~~~~~Environment_End~~~~~~~~~~~";
 
+  # ensure dir exists
+  destDir=$(dirname SNAP_TASK_JSON_FILE);
+  if [ ! -d $destDir ] ;then
+    logDebugMsg "Creating destination dir '$destDir' for snap task template file.";
+    mkdir -p $destDir || logErrorMsg "Failed to create destination dir for snap task template file '$SNAP_TASK_JSON_FILE'.";
+    chown $USERNAME:$USERNAME $destDir;
+  fi
+
   # move template
   logDebugMsg "Moving template file '$SNAP_TASK_TEMPLATE_FILE' to job folder '$SNAP_TASK_JSON_FILE'";
   cp $SNAP_TASK_TEMPLATE_FILE $SNAP_TASK_JSON_FILE;
@@ -86,7 +94,7 @@ $(cat $SNAP_TASK_TEMPLATE_FILE | python -m json.tool)\
     logDebugMsg "Snap task 'snapTaskName' has ID '$snapTaskID'";
 
     # cache task ID
-    echo $snapTaskID > $SNAP_TASK_ID_FILE
+    echo $snapTaskID > $SNAP_TASK_ID_FILE;
     logTraceMsg "Caching Snap ID '$snapTaskID' in file '$SNAP_TASK_ID_FILE'";
     logTraceMsg "~~~~~~~~~~SNAP_TASK_ID_FILE_Start~~~~~~~~~~\n$(cat $SNAP_TASK_ID_FILE)\n~~~~~~~~~~~SNAP_TASK_ID_FILE_End~~~~~~~~~~~";
   fi

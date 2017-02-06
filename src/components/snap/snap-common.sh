@@ -21,8 +21,8 @@ shopt -s expand_aliases;
 # source the config and common functions
 source /etc/profile.d/99-mikelangelo-hpc_stack.sh;
 source "$SCRIPT_BASE_DIR/common/const.sh";
-source "$SCRIPT_BASE_DIR/common/config.sh";
-source "$SCRIPT_BASE_DIR/common/functions.sh";
+source "$SCRIPT_BASE_DIR/common/root-config.sh";
+source "$SCRIPT_BASE_DIR/common/root-functions.sh";
 
 
 #

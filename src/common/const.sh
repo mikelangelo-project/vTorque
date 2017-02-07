@@ -133,9 +133,15 @@ if [ -z ${VM_JOB_DIR-} ]; then
 fi
 
 #
+# Directory containing flag files used to pass on infos
+# from user env to root scripts
+#
+FLAG_FILE_DIR="$VM_JOB_DIR/flags";
+
+#
 # Flag file indicating type of storage to use for the job
 #
-FILESYSTEM_FLAG_FILE="$VM_JOB_DIR/.filesystype";
+FILESYSTEM_FLAG_FILE="$FLAG_FILE_DIR/.filesystype";
 
 #
 # Note: in the qsub wrapper, this file does not exist yet

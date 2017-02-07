@@ -314,8 +314,11 @@ startSnapTask(){
 #
 stopSnapTask() {
 
+  # enabled ?
+  enabled=$($SNAP_MONITORING_ENABLED && [ -f "$FLAG_FILE_DIR/.snap" ]);
+
   # monitoring enabled ?
-  if ! $SNAP_MONITORING_ENABLED; then
+  if ! $enabled; then
     logDebugMsg "Snap Monitoring is disabled, skipping tear down."
     return 0;
   fi
@@ -340,7 +343,7 @@ stopSnapTask() {
 setUPvRDMA_P1() {
 
   # enabled ?
-  enabled=$($VRDMA_ENABLED && [ -f $VM_JOB_DIR/.vrdma ] );
+  enabled=$($VRDMA_ENABLED && [ -f "$FLAG_FILE_DIR/.vrdma" ]);
 
   # does the local node support the required feature ?
   if $enabled \
@@ -368,8 +371,12 @@ setUPvRDMA_P1() {
 # this function tear-down shiquing prototype 1
 #
 tearDownvRDMA_P1() {
+
+  # enabled ?
+  enabled=$($VRDMA_ENABLED && [ -f "$FLAG_FILE_DIR/.vrdma" ]);
+
   # enabled and does the local node support the required feature ?
-  if $VRDMA_ENABLED \
+  if $enabled \
       && [[ "$LOCALHOST" =~ ^$VRDMA_NODES$ ]]; then
     # try
     {
@@ -388,13 +395,17 @@ tearDownvRDMA_P1() {
 }
 
 
+#---------------------------------------------------------
 #
 # setup IOcm
 #
 setupIOCM() {
 
+  # enabled ?
+  enabled=$($IOCM_ENABLED && [ -f "$FLAG_FILE_DIR/.iocm" ]);
+
   # does the local node support the required feature ?
-  if $IOCM_ENABLED \
+  if $enabled \
       && [[ "$LOCALHOST" =~ ^$IOCM_NODES$ ]]; then
     logDebugMsg "IOcm is enabled, starting setup..";
     # try
@@ -418,8 +429,12 @@ setupIOCM() {
 # Tears down IOcm
 #
 teardownIOcm() {
+
+  # enabled ?
+  enabled=$($IOCM_ENABLED && [ -f "$FLAG_FILE_DIR/.iocm" ]);
+
   # enabled and does the local node support the required feature ?
-  if $IOCM_ENABLED \
+  if $enabled \
       && [[ "$LOCALHOST" =~ ^$IOCM_NODES$ ]]; then
     # try
     {

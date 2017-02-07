@@ -752,49 +752,49 @@ applyVMDefaultParameter() {
   fi
 
   # debugging ?
-  if [ ! ${VM_PARAMETER['DEBUG']+true} ]; then
+  if [ -z ${VM_PARAMETER['DEBUG']-} ]; then
     logDebugMsg "Applying DEBUG='$DEBUG' as default VM parameter.";
     VM_PARAMETER['DEBUG']="$DEBUG";
   fi
 
   # trace ?
-  if [ ! ${VM_PARAMETER['TRACE']+true} ]; then
+  if [ -z ${VM_PARAMETER['TRACE']-} ]; then
     logDebugMsg "Applying TRACE='$TRACE' as default VM parameter.";
     VM_PARAMETER['TRACE']="$TRACE";
   fi
 
   # file-system to use
-  if [ ! ${VM_PARAMETER['FILESYSTEM_TYPE']+true} ]; then
+  if [ -z ${VM_PARAMETER['FILESYSTEM_TYPE']-} ]; then
     logDebugMsg "Applying FILESYSTEM_TYPE='$FILESYSTEM_TYPE_DEFAULT' as default VM parameter.";
     VM_PARAMETER['FILESYSTEM_TYPE']="$FILESYSTEM_TYPE_DEFAULT";
   fi
 
   # vcpu pinning
-  if [ ! ${VM_PARAMETER['VCPU_PINNING']+true} ]; then
+  if [ -z ${VM_PARAMETER['VCPU_PINNING']-} ]; then
     logDebugMsg "Applying VCPU_PINNING='$VCPU_PINNING_DEFAULT' as default VM parameter.";
     VM_PARAMETER['VCPU_PINNING']="$VCPU_PINNING_DEFAULT";
   fi
 
   # amount of vcpus
-  if [ ! ${VM_PARAMETER['VCPUS']+true} ]; then
+  if [ -z ${VM_PARAMETER['VCPUS']-} ]; then
     logDebugMsg "Applying VCPUS='$VCPUS_DEFAULT' as default VM parameter.";
     VM_PARAMETER['VCPUS']="$VCPUS_DEFAULT";
   fi
 
   # vms per node
-  if [ ! ${VM_PARAMETER['VMS_PER_NODE']+true} ]; then
+  if [ -z ${VM_PARAMETER['VMS_PER_NODE']-} ]; then
     logDebugMsg "Applying VMS_PER_NODE='$VMS_PER_NODE_DEFAULT' as default VM parameter.";
     VM_PARAMETER['VMS_PER_NODE']="$VMS_PER_NODE_DEFAULT";
   fi
 
   # amount of RAM
-  if [ ! ${VM_PARAMETER['RAM']+true} ]; then
+  if [ -z ${VM_PARAMETER['RAM']-} ]; then
     logDebugMsg "Applying RAM='$RAM_DEFAULT' as default VM parameter.";
     VM_PARAMETER['RAM']="$RAM_DEFAULT";
   fi
 
   # VM image
-  if [ ! ${VM_PARAMETER['IMG']+true} ]; then
+  if [ -z ${VM_PARAMETER['IMG']-} ]; then
     logDebugMsg "Applying IMG='$IMG_DEFAULT' as default VM parameter.";
     VM_PARAMETER['IMG']="$GLOBAL_IMG_DIR/$IMG_DEFAULT";
     logDebugMsg "Applying DISTRO='$DISTRO_DEFAULT' as default VM parameter.";
@@ -802,7 +802,7 @@ applyVMDefaultParameter() {
   fi
 
   # distro
-  if [ ! ${VM_PARAMETER['DISTRO']+true} ]; then
+  if [ -z ${VM_PARAMETER['DISTRO']-} ]; then
     # no distro given, check the image name
     if [[ ${VM_PARAMETER['IMG']} =~ $SUPPORTED_OS ]]; then
       VM_PARAMETER['DISTRO']=$(echo ${VM_PARAMETER['IMG']} | grep -oi -E $SUPPORTED_OS);
@@ -813,43 +813,43 @@ applyVMDefaultParameter() {
   fi
 
   # optional persistent disk (mount on rank0)
-  if [ ! ${VM_PARAMETER['DISK']+true} ]; then
+  if [ -z ${VM_PARAMETER['DISK']-} ]; then
     logDebugMsg "Applying DISK='$DISK_DEFAULT' as default VM parameter.";
     VM_PARAMETER['DISK']="$DISK_DEFAULT";
   fi
 
   # arch for the VM
-  if [ ! ${VM_PARAMETER['ARCH']+true} ]; then
+  if [ -z ${VM_PARAMETER['ARCH']-} ]; then
     logDebugMsg "Applying ARCH='$ARCH_DEFAULT' as default VM parameter.";
     VM_PARAMETER['ARCH']="$ARCH_DEFAULT";
   fi
 
   # hypervisor to use
-  if [ ! ${VM_PARAMETER['HYPERVISOR']+true} ]; then
+  if [ -z ${VM_PARAMETER['HYPERVISOR']-} ]; then
     logDebugMsg "Applying HYPERVISOR='$HYPERVISOR_DEFAULT' as default VM parameter.";
     VM_PARAMETER['HYPERVISOR']="$HYPERVISOR_DEFAULT";
   fi
 
   # enable ioCM
-  if [ ! ${VM_PARAMETER['IOCM']+true} ]; then
+  if [ -z ${VM_PARAMETER['IOCM']-} ]; then
     logDebugMsg "Applying IOCM='$IOCM_ENABLED_DEFAULT' as default VM parameter.";
     VM_PARAMETER['IOCM']=$IOCM_ENABLED_DEFAULT;
   fi
 
   # min amount of ioCM cores
-  if [ ! ${VM_PARAMETER['IOCM_MIN_CORES']+true} ]; then
+  if [ -z ${VM_PARAMETER['IOCM_MIN_CORES']-} ]; then
     logDebugMsg "Applying IOCM_MIN_CORES='$IOCM_MIN_CORES_DEFAULT' as default VM parameter.";
     VM_PARAMETER['IOCM_MIN_CORES']="$IOCM_MIN_CORES_DEFAULT";
   fi
 
   # max amount of ioCM cores
-  if [ ! ${VM_PARAMETER['IOCM_MAX_CORES']+true} ]; then
+  if [ -z ${VM_PARAMETER['IOCM_MAX_CORES']-} ]; then
     logDebugMsg "Applying IOCM_MAX_CORES='$IOCM_MAX_CORES_DEFAULT' as default VM parameter.";
     VM_PARAMETER['IOCM_MAX_CORES']="$IOCM_MAX_CORES_DEFAULT";
   fi
 
   # use VRDAM
-  if [ ! ${VM_PARAMETER['VRDMA']+true} ]; then
+  if [ -z ${VM_PARAMETER['VRDMA']-} ]; then
     logDebugMsg "Applying VRDMA='$VRDMA_ENABLED_DEFAULT' as default VM parameter.";
     VM_PARAMETER['VRDMA']=$VRDMA_ENABLED_DEFAULT;
   fi
@@ -1232,6 +1232,41 @@ Torque requires a patch for this feature.\n\
 
 #---------------------------------------------------------
 #
+# Creates flag files in order to export settings from user
+# space to the root scripts.
+#
+exportFlags() {
+
+  #
+  # write out debug/trace flag files used in root scripts
+  # that do not have user space env vars available
+  #
+  if $VM_PARAMETER['DEBUG']; then # create flag file
+    touch "$FLAG_FILE_DIR/.debug";
+  fi
+  if $VM_PARAMETER['TRACE']; then # create flag file
+    touch "$FLAG_FILE_DIR/.trace";
+  fi
+
+  #
+  # vRDMA enabled/requested ?
+  #
+  if $VM_PARAMETER['VRDMA']; then
+    touch "$FLAG_FILE_DIR/.vrdma";
+  fi
+
+  #
+  # iocm enabled/requested ?
+  #
+  if $VM_PARAMETER['IOCM']; then
+    echo $VM_PARAMETER['IOCM_MIN_CORES'] > "$FLAG_FILE_DIR/.iocm"; #min cores
+    echo $VM_PARAMETER['IOCM_MAX_CORES'] >> "$FLAG_FILE_DIR/.iocm"; #max cores
+  fi
+}
+
+
+#---------------------------------------------------------
+#
 # Creates a symlink for the jobID to the RUID dir.
 #
 createRUID2JOBIDmapping() {
@@ -1406,16 +1441,8 @@ calculatePPN;
 # further, replaces the job script and pro/epilogue scripts cached in the var 'parameter' with its wrappers
 generateFiles;
 
-#
-# write out debug/trace flag files used in root scripts
-# that do not have user space env vars available
-#
-if $DEBUG; then # create flag file
-  touch "$VM_JOB_DIR/.debug";
-fi
-if $TRACE; then # create flag file
-  touch "$VM_JOB_DIR/.trace";
-fi
+# export flags for root scripts
+exportFlags;
 
 # generate files, only ?
 if $DO_NOT_SUBMIT_JOB; then #yes

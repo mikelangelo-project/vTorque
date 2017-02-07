@@ -25,6 +25,13 @@ source "$SCRIPT_BASE_DIR/common/root-config.sh";
 source "$SCRIPT_BASE_DIR/common/root-functions.sh";
 
 
+
+#============================================================================#
+#                                                                            #
+#                                CONFIG                                      #
+#                                                                            #
+#============================================================================#
+
 #
 # snap monitoring compute node bin dir
 #
@@ -77,19 +84,19 @@ checkSnapPreconditions() {
   if [ -z ${SNAPCTL-} ]; then
     logErrorMsg "Environment variable 'SNAPCTL' is not set !";
   fi
-  
+
   if [ -z ${SNAP_BIN_DIR-} ]; then
     logErrorMsg "Environment variable 'SNAPCTL' is not set !";
   fi
-  
+
   if [ -z ${SNAP_TASK_TAG-} ]; then
     logErrorMsg "Environment variable 'SNAP_TASK_TAG' is not set !";
   fi
-  
+
   if [ -z ${SNAP_TAG_FORMAT-} ]; then
     logErrorMsg "Environment variable 'SNAP_TAG_FORMAT' is not set !";
   fi
-  
+
   if [ -z ${SNAP_TASK_TEMPLATE_FILE-} ]; then
     logErrorMsg "Environment variable 'SNAP_TASK_TEMPLATE_FILE' is not set !";
   fi

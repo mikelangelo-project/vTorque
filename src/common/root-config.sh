@@ -80,18 +80,29 @@ if [ -z ${USERNAME-} ]; then
 fi
 
 #
-# set the job dir based on passwd's user home
+# set the job dir prefix based on passwd's user home
 #
 VM_JOB_DIR_PREFIX="$(grep $USERNAME /etc/passwd | cut -d':' -f6)/.vtorque";
+
+#
+# construct job dir out of prefix and job ID
+#
 VM_JOB_DIR="$VM_JOB_DIR_PREFIX/$JOBID";
 
-# check if trace/debug is enabled
-if [ -f $VM_JOB_DIR/.debug ]; then
-  DEBUG=true;
-fi
-if [ -f $VM_JOB_DIR/.trace ]; then
-  TRACE=true;
-fi
+#
+# flag file dir
+#
+FLAG_FILE_DIR="$VM_JOB_DIR/flags";
+
+#
+# set debug flag if enabled in user space
+#
+DEBUG=$([ -f $FLAG_FILE_DIR/.debug ]);
+
+#
+# set trace flag if enabled in user space
+#
+TRACE=$([ -f $FLAG_FILE_DIR/.trace ]);
 
 #
 # as last source the config.sh

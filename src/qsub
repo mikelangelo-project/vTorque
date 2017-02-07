@@ -1406,6 +1406,17 @@ calculatePPN;
 # further, replaces the job script and pro/epilogue scripts cached in the var 'parameter' with its wrappers
 generateFiles;
 
+#
+# write out debug/trace flag files used in root scripts
+# that do not have user space env vars available
+#
+if $DEBUG; then # create flag file
+  touch "$VM_JOB_DIR/.debug";
+fi
+if $TRACE; then # create flag file
+  touch "$VM_JOB_DIR/.trace";
+fi
+
 # generate files, only ?
 if $DO_NOT_SUBMIT_JOB; then #yes
   logInfoMsg "User requested to generate files for VM-based execution, only.\

@@ -47,6 +47,14 @@ bootcmd:
  # for now support both via a symlink
  - rmdir /scratch
  - ln -s /workspace /scratch
+ #
+ # create dirs for mount points
+ #
+ - mkdir -p /var/spool/torque/aux
+ - mkdir -p /var/spool/torque/vm
+ #
+ # load kernel module for file-system passthrough
+ #
  - modprobe 9p
  - modprobe 9pnet
  - modprobe 9pnet_virtio

@@ -121,7 +121,7 @@
               {
                 "plugin_name": "tag",
                   "config": {
-                         "tags": "__SNAP_TASK_NAME__"
+                         "tags": "jobID:__SNAP_TASK_NAME__"
                   },
                 "publish": [
                   {

@@ -33,14 +33,6 @@ source "$SCRIPT_BASE_DIR/common/const.sh";
 source "$SCRIPT_BASE_DIR/common/root-config.sh" $@;
 source "$SCRIPT_BASE_DIR/common/root-functions.sh";
 
-
-#============================================================================#
-#                                                                            #
-#                          SCRIPT CONFIGURATION                              #
-#                                                                            #
-#============================================================================#
-
-
 #============================================================================#
 #                                                                            #
 #                               FUNCTIONS                                    #
@@ -53,6 +45,12 @@ source "$SCRIPT_BASE_DIR/common/root-functions.sh";
 #                                 MAIN                                       #
 #                                                                            #
 #============================================================================#
+
+#
+# we need to wait for the job dir, otherwise it is created by the first log msg
+# and that causes a race-condition in qsub where the symlink is created for VM jobs
+#
+waitUntilJobDirIsAvailable;
 
 logDebugMsg "Running Epilogue as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
 logInfoMsg "Root epilogue script started.";

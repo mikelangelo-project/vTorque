@@ -491,3 +491,22 @@ copyVMlogFile() {
     chown $USERNAME:$USERNAME "$VM_JOB_DIR/$LOCALHOST/${JOBID}*.log";
   fi
 }
+
+
+#---------------------------------------------------------
+#
+# qsub creates the symlink based on the jobID as soon as the job is submitted
+# due to race-conditions it may be possible that we want to write the log file
+# but the symlink is not in place, yet
+#
+waitUntilJobDirIsAvailable() {
+  # we wait 3 sec, if there is still no dir it's not a VM job 
+  # and we should run regardless of that dir
+  timeout=3;
+  startDate="$(date +%s)";
+  while [ ! -e $VM_JOB_DIR ]; do
+    sleep 1;
+    logDebugMsg "Waiting for job dir symlink '$VM_JOB_DIR' to become available.."
+    isTimeoutReached $timeout $startDate;
+  done
+}

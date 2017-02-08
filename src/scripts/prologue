@@ -47,20 +47,6 @@ source "$SCRIPT_BASE_DIR/common/root-functions.sh";
 #                                                                            #
 #============================================================================#
 
-#---------------------------------------------------------
-#
-# qsub creates the symlink based on the jobID as soon as the job is submitted
-# due to raceconditions it may be possible that we want to write the log file
-# but the symlink is not in place, yet
-#
-waitUntilJobDirIsAvailable() {
-  startDate="$(date +%s)";
-  while [ ! -e $VM_JOB_DIR ]; do
-    sleep 1;
-    logDebugMsg "Waiting for job dir symlink '$VM_JOB_DIR' to become available.."
-    isTimeoutReached $TIMEOUT $startDate;
-  done
-}
 
 
 #============================================================================#
@@ -68,6 +54,12 @@ waitUntilJobDirIsAvailable() {
 #                                 MAIN                                       #
 #                                                                            #
 #============================================================================#
+
+#
+# we need to wait for the job dir, otherwise it is created by the first log msg
+# and that causes a race-condition in qsub where the symlink is created for VM jobs
+#
+waitUntilJobDirIsAvailable;
 
 logDebugMsg "Running prologue as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
 logInfoMsg "Root prologue script started";

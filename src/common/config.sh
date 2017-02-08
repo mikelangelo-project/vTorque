@@ -56,6 +56,12 @@ KEEP_VM_ALIVE_DEFAULT=true;
 #
 SHOW_LOG_DEFAULT=false;
 
+#
+# enables multiple developers to work on the same cluster,
+# DO NOT use it in production
+#
+ENABLE_DEV_MODE=true;
+
 
 #============================================================================#
 #                                                                            #
@@ -515,4 +521,23 @@ else
   VIRSH_OPTS="-q";
 fi
 
+#
+# allow to override env in dev mode
+#
+if $ENABLE_DEV_MODE; then
+  if [ -n "${HOME-}" ]; then
+    # user space
+    homeDir="$HOME";
+  elif [ $(id -u) -eq 0 ]; then
+    # root pro/epilogue scripts (uid = 0)
+    homeDir="$(grep $USERNAME /etc/passwd | cut -d':' -f6)";
+  else
+    # user pro/epilouge scripts (uid != 0)
+    homeDir="$(grep $(id -u -n) /etc/passwd | cut -d':' -f6)";
+  fi
+  # env file exists ?
+  if [ -f "$homeDir/99-mikelangelo-hpc_stack.sh" ]; then
+    source "$homeDir/99-mikelangelo-hpc_stack.sh";
+  fi
+fi
 

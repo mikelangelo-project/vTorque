@@ -1241,26 +1241,26 @@ exportFlags() {
   # write out debug/trace flag files used in root scripts
   # that do not have user space env vars available
   #
-  if $VM_PARAMETER['DEBUG']; then # create flag file
+  if ${VM_PARAMETER['DEBUG']}; then # create flag file
     touch "$FLAG_FILE_DIR/.debug";
   fi
-  if $VM_PARAMETER['TRACE']; then # create flag file
+  if ${VM_PARAMETER['TRACE']}; then # create flag file
     touch "$FLAG_FILE_DIR/.trace";
   fi
 
   #
   # vRDMA enabled/requested ?
   #
-  if $VM_PARAMETER['VRDMA']; then
+  if ${VM_PARAMETER['VRDMA']}; then
     touch "$FLAG_FILE_DIR/.vrdma";
   fi
 
   #
   # iocm enabled/requested ?
   #
-  if $VM_PARAMETER['IOCM']; then
-    echo $VM_PARAMETER['IOCM_MIN_CORES'] > "$FLAG_FILE_DIR/.iocm"; #min cores
-    echo $VM_PARAMETER['IOCM_MAX_CORES'] >> "$FLAG_FILE_DIR/.iocm"; #max cores
+  if ${VM_PARAMETER['IOCM']}; then
+    echo ${VM_PARAMETER['IOCM_MIN_CORES']} > "$FLAG_FILE_DIR/.iocm"; #min cores
+    echo ${VM_PARAMETER['IOCM_MAX_CORES']} >> "$FLAG_FILE_DIR/.iocm"; #max cores
   fi
 }
 

@@ -1153,6 +1153,10 @@ script wrapper '$JOB_SCRIPT_WRAPPER'.";
 #
 generateFiles() {
 
+  # create flag file dir
+  mkdir -p "$(dirname $FILESYSTEM_FLAG_FILE)" \
+    || logErrorMsg "Failed to create the flag file dir '$FILESYSTEM_FLAG_FILE'.";
+
   # creating fileystem type file (indicates whether RAMDISK or shared file-sys is to use
   logDebugMsg "Using as file-system type for the job: '${VM_PARAMETER['FILESYSTEM_TYPE']}'";
   echo ${VM_PARAMETER['FILESYSTEM_TYPE']} > $FILESYSTEM_FLAG_FILE;

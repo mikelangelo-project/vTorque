@@ -82,12 +82,16 @@ fi
 #
 # set the job dir prefix based on passwd's user home
 #
-VM_JOB_DIR_PREFIX="$(grep $USERNAME /etc/passwd | cut -d':' -f6)/.vtorque";
+if [ -z ${VM_JOB_DIR_PREFIX-} ]; then
+  VM_JOB_DIR_PREFIX="$(grep $USERNAME /etc/passwd | cut -d':' -f6)/.vtorque";
+fi
 
 #
 # construct job dir out of prefix and job ID
 #
-VM_JOB_DIR="$VM_JOB_DIR_PREFIX/$JOBID";
+if [ -z ${VM_JOB_DIR-} ]; then
+  VM_JOB_DIR="$VM_JOB_DIR_PREFIX/$JOBID";
+fi
 
 #
 # flag file dir

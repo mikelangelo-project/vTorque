@@ -60,20 +60,24 @@ logInfoMsg "Root epilogue.parallel script started.";
 # capture STDOUT/STDERR outputs to log file
 captureOutputStreams;
 
-# clean up
-cleanUp;
-
 # stop snap monitoring task
 stopSnapTask;
 
-# clear up vRDMA config
-tearDownvRDMA_P1;
+# clean up
+cleanUp;
 
-# clear up IOcm config
-teardownIOcm;
+# VM job ?
+if isVMJob; then
+  
+  # clear up vRDMA config
+  tearDownvRDMA_P1;
+  
+  # clear up IOcm config
+  teardownIOcm;
 
-# copy libvirt log from global logs dir to vm job dir (for vm jobs)
-copyVMlogFile;
+  # copy libvirt log from global logs dir to vm job dir (for vm jobs)
+  copyVMlogFile;
+fi
 
 # in case there was a script for this in the $TORQUE_HOME/mom_priv
 # that has been renamed (by the Makefile) to *.orig, call it now

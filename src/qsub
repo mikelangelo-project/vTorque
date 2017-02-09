@@ -1429,6 +1429,13 @@ if ! $VMJOB_REQ_DETECTED; then
 fi
 #else: it's a VM job
 
+# ensure flag file dir exists
+if [ ! -e "$FLAG_FILE_DIR" ]; then
+  mkdir -p "$FLAG_FILE_DIR" \
+    || logErrorMsg "Failed to create flag files dir '$FLAG_FILE_DIR'.";
+fi
+# create indicator flag for VM job
+touch "$FLAG_FILE_DIR/.vmJob";
 
 #
 # apply defaults for not provided, but needed VM parameters

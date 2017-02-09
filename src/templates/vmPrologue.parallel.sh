@@ -84,6 +84,9 @@ source "$SCRIPT_BASE_DIR/common/functions.sh";
 #============================================================================#
 
 
+# get list of domain XMLs
+declare -a VM_DOMAIN_XML_LIST=($(ls $DOMAIN_XML_PATH_NODE/*.xml));
+
 
 #============================================================================#
 #                                                                            #
@@ -141,16 +144,14 @@ _waitForFiles() {
 # Prepares all files for local VM(s) and triggers boot
 #
 prepareVMs() {
+  
+  logDebugMsg "Preparing VM files..";
 
   # wait for needed files to come into place
   _waitForFiles;
 
   # check if there is an error on remote hosts
   checkRemoteNodes;
-
-  # now the domain XMLs should be available
-  declare -a VM_DOMAIN_XML_LIST=($(ls $DOMAIN_XML_PATH_NODE/*.xml));
-  totalCount=${#VM_DOMAIN_XML_LIST[@]};
 
   # let remote processes know that we started our work
   informRemoteProcesses;
@@ -166,11 +167,18 @@ prepareVMs() {
 
     # create the dir that will be shared with VM
     logDebugMsg "Creating dir '$VM_NODE_FILE_DIR' for VM's nodefile.";
-    mkdir -p $VM_ENV_FILE_DIR/$LOCALHOST/$vHostName || logErrorMsg "Failed to create env file dir for VMs!";
+    mkdir -p "$VM_ENV_FILE_DIR/$LOCALHOST/$vHostName" \
+      || logErrorMsg "Failed to create env file dir for VMs!";
   done
 
+  # ensure dir exists
+  if [ ! -e "$FLAG_FILE_DIR/$LOCALHOST" ]; then
+    mkdir -p "$FLAG_FILE_DIR/$LOCALHOST" \
+      || logErrorMsg "Failed to create flag file dir '$FLAG_FILE_DIR/$LOCALHOST'.";
+  fi
+
   # create flag file to indicate root process to boot VMs now
-  touch "$FLAG_FILE_DIR/.userPrologueDone";
+  touch "$FLAG_FILE_DIR/$LOCALHOST/.userPrologueDone";
 }
 
 
@@ -180,13 +188,21 @@ prepareVMs() {
 #
 function waitForVMs() {
 
+  logDebugMsg "Waiting for boot of local VMs..";
+
   startDate="$(date +%s)";
-  while [ ! -f "$FLAG_FILE_DIR/.rootPrologueDone" ]; do
+  while [ ! -f "$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone" ]; do
     sleep 1;
-    logDebugMsg "Waiting for flag file "$FLAG_FILE_DIR/.rootPrologueDone" to become available.."
+    logDebugMsg "Waiting for flag file '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone' to become available..";
+    # timeout reached ? (if yes, we abort)
     isTimeoutReached $TIMEOUT $startDate;
+    # cancelled meanwhile ?
+    checkCancelFlag;
   done
 
+  logDebugMsg "Local VMs are booting, waiting until they are ready..";
+
+  # wait until all VMs are ready
   for domainXML in ${VM_DOMAIN_XML_LIST[@]}; do
 
     # grep the mac address from the domainXML
@@ -215,7 +231,8 @@ function waitForVMs() {
   logTraceMsg "CPU pinning info for local VMs:\n-----\n$(virsh vcpuinfo $vmName)\n-----";
 
   # print debug info
-  logDebugMsg "Starting '$totalCount' VMs on node '$LOCALHOST' was successful, VMs are booting now..";
+  totalCount=${#VM_DOMAIN_XML_LIST[@]};
+  logDebugMsg "Starting '$totalCount' VMs on node '$LOCALHOST' was successful, VMs are ready now.";
 
   # indicate success
   return 0;

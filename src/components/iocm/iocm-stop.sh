@@ -39,6 +39,18 @@ unsetCores() {
   $ABSOLUTE_PATH/dynamic-io-manager/src/stop_io_manager.py;
 }
 
+#---------------------------------------------------------
+#
+# Releases the min/max amount of cores bound to IOcm.
+#
+cleanupIOCM() {
+  if ! $DEBUG; then
+    rm -f $IOCM_JSON_CONFIG;
+  fi
+}
+
+
+
 #============================================================================#
 #                                                                            #
 #                                 MAIN                                       #
@@ -47,6 +59,9 @@ unsetCores() {
 
 # release cores managed by IOcm
 unsetCores;
+
+# clean up config file
+cleanupIOCM;
 
 # pass on return code
 exit $?;

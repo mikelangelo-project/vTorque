@@ -48,11 +48,94 @@ source "$SCRIPT_BASE_DIR/common/root-functions.sh";
 #============================================================================#
 
 
+#---------------------------------------------------------
+#
+# Spawns a process that boots VMs and configures iocm 
+#
+#
+function spawnProcess() {
+  # spawn
+  {
+  	# cache start date
+  	startDate="$(date +%s)";
+    while [ ! -e "$FLAG_FILE_DIR/.userPrologueDone" ]; do
+      sleep 1;
+      logDebugMsg "Waiting for flag file '$FLAG_FILE_DIR/.userPrologueDone' to become available..";
+      # timeout reached ?
+      isTimeoutReached $ROOT_PROLOGUE_TIMEOUT $startDate;
+      # cancelled meanwhile ?
+      checkCancelFlag;
+    done
+    
+    # boot all (localhost) VMs
+    bootVMs;
+    
+    # setup IOcm
+    setupIOCM;
+    
+    # indicate work is done
+    touch "$FLAG_FILE_DIR/.rootPrologueDone";
+    
+  } & return 0;
+}
+
+
+#---------------------------------------------------------
+#
+# Boots VMs.
+#
+#
+function bootVMs() {
+  # boot all VMs dedicated to the current node we run on
+  i=1;
+  for domainXML in ${VM_DOMAIN_XML_LIST[@]}; do
+
+    # construct filename of metadata yaml file that was used to create the seed.img
+    metadataFile="$VM_JOB_DIR/$LOCALHOST/${i}-metadata";
+    # grep vhostname from metadata file
+    vHostName="$(grep 'hostname: ' $metadataFile | cut -d' ' -f2)";
+
+    # boot VM
+    logDebugMsg "Booting VM number '$i/$totalCount' on compute node '$LOCALHOST' from domainXML='$domainXML'.";
+    if $DEBUG; then
+      vmLogFile=$VMLOG_FILE_PREFIX/$i-libvirt.log;
+      output=$(virsh $VIRSH_OPTS --log $vmLogFile create $domainXML |& tee -a $LOG_FILE);
+    else
+      output=$(virsh $VIRSH_OPTS create $domainXML);
+    fi
+    res=$?;
+    logDebugMsg "virsh create cmd output:\n'$output'";
+
+    # check if it's running
+    vmName="$(grep '<name>' $domainXML | cut -d'>' -f2 | cut -d'<' -f1)";
+    if [ $res -ne 0 ] \
+        || [[ "$output" =~ operation\ failed ]] \
+        || [ ! -n "$(virsh list | grep $vmName)" ] ; then
+      # abort with error code 2
+      logErrorMsg "Booting VM '$vmName' from domain XML file '$domainXML' failed!" 2 \
+      & abort 2;
+    elif [[ "$output" =~ operation\ is\ not\ valid ]]; then
+      # abort with error code 9
+      logErrorMsg "Booting VM '$vmName' from domain XML file '$domainXML' failed! Maybe it is running already?" 9 \
+      & abort 9;
+    fi
+    logDebugMsg "VM is running.";
+  done
+}
+
+
+
 #============================================================================#
 #                                                                            #
 #                                 MAIN                                       #
 #                                                                            #
 #============================================================================#
+
+#
+# we need to wait for the job dir, otherwise it is created by the first log msg
+# and that causes a race-condition in qsub where the symlink is created for VM jobs
+#
+waitUntilJobDirIsAvailable;
 
 logDebugMsg "Running Prologue-Parallel as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
 logInfoMsg "Root VM prologue.parallel script started.";
@@ -67,9 +150,6 @@ runScriptPreviouslyInPlace "$(basename ${BASH_SOURCE[0]})";
 # setup vRDMA
 setUPvRDMA_P1;
 
-# setup IOcm
-setupIOCM;
-
 # start snap job task
 startSnapTask;
 
@@ -79,6 +159,9 @@ if $USE_RAM_DISK; then
 else
   checkSharedFS;
 fi
+
+# spawn process for booting VMs and configuring iocm
+spawnProcess;
 
 # print info
 logInfoMsg "Root prologue.parallel script finished";

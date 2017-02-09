@@ -314,11 +314,8 @@ startSnapTask(){
 #
 stopSnapTask() {
 
-  # enabled ?
-  enabled=$($SNAP_MONITORING_ENABLED && [ -f "$FLAG_FILE_DIR/.snap" ]);
-
   # monitoring enabled ?
-  if ! $enabled; then
+  if ! $SNAP_MONITORING_ENABLED; then
     logDebugMsg "Snap Monitoring is disabled, skipping tear down."
     return 0;
   fi

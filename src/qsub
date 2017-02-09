@@ -440,7 +440,7 @@ Please make sure the image name contains the os name, i.e. 'debian'.";
 parseUserMetadata() {
 
   # debug log
-  logDebugMsg "Parse user metadata key: 'METADATA' ";
+  logDebugMsg "Parse user metadata, key: 'METADATA' ";
   # TODO implement user meta-data parsing and white list in config.sh
   return 0;
 

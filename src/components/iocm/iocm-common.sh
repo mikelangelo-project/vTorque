@@ -25,6 +25,24 @@ source "$SCRIPT_BASE_DIR/common/root-config.sh";
 source "$SCRIPT_BASE_DIR/common/root-functions.sh";
 
 
+
+#============================================================================#
+#                                                                            #
+#                                CONFIG                                      #
+#                                                                            #
+#============================================================================#
+
+#
+# iocm config file
+#
+IOCM_JSON_CONFIG="$VM_JOB_DIR/$LOCALHOST/iocm-config.json";
+
+#
+# Name of the network interface to be used for i/o operations
+#
+IOCM_INTERFACE_NAME="ib0";
+
+
 #============================================================================#
 #                                                                            #
 #                               FUNCTIONS                                    #

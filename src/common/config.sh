@@ -136,9 +136,14 @@ GLOBAL_IMG_DIR="/images/pool";
 STATIC_IP_MAPPING=true;
 
 #
-# Timeout for remote processes, that boot+destroy VMs
+# Timeout for remote processes in pro/epilogues
 #
 TIMEOUT=600;
+
+#
+# Timeout for processes that boot VMs and configure iocm
+#
+ROOT_PROLOGUE_TIMEOUT=600;
 
 #
 # Path to a fast shared file-system (used by jobs for intermediate data)

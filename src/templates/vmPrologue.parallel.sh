@@ -168,33 +168,17 @@ bootVMs() {
     # create the dir that will be shared with VM
     logDebugMsg "Creating dir '$VM_NODE_FILE_DIR' for VM's nodefile.";
     mkdir -p $VM_ENV_FILE_DIR/$LOCALHOST/$vHostName || logErrorMsg "Failed to create env file dir for VMs!";
+  done
+  
+  startDate="$(date +%s)";
+  while [ ! -f "$FLAG_FILE_DIR/.rootPrologueDone" ]; do
+    sleep 1;
+    logDebugMsg "Waiting for flag file "$FLAG_FILE_DIR/.rootPrologueDone" to become available.."
+    isTimeoutReached $TIMEOUT $startDate;
+  done
 
-    # boot VM
-    logDebugMsg "Booting VM number '$i/$totalCount' on compute node '$LOCALHOST' from domainXML='$domainXML'.";
-    if $DEBUG; then
-      vmLogFile=$VMLOG_FILE_PREFIX/$i-libvirt.log;
-      output=$(virsh $VIRSH_OPTS --log $vmLogFile create $domainXML |& tee -a $LOG_FILE);
-    else
-      output=$(virsh $VIRSH_OPTS create $domainXML);
-    fi
-    res=$?;
-    logDebugMsg "virsh create cmd output:\n'$output'";
-
-    # check if it's running
-    vmName="$(grep '<name>' $domainXML | cut -d'>' -f2 | cut -d'<' -f1)";
-    if [ $res -ne 0 ] \
-        || [[ "$output" =~ operation\ failed ]] \
-        || [ ! -n "$(virsh list | grep $vmName)" ] ; then
-      # abort with error code 2
-      logErrorMsg "Booting VM '$vmName' from domain XML file '$domainXML' failed!" 2 \
-      & abort 2;
-    elif [[ "$output" =~ operation\ is\ not\ valid ]]; then
-      # abort with error code 9
-      logErrorMsg "Booting VM '$vmName' from domain XML file '$domainXML' failed! Maybe it is running already?" 9 \
-      & abort 9;
-    fi
-    logDebugMsg "VM is running.";
-
+  for domainXML in ${VM_DOMAIN_XML_LIST[@]}; do
+    
     # grep the mac address from the domainXML
     mac=$(grep -i '<mac' $domainXML | cut -d"'" -f 2);
     if [ ! -n "$mac" ]; then
@@ -453,8 +437,14 @@ checkPreconditions;
 # ensure that we do not loose anything for debug.log
 captureOutputStreams;
 
-# boot all (localhost) VMs
-bootVMs;
+# prepare files for VMs
+prepareVMs;
+
+# create flag file to indicate root process to boot VMs now
+touch "$FLAG_FILE_DIR/.userPrologueDone";
+
+# wait for VMs to become available
+waitForVMtoBecomeAvailable;
 res=$?;
 
 # debug log

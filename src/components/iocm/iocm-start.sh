@@ -33,11 +33,40 @@ source "$ABSOLUTE_PATH/iocm-common.sh";
 
 #---------------------------------------------------------
 #
+# Generate IOCM config
+#
+generateConfig() {
+  logDebugMsg "Generating IOCM config for node '$LOCALHOST'..";
+  
+  # determine min/max core count
+  minCores=$(sed -n '1{p;q;}' "$FLAG_FILE_DIR/.iocm"); #grep first line
+  maxCores=$(sed -n '2{p;q;}' "$FLAG_FILE_DIR/.iocm"); # grep second line
+  logTraceMsg "IOCM minCores='$minCores' maxCores='$maxCores'";
+  
+  # determine total CPU count
+  totalCores=$(grep -c ^processor /proc/cpuinfo);
+  
+  # generate config
+  $SCRIPT_BASE_DIR/components/iocm/dynamic-io-manager/src/create_configuration_file.py \
+    --config $IOCM_JSON_CONFIG \
+    --min $minCores --max $maxCores \
+    $totalCores $IOCM_INTERFACE_NAME;
+  
+  # log resulting file
+  logDebugMsg "IOCM JSON config file generated '$IOCM_JSON_CONFIG'.";
+  logTraceMsg "Generated IOCM JSON config file\n-----\n$(cat $IOCM_JSON_CONFIG)\n----";
+}
+
+
+#---------------------------------------------------------
+#
 # Configures the min/max amount of IOcm cores
 #
 setCores() {
-  echo "TODO impl iocm core set cmd dynamically";
-  $ABSOLUTE_PATH/dynamic-io-manager/src/start_io_manager.py -p -c $ABSOLUTE_PATH/iocm-conf.json --min 0 --max 2;
+  if [ ! -f "$FLAG_FILE_DIR/.iocm" ]; then
+    logErrorMsg "No flag file found for IOCM, cannot setup IOCM!";
+  fi
+  $ABSOLUTE_PATH/dynamic-io-manager/src/start_io_manager.py -p -c $IOCM_JSON_CONFIG --min $minCores --max $maxCores;
 }
 
 
@@ -46,6 +75,9 @@ setCores() {
 #                                 MAIN                                       #
 #                                                                            #
 #============================================================================#
+
+# generate config based on template
+generateConfig;
 
 # configure the IOcm cores
 setCores;

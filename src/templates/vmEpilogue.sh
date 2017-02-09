@@ -147,9 +147,10 @@ validateParameter() {
   fi
   logDebugMsg " VM_EPILOGUE_SCRIPT='$VM_EPILOGUE_SCRIPT'";
 
+  # determine first/rank0 node
   if [ -z ${PBS_VM_NODEFILE-} ] \
       || [ ! -f "$PBS_VM_NODEFILE" ]; then
-    logWarnMsg "No PBS VM node file ?!";
+    logErrorMsg "No PBS VM node file ?!";
   else
     FIRST_VM="$(head -n1 $PBS_VM_NODEFILE)";
   fi
@@ -273,12 +274,12 @@ cleanUpAllVMs() {
       fi
     done
     # wait for VMs to disappear
-    waitUntilAllReady
+    waitUntilAllReady;
   else
     # in error case just clean up
     logWarnMsg "No VMs associated to the current job are known, cleaning up all VMs."
     for guest in $(virsh list | grep $JOBID); do
-      virsh destroy $guest;
+      virsh $VIRSH_OPTS destroy $guest;
     done
   fi
   # clean up

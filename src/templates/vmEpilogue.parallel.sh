@@ -105,20 +105,20 @@ cleanUpVMs() {
 
   #
   logDebugMsg "Shutting down and destroying all local VMs now.";
-  vmNo=1;
+  vmNo=0;
   for domainXML in ${VM_DOMAIN_XML_LIST[@]}; do
-    #
+    # increase counter
+    vmNo=$(($vmNo + 1));
+    # destroy local VMs
     logDebugMsg "Processing VM number '$vmNo/$totalCount' booted from domainXML='$domainXML'.";
     if $PARALLEL; then
       _destroyVM $vmNo $totalCount $domainXML & continue;
     else
       _destroyVM $vmNo $totalCount $domainXML;
     fi
-    # increase counter
-    vmNo=$(($vmNo + 1));
   done
 
-  logDebugMsg "Destroying ($vmNo) local VM done.";
+  logDebugMsg "Destroyed ($vmNo) local VM, done.";
   return 0;
 }
 

@@ -165,7 +165,10 @@ DEBUG_TO_STDOUT=true;
 #
 PBS_EXCLUSIVE_NODE_ALLOC=true;
 
-
+#
+# Full path to arp binary on the nodes.
+#
+ARP_BIN="/usr/sbin/arp";
 
 #============================================================================#
 #                                                                            #

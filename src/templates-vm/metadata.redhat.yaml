@@ -58,7 +58,8 @@ bootcmd:
  - modprobe 9p
  - modprobe 9pnet
  - modprobe 9pnet_virtio
-
+ # allow to fetch the syslog as user
+ - chmod 644 /var/log/messages
 
 #
 # install missing packages

@@ -81,14 +81,14 @@ _log() {
       || [ $processName == "qsub" ]; then
     # log file exists ?
     if [ -f $LOG_FILE ]; then
-      echo -e "$color[$LOCALHOST|$(date +%H:%M:%S)|$processName|$logLevel]$NC $logMsg" |& tee -a $LOG_FILE;
+      echo -e "$color[$LOCALHOST|$(date +%Y-%m-%dT%H:%M:%S)|$processName|$logLevel]$NC $logMsg" |& tee -a $LOG_FILE;
     fi
     # print msg to the system log and to stdout/stderr
     logger "[$processName|$logLevel] $logMsg";
   else
     # print msg to the system log and to stdout/stderr
     logger "[$processName|$logLevel] $logMsg";
-    echo -e "$color[$LOCALHOST|$(date +%H:%M:%S)|$processName|$logLevel]$NC $logMsg" &>> $LOG_FILE;
+    echo -e "$color[$LOCALHOST|$(date +%Y-%m-%dT%H:%M:%S)|$processName|$logLevel]$NC $logMsg" &>> $LOG_FILE;
   fi
 
   # re-enable 'set -x' if it was enabled before
@@ -221,9 +221,9 @@ _flushARPcache() {
   if [ -f "$LOCAL_VM_IP_FILE" ]; then
     vmIPs=$(cat "$LOCAL_VM_IP_FILE");
     logDebugMsg "Clearing VM IPs from local arp cache: $vmIPs";
-    if [ -n "$vmIPS" ]; then
+    if [ -n "$vmIPs" ]; then
       for vmIP in $vmIPs; do
-        arp -d $vmIP |& tee -a $LOG_FILE;
+         $ARP_BIN -d $vmIP |& tee -a $LOG_FILE;
       done
     fi
   fi
@@ -500,7 +500,7 @@ getVMCountOnLocalhost() {
 copyVMlogFile() {
   if [ -n "$(ls /var/log/libvirt/qemu/ | grep $JOBID | grep -E \.log$)" ]; then
     cp /var/log/libvirt/qemu/${JOBID}*.log "$VM_JOB_DIR/$LOCALHOST/";
-    chown $USERNAME:$USERNAME "$VM_JOB_DIR/$LOCALHOST/${JOBID}*.log";
+    chown $USERNAME:$USERNAME "$VM_JOB_DIR/$LOCALHOST/"${JOBID}*.log;
   fi
 }
 
@@ -512,11 +512,11 @@ copyVMlogFile() {
 # but the symlink is not in place, yet
 #
 waitUntilJobDirIsAvailable() {
-  # we wait 3 sec, if there is still no dir it's not a VM job
+  # we wait a moment if there is still no dir it's not a VM job
   # and we should run regardless of that dir
-  timeout=3;
+  timeout=5;
   startDate="$(date +%s)";
-  while [ ! -e $VM_JOB_DIR ] \
+  while [ ! -e "$VM_JOB_DIR" ] \
     && ! isTimeoutReached $timeout $startDate true; do
     sleep 1;
     logDebugMsg "Waiting for job dir symlink '$VM_JOB_DIR' to become available.."

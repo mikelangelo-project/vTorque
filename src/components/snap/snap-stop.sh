@@ -52,21 +52,25 @@ untagTask() {
   logDebugMsg "Release snap monitoring task for job '$JOBID' with tag '$SNAP_TASK_TAG' using format '$SNAP_TAG_FORMAT'";
   logTraceMsg "~~~~~~~~~~Environment_Start~~~~~~~~~~\n$(env)\n~~~~~~~~~~~Environment_End~~~~~~~~~~~";
 
+  if [ ! -f "$SNAP_TASK_ID_FILE" ]; then
+    logWarnMsg "Snap Task ID file '$SNAP_TASK_ID_FILE' not found.";
+    return 1;
+  fi
   # Get snap task name
   SNAP_TASK_ID="$(cat $SNAP_TASK_ID_FILE)"
   logDebugMsg "Looking into cached task id, file '$SNAP_TASK_ID_FILE' found id '$SNAP_TASK_ID'";
 
   # Stop task
   logDebugMsg "Stopping snap task with ID '$SNAP_TASK_ID'"
-  snapCtlOutput="$($SNAPCTL task stop ${SNAP_TASK_ID})";
+  snapCtlOutput="$($SNAPCTL task stop $SNAP_TASK_ID 2>&1)";
   res=$?;
   if [ $res -ne 0 ]; then
-    logInfoMsg "Stopping snap task with ID '$SNAP_TASK_ID' failed:\n\t$snapCtlOutput";
+    logInfoMsg "Stopping snap task with ID '$SNAP_TASK_ID' failed with code '$res' and msg:\n\t$snapCtlOutput";
   fi
 
   # Remove task
   logDebugMsg "Removing snap task with ID '$SNAP_TASK_ID'";
-  snapCtlOutput="$($SNAPCTL task remove ${SNAP_TASK_ID})";
+  snapCtlOutput="$($SNAPCTL task remove $SNAP_TASK_ID 2>&1)";
   res=$?;
   if [ $res -ne 0 ]; then
     logWarnMsg "Removing snap task with ID '$SNAP_TASK_ID' failed:\n\t$snapCtlOutput";

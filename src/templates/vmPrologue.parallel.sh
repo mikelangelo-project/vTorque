@@ -207,6 +207,7 @@ function waitForVMs() {
 
     # grep the mac address from the domainXML
     mac=$(grep -i '<mac' $domainXML | cut -d"'" -f 2);
+    vmName="$(grep '<name>' $domainXML | cut -d'>' -f2 | cut -d'<' -f1)";
     if [ ! -n "$mac" ]; then
       logErrorMsg "No MAC found for VM '$vmName' in domain XML file: '$domainXML' !";
     fi
@@ -326,10 +327,11 @@ and VM '$vhostName' with MAC='$mac' is still not available.";
         tmp=$(/usr/sbin/arp -an | grep -i "$vmIP");
 
         # grep mac and make it lower case
-        foundMac=$(echo $tmp | cut -d' ' -f5 | tr '[:upper:]' '[:lower:]');
+        foundMac=$(echo $tmp | cut -d' ' -f4 | tr '[:upper:]' '[:lower:]');
 
         # any mac found ?
-        if [ ! -n "$foundMac" ]; then
+        if [ ! -n "$foundMac" ] \
+            || [[ "$foundMac" =~ incomplete ]]; then
           logDebugMsg "Seems we still need to wait. We have an (old?) IP \
 '$vmIP' for the VM '$vhostName', but no MAC can be found for it, yet.";
           logTraceMsg "arp output: '$tmp'";

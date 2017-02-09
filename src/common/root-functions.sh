@@ -88,7 +88,7 @@ _log() {
   else
     # print msg to the system log and to stdout/stderr
     logger "[$processName|$logLevel] $logMsg";
-    echo -e "$color[$LOCALHOST|$(date +%H:%M:%S)|$processName|$logLevel]$NC $logMsg" |& tee -a $LOG_FILE;
+    echo -e "$color[$LOCALHOST|$(date +%H:%M:%S)|$processName|$logLevel]$NC $logMsg" &>> $LOG_FILE;
   fi
 
   # re-enable 'set -x' if it was enabled before
@@ -517,8 +517,105 @@ waitUntilJobDirIsAvailable() {
   timeout=3;
   startDate="$(date +%s)";
   while [ ! -e $VM_JOB_DIR ] \
-    && [ ! $(isTimeoutReached $timeout $startDate true) ]; do
+    && ! isTimeoutReached $timeout $startDate true; do
     sleep 1;
     logDebugMsg "Waiting for job dir symlink '$VM_JOB_DIR' to become available.."
   done
 }
+
+
+#---------------------------------------------------------
+#
+# Spawns a process that boots VMs and configures iocm 
+#
+#
+function spawnProcess() {
+  # spawn
+  {
+
+    logDebugMsg "Spawning root process..";
+    # cache start date
+    startDate="$(date +%s)";
+    
+    # ensure flag file dir exists
+    if [ ! -e "$FLAG_FILE_DIR/$LOCALHOST" ]; then
+      { 
+        mkdir -p "$FLAG_FILE_DIR/$LOCALHOST" \
+          && chown $USERNAME:$USERNAME "$FLAG_FILE_DIR/$LOCALHOST";
+      } || logErrorMsg "Failed to create flag files dir '$FLAG_FILE_DIR/$LOCALHOST'.";
+    fi
+    
+    # wait for userPrologue to generate VM files
+    logDebugMsg "Waiting for flag file '$FLAG_FILE_DIR/$LOCALHOST/.userPrologueDone' to become available..";
+    while [ ! -e "$FLAG_FILE_DIR/$LOCALHOST/.userPrologueDone" ]; do
+      sleep 1;
+      logTraceMsg "Waiting for flag file '$FLAG_FILE_DIR/$LOCALHOST/.userPrologueDone' to become available..";
+      # timeout reached ? (if yes, we abort)
+      isTimeoutReached $ROOT_PROLOGUE_TIMEOUT $startDate;
+      # cancelled meanwhile ?
+      checkCancelFlag;
+    done
+    logTraceMsg "Flag file '$FLAG_FILE_DIR/$LOCALHOST/.userPrologueDone' found."
+    
+    # boot all (localhost) VMs
+    bootVMs;
+    
+    # setup IOcm
+    setupIOCM;
+    
+    # indicate work is done
+    {
+      touch "$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone" \
+        && chown $USERNAME:$USERNAME "$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone";
+    } || logErrorMsg "Failed to create flag file '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone' and change owner to '$USERNAME'.";
+    
+  } & return 0;
+}
+
+
+#---------------------------------------------------------
+#
+# Boots VMs.
+#
+#
+function bootVMs() {
+
+  declare -a VM_DOMAIN_XML_LIST=($(ls $DOMAIN_XML_PATH_NODE/*.xml));
+  totalCount=${#VM_DOMAIN_XML_LIST[@]};
+  # boot all VMs dedicated to the current node we run on
+  i=1;
+  for domainXML in ${VM_DOMAIN_XML_LIST[@]}; do
+
+    # construct filename of metadata yaml file that was used to create the seed.img
+    metadataFile="$VM_JOB_DIR/$LOCALHOST/${i}-metadata";
+    # grep vhostname from metadata file
+    vHostName="$(grep 'hostname: ' $metadataFile | cut -d' ' -f2)";
+
+    # boot VM
+    logDebugMsg "Booting VM number '$i/$totalCount' on compute node '$LOCALHOST' from domainXML='$domainXML'.";
+    if $DEBUG; then
+      vmLogFile=$VMLOG_FILE_PREFIX/$i-libvirt.log;
+      output=$(virsh $VIRSH_OPTS --log $vmLogFile create $domainXML |& tee -a $LOG_FILE);
+    else
+      output=$(virsh $VIRSH_OPTS create $domainXML);
+    fi
+    res=$?;
+    logDebugMsg "virsh create cmd output:\n'$output'";
+
+    # check if it's running
+    vmName="$(grep '<name>' $domainXML | cut -d'>' -f2 | cut -d'<' -f1)";
+    if [ $res -ne 0 ] \
+        || [[ "$output" =~ operation\ failed ]] \
+        || [ ! -n "$(virsh list | grep $vmName)" ] ; then
+      # abort with error code 2
+      logErrorMsg "Booting VM '$vmName' from domain XML file '$domainXML' failed!" 2 \
+      & abort 2;
+    elif [[ "$output" =~ operation\ is\ not\ valid ]]; then
+      # abort with error code 9
+      logErrorMsg "Booting VM '$vmName' from domain XML file '$domainXML' failed! Maybe it is running already?" 9 \
+      & abort 9;
+    fi
+    logDebugMsg "VM is running.";
+  done
+}
+

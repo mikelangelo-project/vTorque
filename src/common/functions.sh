@@ -410,6 +410,17 @@ generateMAC() {
   echo $mac;
 }
 
+
+#---------------------------------------------------------
+#
+# Checks whether the job is a VM job.
+#
+function isVMJob() {
+  [ -f "$FLAG_FILE_DIR/.vmJob" ] && return 0;
+  return 1;
+}
+
+
 #---------------------------------------------------------
 #
 # Checks whether the execution has caused an error meanwhile

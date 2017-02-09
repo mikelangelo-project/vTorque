@@ -115,14 +115,20 @@ SUPPORTED_CONTAINER_OS="$REGEX_OSV";
 #
 SUPPORTED_OS="$SUPPORTED_STANDARD_LINUX_GUESTS|$SUPPORTED_CONTAINER_OS";
 
-
 #
 # defines location of generated files and logs for vm-jobs
 # do not use $HOME as it is not set everywhere while '~' just works
 #
 if [ -z ${VM_JOB_DIR_PREFIX-} ]; then
-  # may already be set when root-config.sh is loaded, too
-  VM_JOB_DIR_PREFIX=~/.vtorque;
+  if [ $(id -u) -eq 0 ]; then # root scripts
+    if [ -n "${USERNAME-}" ]; then
+      VM_JOB_DIR_PREFIX="$(grep $USERNAME /etc/passwd | cut -d':' -f6)/.vtorque";
+    else # abort now, the file is sourced a second time when the var is set
+      return 0;
+    fi
+  else # user scripts
+    VM_JOB_DIR_PREFIX=~/.vtorque;
+  fi
 fi
 
 #
@@ -167,10 +173,6 @@ if [ -f ALIASES_FILE ]; then
   done < $ALIASES_FILE;
   unset index;
 fi
-
-
-
-
 
 #
 # short name of local host

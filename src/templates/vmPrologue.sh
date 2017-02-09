@@ -822,6 +822,11 @@ _copyImageFile() {
   elif [ $res -ne 0 ]; then
     logErrorMsg "Copying image file '$srcFileName' to '$destDir' on node '$computeNode' failed!";
   fi
+  
+  # give the NFS some time to sync
+  $TRACE \
+    && output="$(ls -al $destDir/*.img)" \
+    && logTraceMsg "Image files in destination dir '$destDir':\n-----\n$output\n-----";
 
   logDebugMsg "Image file '$srcFileName' for '$vmsPerHost' VM(s) on host '$computeNode' transferred to '$destDir'.";
 }
@@ -1117,9 +1122,7 @@ bootVMsOnHost() {
     checkCancelFlag;
   done
   logDebugMsg "Flag files '$filesCreatedFlag' and '$filesCopiedFlag' found, continuing.";
-  $TRACE && output="$(ssh $computeNode \"ls -al $destDir\")" \
-  && logTraceMsg "Image files in destination dir '$destDir':\n-----\n$output\n-----";
-
+  
   #
   # start the VM by the help of the vmPrologue.parallel.sh script
   #

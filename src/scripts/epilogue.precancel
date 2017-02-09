@@ -65,21 +65,26 @@ logInfoMsg "Root epilogue.precancel script started.";
 
 # capture STDOUT/STDERR outputs to log file
 captureOutputStreams;
+  
+# stop snap monitoring task
+stopSnapTask;
 
 # cleanup
 cleanUp "rootNodeOnly";
 
-# stop snap monitoring task
-stopSnapTask;
+# VM job ?
+if isVMJob; then
 
-# clear up vRDMA config
-tearDownvRDMA_P1;
+  # clear up vRDMA config
+  tearDownvRDMA_P1;
+  
+  # clear up IOcm config
+  teardownIOcm;
+  
+  # copy libvirt log from global logs dir to vm job dir (for vm jobs)
+  copyVMlogFile;
 
-# clear up IOcm config
-teardownIOcm;
-
-# copy libvirt log from global logs dir to vm job dir (for vm jobs)
-copyVMlogFile;
+fi
 
 # in case there was a script for this in the $TORQUE_HOME/mom_priv
 # that has been renamed (by the Makefile) to *.orig, call it now

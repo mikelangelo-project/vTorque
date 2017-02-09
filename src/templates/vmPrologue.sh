@@ -659,7 +659,7 @@ _generateMetaDataFiles() {
     sed -i "s,__VM_NODE_FILE_DIR__,$VM_NODE_FILE_DIR,g" $metadataFile;
     sed -i "s,__VM_ENV_FILE_DIR__,$VM_ENV_FILE_DIR/$computeNode/$vhostName,g" $metadataFile;
     sed -i "s,__SCRIPT_BASE_DIR__,$SCRIPT_BASE_DIR,g" $metadataFile;
-    sed -i "s,__USERNAME__,$USERNAME,g" $metadataFile;
+    sed -i "s,__USERNAME__,$USER,g" $metadataFile;
     sed -i "s,__VM_NFS_HOME__,$VM_NFS_HOME,g" $metadataFile; #/home
     sed -i "s,__VM_NFS_OPT__,$VM_NFS_OPT,g" $metadataFile; #/opt
     sed -i "s,__VM_NFS_WS__,$VM_NFS_WS,g" $metadataFile; #/workspace (scratch-fs)

@@ -156,7 +156,7 @@ write_files:
    owner: "root"
    encoding: "text/plain"
    content: |
-     #!bin/bash
+     #!/bin/bash
      file="/var/spool/torque/vm/vmJobEnvironment";
      [ -f "$file" ] && source "$file";
  #
@@ -168,11 +168,12 @@ write_files:
    owner: "root"
    encoding: "text/plain"
    content: |
-     #!bin/bash
+     #!/bin/bash
      RUID=__RUID__;
      #? source /etc/profile.d/pbsVirtualJobEnv.sh;
      JOBID=$PBS_JOBID;
      SCRIPT_BASE_DIR=__SCRIPT_BASE_DIR__;
+     USERNAME=__USERNAME__;
      # load config and constants
      source "$SCRIPT_BASE_DIR/common/const.sh";
      source "$SCRIPT_BASE_DIR/common/config.sh";

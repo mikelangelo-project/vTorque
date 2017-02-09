@@ -517,7 +517,7 @@ waitUntilJobDirIsAvailable() {
   timeout=3;
   startDate="$(date +%s)";
   while [ ! -e $VM_JOB_DIR ] \
-    && [ 0 -ne $(isTimeoutReached $timeout $startDate true) ]; do
+    && [ ! $(isTimeoutReached $timeout $startDate true) ]; do
     sleep 1;
     logDebugMsg "Waiting for job dir symlink '$VM_JOB_DIR' to become available.."
   done

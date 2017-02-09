@@ -88,7 +88,7 @@ _log() {
   else
     # print msg to the system log and to stdout/stderr
     logger "[$processName|$logLevel] $logMsg";
-    echo -e "$color[$LOCALHOST|$(date +%H:%M:%S)|$processName|$logLevel]$NC $logMsg" &>> tee -a $LOG_FILE;
+    echo -e "$color[$LOCALHOST|$(date +%H:%M:%S)|$processName|$logLevel]$NC $logMsg" |& tee -a $LOG_FILE;
   fi
 
   # re-enable 'set -x' if it was enabled before

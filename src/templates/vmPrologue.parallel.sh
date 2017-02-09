@@ -138,10 +138,9 @@ _waitForFiles() {
 
 #---------------------------------------------------------
 #
-# Starts all the VM(s) dedicated to the current copmute nodes
-# where the script is executed.
+# Prepares all files for local VM(s) and triggers boot
 #
-bootVMs() {
+prepareVMs() {
 
   # wait for needed files to come into place
   _waitForFiles;
@@ -169,7 +168,18 @@ bootVMs() {
     logDebugMsg "Creating dir '$VM_NODE_FILE_DIR' for VM's nodefile.";
     mkdir -p $VM_ENV_FILE_DIR/$LOCALHOST/$vHostName || logErrorMsg "Failed to create env file dir for VMs!";
   done
-  
+
+  # create flag file to indicate root process to boot VMs now
+  touch "$FLAG_FILE_DIR/.userPrologueDone";
+}
+
+
+#---------------------------------------------------------
+#
+# Waits until root process has booted VMs and they are available.
+#
+function waitForVMs() {
+
   startDate="$(date +%s)";
   while [ ! -f "$FLAG_FILE_DIR/.rootPrologueDone" ]; do
     sleep 1;
@@ -178,7 +188,7 @@ bootVMs() {
   done
 
   for domainXML in ${VM_DOMAIN_XML_LIST[@]}; do
-    
+
     # grep the mac address from the domainXML
     mac=$(grep -i '<mac' $domainXML | cut -d"'" -f 2);
     if [ ! -n "$mac" ]; then
@@ -440,11 +450,8 @@ captureOutputStreams;
 # prepare files for VMs
 prepareVMs;
 
-# create flag file to indicate root process to boot VMs now
-touch "$FLAG_FILE_DIR/.userPrologueDone";
-
 # wait for VMs to become available
-waitForVMtoBecomeAvailable;
+waitForVMs;
 res=$?;
 
 # debug log

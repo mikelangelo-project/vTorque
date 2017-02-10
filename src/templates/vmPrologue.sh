@@ -544,6 +544,9 @@ prepareNode() {
   else
     _copyImageFile $computeNode $vnodesPerHost;
   fi
+  
+  # canceled meanwhile ?
+  checkCancelFlag;
 
   # create flag file to indicate parallel remote processes that we are done
   logDebugMsg "Created/transfered files for all '$vnodesPerHost' VM(s) on host '$node' of '$amountOfVMs' VMs in total.";
@@ -869,6 +872,10 @@ _generateDomainXML() {
   logDebugMsg "Generating domainXML files for all local VMs.";
   while [ $number -le $countPerHost ]; do #FIXME: number is not vmNo !!! => mapping of vmNo=>conputeNode needed (?)
 
+    # cancelled meanwhile ?
+    checkCancelFlag;
+
+    # construct key for array access to node's settings
     keyOne="${number}-${computeNode}";
 
     # construct the template for the provided parameter combination (in sync with the VM's name)
@@ -1102,6 +1109,9 @@ bootVMsOnHost() {
   fi
   computeNode=$1;
 
+  # canceled meanwhile ?
+  checkCancelFlag;
+
   # debug log
   logDebugMsg "Booting VMs on node '$computeNode'.";
 
@@ -1119,8 +1129,8 @@ bootVMsOnHost() {
     logTraceMsg "Waiting for VM related files to be created, copied, etc..";
     logTraceMsg "Lock files to check: '$filesCreatedFlag', '$filesCopiedFlag'.";
     sleep 1;
+    # timeout reached ?
     isTimeoutReached $TIMEOUT $startDate;
-    checkCancelFlag;
   done
   logDebugMsg "Flag files '$filesCreatedFlag' and '$filesCopiedFlag' found, continuing.";
   
@@ -1329,6 +1339,9 @@ logDebugMsg "++++++++++++++++++ JOB PROLOGUE :: Creating / Staging VM related fi
 ## for each node
 for computeNode in $nodes; do
 
+  # cancelled meanwhile ?
+  checkCancelFlag;
+
   # generate the VM files based on the parameter sets
   logDebugMsg "------------ Preparing node '$computeNode' (domain XML, copy images, etc) ------------";
   generateVMFiles "$computeNode" "$vnodesPerHost" "$amountOfVMs";
@@ -1360,9 +1373,6 @@ logDebugMsg "+++++++++++++++++ JOB PROLOGUE :: waiting for all VMs to become ava
 
 # wait for (all job related) VMs to become available
 waitUntilAllReady;
-
-# abort ?
-checkCancelFlag;
 
 # debug log
 logDebugMsg "+++++++++++++++++++++++ JOB PROLOGUE :: All VMs to became available ++++++++++++++++++++++++++";

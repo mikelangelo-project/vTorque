@@ -223,7 +223,7 @@ _flushARPcache() {
     logDebugMsg "Clearing VM IPs from local arp cache: $vmIPs";
     if [ -n "$vmIPs" ]; then
       for vmIP in $vmIPs; do
-         $ARP_BIN -d $vmIP |& tee -a $LOG_FILE;
+        $ARP_BIN -d $vmIP |& tee -a $LOG_FILE;
       done
     fi
   fi

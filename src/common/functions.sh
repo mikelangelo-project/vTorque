@@ -174,6 +174,9 @@ isTimeoutReached() {
   fi
   timeoutFlag=false;
 
+  # cancelled meanwhile ?
+  checkCancelFlag $doNotExit;
+
   # timeout reached ?
   if [ $timeout -lt $(expr $(date +%s) - $startDate) ]; then
     msg="Timeout of '$timeout' seconds reached while waiting for remote processes to finish their work.!";
@@ -182,15 +185,11 @@ isTimeoutReached() {
      logWarnMsg $msg;
      timeoutFlag=true;
     else # abort
+     touch $CANCEL_FLAG_FILE;
      logErrorMsg $msg;
    fi
   fi
 
-  # cancel flag ?
-  if [ -f "$CANCEL_FLAG_FILE" ]; then
-    logWarnMsg "Abort flag file '$CANCEL_FLAG_FILE' found, canceling wait sequence.";
-    timeoutFlag=true;
-  fi
   # re-enable verbose logging if it was enabled before
   _setXFlag $cachedBashOpts;
   if $timeoutFlag; then
@@ -247,14 +246,8 @@ waitUntilAllReady() {
   while [ ! -f $LOCKFILE ] \
           || [ "$(cat $PBS_NODEFILE | sort | uniq)" != "$(cat $LOCKFILE | sort)" ]; do
 
-    # abort ?
-    if [ -f "$CANCEL_FLAG_FILE" ]; then
-      logWarnMsg "Cancel flag file '$CANCEL_FLAG_FILE' found, aborting now.";
-      abort;
-    fi
-
-    # check if an error occurred before lock files could be created
-    checkRemoteNodes;
+    # cancelled meanwhile ?
+    checkCancelFlag;
 
     # timeout reached ?
     isTimeoutReached $TIMEOUT $startDate true;
@@ -264,6 +257,9 @@ waitUntilAllReady() {
       logErrorMsg "Timeout of '$timeout' seconds reached while waiting for \
 remote processes to finish their work.!\nLock file content:\n---\n$(cat $LOCKFILE)\n---\n";
     fi
+
+    # check if an error occurred before lock files could be created
+    checkRemoteNodes;
 
     # wait for a moment
     logTraceMsg "Waiting for lock-file '$LOCKFILE' to be created..";
@@ -277,14 +273,8 @@ remote processes to finish their work.!\nLock file content:\n---\n$(cat $LOCKFIL
   # any locks remaining (clean up is fast!) ?
   while [ -d "$LOCKFILES_DIR" ] && [ -n "$(ls $LOCKFILES_DIR/)" ]; do
 
-    # abort ?
-    if [ -f "$CANCEL_FLAG_FILE" ]; then
-      logWarnMsg "Abort flag file '$CANCEL_FLAG_FILE' found, aborting now.";
-      abort;
-    fi
-
-    # check the lock files's content for any error msgs (non-empty file means error msg inside)
-    checkRemoteNodes;
+    # cancelled meanwhile ?
+    checkCancelFlag;
 
     # tell what's happening
     logDebugMsg "Waiting for '$(ls $LOCKFILES_DIR | wc -w)' locks to disappear from (shared-fs) dir '$LOCKFILES_DIR' ..";
@@ -298,20 +288,24 @@ remote processes to finish their work.!\nLock file content:\n---\n$(cat $LOCKFIL
 remote processes to finish their work.!";
     fi
 
+    # check the lock files's content for any error msgs (non-empty file means error msg inside)
+    checkRemoteNodes;
+
     # wait a short moment for lock files to disappear
     sleep 1;
 
   done
 
+  # check if an error occurred before lock files could be created
   checkRemoteNodes;
 
-  if [ ! -f "$CANCEL_FLAG_FILE" ]; then
-    # done, locks are gone - clean up locks dir
-    logDebugMsg "Locks are gone, all remote processes have finished - removing LOCKFILES_DIR='$LOCKFILES_DIR' and LOCKFILE='$LOCKFILE'.";
-    rm -Rf $LOCKFILES_DIR;
-    rm -f $LOCKFILE;
-  fi
-
+  # cancelled meanwhile ?
+  checkCancelFlag;
+      
+  # done, locks are gone - clean up locks dir
+  logDebugMsg "Locks are gone, all remote processes have finished - removing LOCKFILES_DIR='$LOCKFILES_DIR' and LOCKFILE='$LOCKFILE'.";
+  rm -Rf $LOCKFILES_DIR;
+  rm -f $LOCKFILE;
 
 }
 
@@ -459,9 +453,8 @@ checkCancelFlag() {
   if [ -f "$CANCEL_FLAG_FILE" ]; then
     logWarnMsg "Abort flag file '$CANCEL_FLAG_FILE' found, aborting now.";
     [ ! $doNotExit ] && abort;
-    return 1;
+    exit 0;
   fi
-  return 0;
 }
 
 

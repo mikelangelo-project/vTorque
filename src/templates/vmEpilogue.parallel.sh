@@ -174,18 +174,16 @@ _destroyVM() {
 
     # wait until shutdown status is reached
     timeOut=false;
-    while [ -n "$(virsh list --all | grep ' $domainName ' | grep -iE 'shut off|ausgeschaltet')" ]; do
+    while ! $timeOut \
+        && [ -n "$(virsh list --all | grep ' $domainName ' | grep -iE 'shut off|ausgeschaltet')" ]; do
 
       # wait a moment before checking again
       logTraceMsg "Waiting for VM '$i/$totalCount' with domainName '$domainName' to shutdown..";
       sleep 2;
 
       # soft timeout reached ?
-      isTimeoutReached $TIMEOUT $startDate true;
-      [ $? -eq 0 ] && break;
-
-      # cancelled meanwhile ?
-      checkCancelFlag;
+      timeOut=$(isTimeoutReached $TIMEOUT $startDate true);
+      
     done
     # timeout reached ?
     if $timeOut; then

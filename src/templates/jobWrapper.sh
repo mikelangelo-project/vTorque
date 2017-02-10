@@ -512,6 +512,9 @@ logDebugMsg "***************** START OF JOB WRAPPER ********************";
 # make sure everything needed is in place
 checkPreConditions;
 
+# cancelled meanwhile ?
+checkCancelFlag;
+
 # set rank0 VM
 setRank0VM;
 
@@ -549,6 +552,7 @@ if $DEBUG && $KEEP_VM_ALIVE; then
   logDebugMsg "Pausing job wrapper, it is requested to keep the VMs alive.";
   logInfoMsg "To continue execution, run cmd: 'touch $FLAG_FILE_CONTINUE'.";
   breakLoop=false;
+  # wait for flag indicating to continue
   while [ ! -f "$FLAG_FILE_CONTINUE" ]; do
     checkCancelFlag;
     sleep 1;

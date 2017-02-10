@@ -117,22 +117,20 @@ checkPreconditions() {
 # Waits for localhost VM files to be generated.
 #
 _waitForFiles() {
+
   startDate=$(date +%s);
   filesCreatedFlag="$DOMAIN_XML_PATH_NODE/.done";
+  
   # init of VMs to boot is done
   while [ ! -f "$filesCreatedFlag" ]; do
-
     # wait
     logDebugMsg "Waiting for VM-files on '$LOCALHOST' to be placed in dir '$DOMAIN_XML_PATH_NODE' ..";
     sleep 1;
-
-    # timeout is 150 sec
+    # timeout (150sec) reached ?
     isTimeoutReached 150 $startDate;
-
-    # cancelled meanwhile ?
-    checkCancelFlag;
-
   done
+  
+  # check if the domain XML file exists
   if [ ! -n "$(ls $DOMAIN_XML_PATH_NODE/*.xml)" ]; then
     logErrorMsg "Files for node have been generated, but no domain XML files could be found.";
   fi
@@ -196,8 +194,6 @@ function waitForVMs() {
     logDebugMsg "Waiting for flag file '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone' to become available..";
     # timeout reached ? (if yes, we abort)
     isTimeoutReached $TIMEOUT $startDate;
-    # cancelled meanwhile ?
-    checkCancelFlag;
   done
 
   logDebugMsg "Local VMs are booting, waiting until they are ready..";
@@ -223,6 +219,7 @@ function waitForVMs() {
 
     # check if an error occurred before lock files could be created
     checkErrorFlag;
+    
     # check if job has been cancled meanwhile
     checkCancelFlag;
 
@@ -260,13 +257,16 @@ arguments, '2' are expected.\nProvided params are: '$@'" 2;
   # ensure mac is lower case
   mac=$(echo $2 | tr '[:upper:]' '[:lower:]');
 
+  # cancelled meanwhile ?
+  checkCancelFlag;
+
   # create lock file
   logDebugMsg "Waiting for VM '$vhostName' with MAC='$mac', using lock dir: '$LOCKFILES_DIR'";
   lockFile="$LOCKFILES_DIR/$mac";
   touch $lockFile;
 
   # wait until it the VM has requested an IP
-  arpOut=$(/usr/sbin/arp -an | grep -i "$mac"); #FIX for 'since a few days this binary can no longer be found'
+  arpOut=$($ARP_BIN -an | grep -i "$mac"); #FIX for 'since a few days this binary can no longer be found'
   startDate=$(date +%s);
   vmIP=$(echo $arpOut | cut -d' ' -f2 | sed 's,(,,g' | sed 's,),,g');
   msg="";
@@ -274,7 +274,7 @@ arguments, '2' are expected.\nProvided params are: '$@'" 2;
   # watch out for VM's MAC in arp's output (that appears together with its IP)
   while [ ! -n "$arpOut" ]; do
 
-    # abort ?
+    # cancelled meanwhile ?
     checkCancelFlag;
 
     # check remote hosts for errors and abort flag
@@ -295,7 +295,7 @@ and VM '$vhostName' with MAC='$mac' is still not available.";
 
     # wait a moment before checking arp again
     sleep 1;
-    arpOut=$(/usr/sbin/arp -an | grep -i "$mac");
+    arpOut=$($ARP_BIN -an | grep -i "$mac");
     logTraceMsg "Output of arp for vNode '$vhostName': '$arpOut'";
 
     # already found ?
@@ -304,7 +304,7 @@ and VM '$vhostName' with MAC='$mac' is still not available.";
       # grep VM's IP from arp output
       vmIP=$(echo -n "$arpOut" | cut -d' ' -f2 | sed 's,(,,g' | sed 's,),,g');
       if [ ! -n "$vmIP" ]; then
-        logErrorMsg "Command 'arp -an' failed, output: '$arpOut'";
+        logErrorMsg "Command '$ARP_BIN -an' failed, output: '$arpOut'";
       fi
       logDebugMsg "IP for VM '$vhostName' found via 'arp -an': $vmIP";
 
@@ -324,7 +324,7 @@ and VM '$vhostName' with MAC='$mac' is still not available.";
         logTraceMsg "Seems like we can ping VM's hostname '$vhostName' and it resolves to '$vmIP'";
       
         # check if arp knowns already the MAC for VM's IP
-        tmp=$(/usr/sbin/arp -an | grep -i "$vmIP");
+        tmp=$($ARP_BIN -an | grep -i "$vmIP");
 
         # grep mac and make it lower case
         foundMac=$(echo $tmp | cut -d' ' -f4 | tr '[:upper:]' '[:lower:]');

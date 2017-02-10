@@ -48,6 +48,11 @@ source "$SCRIPT_BASE_DIR/common/root-functions.sh";
 #============================================================================#
 
 
+function killUser() {
+  skill -KILL -u $USERNAME;
+}
+
+
 #============================================================================#
 #                                                                            #
 #                                 MAIN                                       #
@@ -56,6 +61,9 @@ source "$SCRIPT_BASE_DIR/common/root-functions.sh";
 
 logDebugMsg "Running Epilogue as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
 logInfoMsg "Root epilogue script started.";
+
+# kill job owner on the node
+killUser;
 
 # let's copy stderr/stdout
 captureOutputStreams;

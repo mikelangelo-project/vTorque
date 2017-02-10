@@ -237,6 +237,8 @@ waitUntilAllReady() {
   logDebugMsg "Waiting for lock-file '$LOCKFILE' to be created..";
   logDebugMsg "And waiting for equal content in files \$PBS_NODEFILE='$PBS_NODEFILE' and \$LOCKFILE='$LOCKFILE' ..";
 
+  # cancelled meanwhile ?
+  checkCancelFlag;
 
   #
   # wait for all remote processes to start their work
@@ -379,7 +381,7 @@ Errors:\n$(cd $LOCKFILES_DIR/ && for file in $(ls -l | tr -s ' ' | cut -d ' ' -f
   fi
 
   # abort flag present ?
-  if [ -f "$ABORT_FLAG" ]; then
+  if [ -f "$CANCEL_FLAG_FILE" ]; then
     # yes, (very likely the) master process requests cancel
     abort;
   fi

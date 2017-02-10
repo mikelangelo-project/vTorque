@@ -76,10 +76,7 @@ if isVMJob; then
 
   # setup vRDMA
   setUPvRDMA_P1;
-  
-  # setup IOcm
-  setupIOCM;
-  
+    
   # ram disk or shared FS ?
   if $USE_RAM_DISK; then
     createRAMDisk;

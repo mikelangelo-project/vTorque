@@ -370,13 +370,13 @@ and VM '$vhostName' with MAC='$mac' is still not available.";
 
   # now wait until the VM becomes available via SSH
   if [[ $DISTRO =~ $REGEX_OSV ]]; then
-    logDebugMsg "DISTRO '$DISTRO' is OSv, using HTTP check"
-    CONN_TEST_CMD="curl --connect-timeout 2 http://$vmIP:8000"
-    ERR_CODE_TIMEOUT=28
+    logDebugMsg "DISTRO '$DISTRO' is OSv, using HTTP check";
+    CONN_TEST_CMD="curl --connect-timeout 2 http://$vmIP:8000";
+    ERR_CODE_TIMEOUT=28;
   else
-    logDebugMsg "DISTRO '$DISTRO' is linux, using SSH check"
-    CONN_TEST_CMD="ssh -n -o BatchMode=yes -o ConnectTimeout=2 $vmIP exit"
-    ERR_CODE_TIMEOUT=255
+    logDebugMsg "DISTRO '$DISTRO' is linux, using SSH check";
+    CONN_TEST_CMD="ssh -n -o BatchMode=yes -o ConnectTimeout=2 $vmIP 'exit 0;' 2>&1";
+    ERR_CODE_TIMEOUT=255;
   fi
   while [ $($CONN_TEST_CMD; echo $?) -eq $ERR_CODE_TIMEOUT  ]; do
 

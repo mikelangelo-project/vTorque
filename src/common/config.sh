@@ -178,16 +178,6 @@ ARP_BIN="/usr/sbin/arp";
 #============================================================================#
 
 #
-# Flag file indicating to continue execution.
-#
-FLAG_FILE_CONTINUE="$VM_JOB_DIR/.continue";
-
-#
-# Flag file indicating to cancel execution.
-#
-CANCEL_FLAG_FILE="$VM_JOB_DIR/.abort";
-
-#
 # SSH timeout
 #
 SSH_TIMEOUT=5;
@@ -398,7 +388,7 @@ IOCM_MIN_CORES=0;
 IOCM_MAX_CORES=7;
 
 # list of nodes that have the iocm kernel in place
-IOCM_NODES="*";
+IOCM_NODES=".*";
 
 
 #============================================================================#

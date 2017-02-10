@@ -334,21 +334,26 @@ VM_IP_FILE_NAME="vmIPs";
 LOCAL_VM_IP_FILE="$VM_IP_FILE_PREFIX/$LOCALHOST/$VM_IP_FILE_NAME";
 
 #
-# Indicates vmPrologue.parallel.sh to abort
+# Flag file indicating to continue execution.
 #
-ABORT_FLAG="$VM_JOB_DIR/.abortFlag";
+FLAG_FILE_CONTINUE="$FLAG_FILES_DIR/.continue";
+
+#
+# Flag file indicating to cancel execution.
+#
+CANCEL_FLAG_FILE="$FLAG_FILES_DIR/.abort";
 
 #
 # Lock file that contains started remote processes
 #
-LOCKFILE="$VM_JOB_DIR/.remoteProcesses";
+LOCKFILE="$FLAG_FILES_DIR/.remoteProcesses";
 
 #
 # Indicates failures in parallel processes before lock files can be created
 # When lock files are in place we write errors into these so we can identify
 # the host and corresponding error msg easily
 #
-ERROR_FLAG_FILE="$VM_JOB_DIR/.error";
+ERROR_FLAG_FILE="$FLAG_FILES_DIR/.error";
 
 
 #-----------------------------------------------------------------------------

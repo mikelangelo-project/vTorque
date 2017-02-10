@@ -222,7 +222,7 @@ usage() {
   $REAL_QSUB -Ä /tmp/qsubfaketmpjob 2>&1 | \
     grep -v 'invalid option' | \
     grep -v '\[exiting\]' | \
-    sed 's,\[script\],\n    [-vm <vm_parameters>] [script],';
+    sed 's,\[script\],\n    [ -listImages | [[-gf] -vm <vm_parameters> [script]],';
   rm -f /tmp/qsubfaketmpjob;
   if $DEBUG \
       && [ $# -ge 2 ]; then
@@ -527,6 +527,7 @@ _parseVMparameters() {
         usage "$key" "$arg" "$next";
       fi
       logTraceMsg "Assuming PBS key/value resource request, caching it: '$arg'";
+      _appendCleanedPBSparams "$arg";
       # check if the value we have is the core count per node (PPN)
       if [[ "$arg" =~ \:ppn\= ]]; then
         tmpResReq=":";

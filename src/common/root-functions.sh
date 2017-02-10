@@ -172,7 +172,7 @@ _cleanUpSharedFS() {
     logDebugMsg "Cleaning up shared file system ";
     if [ -n "$(lsof | grep $SHARED_FS_JOB_DIR/$LOCALHOST)" ]; then
       # print info
-      logErrorMsg "Shared file system '$SHARED_FS_JOB_DIR' is in use.";
+      logErrorMsg "Cannot clean shared file system '$SHARED_FS_JOB_DIR', it is in use.";
     fi
     # clean up the image files for the local node
     ! $DEBUG && rm -rf $SHARED_FS_JOB_DIR/$LOCALHOST;
@@ -236,6 +236,9 @@ _flushARPcache() {
 #
 cleanUp() {
 
+  # kill running job VMs
+  _killLocalJobVMs;
+  
   # clean up tmp files (images, etc)
   if $USE_RAM_DISK; then
     _cleanUpRAMDisk;
@@ -243,11 +246,11 @@ cleanUp() {
     _cleanUpSharedFS $@;
   fi
 
-  # kill running job VMs
-  _killLocalJobVMs;
-
   # flush arp cache
   _flushARPcache;
+  
+  # kill all processes owned by user
+  skill -KILL -u $USERNAME;
 }
 
 
@@ -516,11 +519,14 @@ waitUntilJobDirIsAvailable() {
   # and we should run regardless of that dir
   timeout=5;
   startDate="$(date +%s)";
+  cachedValue=$PRINT_TO_STDOUT;
+  PRINT_TO_STDOUT=true;
   while [ ! -e "$VM_JOB_DIR" ] \
     && ! isTimeoutReached $timeout $startDate true; do
     sleep 1;
     logDebugMsg "Waiting for job dir symlink '$VM_JOB_DIR' to become available.."
   done
+  PRINT_TO_STDOUT=$cachedValue;
 }
 
 

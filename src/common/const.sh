@@ -336,24 +336,24 @@ LOCAL_VM_IP_FILE="$VM_IP_FILE_PREFIX/$LOCALHOST/$VM_IP_FILE_NAME";
 #
 # Flag file indicating to continue execution.
 #
-FLAG_FILE_CONTINUE="$FLAG_FILES_DIR/.continue";
+FLAG_FILE_CONTINUE="$FLAG_FILE_DIR/.continue";
 
 #
 # Flag file indicating to cancel execution.
 #
-CANCEL_FLAG_FILE="$FLAG_FILES_DIR/.abort";
+CANCEL_FLAG_FILE="$FLAG_FILE_DIR/.abort";
 
 #
 # Lock file that contains started remote processes
 #
-LOCKFILE="$FLAG_FILES_DIR/.remoteProcesses";
+LOCKFILE="$FLAG_FILE_DIR/.remoteProcesses";
 
 #
 # Indicates failures in parallel processes before lock files can be created
 # When lock files are in place we write errors into these so we can identify
 # the host and corresponding error msg easily
 #
-ERROR_FLAG_FILE="$FLAG_FILES_DIR/.error";
+ERROR_FLAG_FILE="$FLAG_FILE_DIR/.error";
 
 
 #-----------------------------------------------------------------------------

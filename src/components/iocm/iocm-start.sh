@@ -19,8 +19,8 @@ set -o nounset;
 shopt -s expand_aliases;
 
 # source the config and common functions
-ABSOLUTE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
-source "$ABSOLUTE_PATH/iocm-common.sh";
+IOCM_ABSOLUTE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
+source "$IOCM_ABSOLUTE_PATH/iocm-common.sh";
 
 
 
@@ -53,8 +53,12 @@ generateConfig() {
     $totalCores $IOCM_INTERFACE_NAME;
   
   # log resulting file
-  logDebugMsg "IOCM JSON config file generated '$IOCM_JSON_CONFIG'.";
-  logTraceMsg "Generated IOCM JSON config file\n-----\n$(cat $IOCM_JSON_CONFIG)\n----";
+  if [ $? -eq 0 ]; then
+    logDebugMsg "IOCM JSON config file generated '$IOCM_JSON_CONFIG'.";
+    logTraceMsg "Generated IOCM JSON config file\n-----\n$(cat $IOCM_JSON_CONFIG)\n----";
+  else
+    logWarnMsg "IOCM JSON config file generation failed.";
+  fi
 }
 
 
@@ -66,7 +70,30 @@ setCores() {
   if [ ! -f "$FLAG_FILE_DIR/.iocm" ]; then
     logErrorMsg "No flag file found for IOCM, cannot setup IOCM!";
   fi
-  $ABSOLUTE_PATH/dynamic-io-manager/src/start_io_manager.py -p -c $IOCM_JSON_CONFIG --min $minCores --max $maxCores;
+  
+  if $DEBUG; then
+    {
+      # call in debug mode as process (blocking + all stdout/err printed)
+      $IOCM_ABSOLUTE_PATH/dynamic-io-manager/src/start_io_manager.py \
+        --process \
+        --config $IOCM_JSON_CONFIG \
+          &>> $IOCM_LOG_FILE;
+    } & logInfoMsg "IOCM starting, iocm log file: '$IOCM_LOG_FILE'.";
+    chown $USERNAME:$USERNAME "$IOCM_LOG_FILE";
+    return 0;
+  fi
+  
+  # start iocm as background process
+  $IOCM_ABSOLUTE_PATH/dynamic-io-manager/src/start_io_manager.py \
+      --config $IOCM_JSON_CONFIG;
+   
+  # success ?
+  if [ $? -eq 0 ]; then
+    logInfoMsg "IOCM succesfully started.";
+    return 0;
+  fi
+  logWarnMsg "IOCM failed to start!";
+  return 1;
 }
 
 

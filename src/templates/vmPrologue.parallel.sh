@@ -375,10 +375,10 @@ and VM '$vhostName' with MAC='$mac' is still not available.";
     ERR_CODE_TIMEOUT=28;
   else
     logDebugMsg "DISTRO '$DISTRO' is linux, using SSH check";
-    CONN_TEST_CMD="ssh -n -o BatchMode=yes -o ConnectTimeout=2 $vmIP 'exit 0;' 2>&1";
+    CONN_TEST_CMD="ssh -n -o BatchMode=yes -o ConnectTimeout=2 $vmIP 'exit 0;'";
     ERR_CODE_TIMEOUT=255;
   fi
-  while [ $($CONN_TEST_CMD; echo $?) -eq $ERR_CODE_TIMEOUT  ]; do
+  while [ $($CONN_TEST_CMD &>/dev/null; echo $?) -eq $ERR_CODE_TIMEOUT  ]; do
 
     # cancelled meanwhile ?
     checkCancelFlag;

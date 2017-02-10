@@ -355,6 +355,11 @@ IOCM_MAX_CORES_DEFAULT=4;
 #                                                                            #
 #============================================================================#
 
+#
+# print to dedicated log file only
+#
+PRINT_TO_STDOUT=false;
+
 # disable log rotate
 LOG_ROTATE=false;
 

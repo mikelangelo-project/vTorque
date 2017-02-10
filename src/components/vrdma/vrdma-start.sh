@@ -19,8 +19,8 @@ set -o nounset;
 shopt -s expand_aliases;
 
 # source the config and common functions
-ABSOLUTE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
-source $ABSOLUTE_PATH/vrdma-common.sh;
+VRDMA_ABSOLUTE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
+source $VRDMA_ABSOLUTE_PATH/vrdma-common.sh;
 
 #
 # amount of VMs that are associated with the current job (if any)
@@ -67,14 +67,14 @@ setupHugePages() {
     # one for each computeNode, this will be used for attaching the InfiniBand port to the OVS bridge.
     for i in {0..1}; do
       echo $noOfChunks > /sys/devices/system/node/node0/hugepages/hugepages-2048kB/nr_hugepages;
-      if ! $?; then
+      if [ $? -ne 0 ]; then
         logErrorMsg "Failed to set hugepages to size of '$HUGE_TABLE_SIZE' MB with '$noOfChunks' chunks of 2MB for 'node$i' !";
       fi
     done
 
     # mount fs link
     mount -t hugetlbfs none /dev/hugepages;
-    if ! $?; then
+    if [ $? -ne 0 ]; then
       logErrorMsg "Failed to setup hugetables!";
     fi
   fi
@@ -98,13 +98,13 @@ setupLibvirtd() {
 
   # generate a customized config file (based on the template) for libvert daemon with the correct connection socket
   cp "$LIBVIRT_ETC_DIR/libvirtd.conf" "$LIBVIRT_CONFIG";
-  if ! $?; then
+  if [ $? -ne 0 ]; then
     logErrorMsg "Failed to copy libvirtd.conf to '$LIBVIRT_CONFIG' !";
   fi
 
   # replace the default socket with the correct one
   sed -i "s,#unix_sock_dir = \"\/var\/run\/libvirt\",unix_sock_dir = \"$LIBVIRT_RUN_DIR\",g" $LIBVIRT_CONFIG;
-  if ! $?; then
+  if [ $? -ne 0 ]; then
     logErrorMsg "Preparing libvirtd's config file '$LIBVIRT_CONFIG' failed!";
   fi
 
@@ -123,7 +123,7 @@ setupOVSDB() {
   # ensure it is not running
   if [ -n "$(pidof ovsdb-server)" ]; then
     killall ovsdb-server;
-    if ! $?; then
+    if [ $? -ne 0 ]; then
       logErrorMsg "Failed to kill the running 'ovsdb-server' !";
     fi
 
@@ -136,7 +136,7 @@ setupOVSDB() {
   fi
   if [ -n "$(pidof ovs-vswitchd)" ]; then
     killall ovs-vswitchd;
-    if ! $?; then
+    if [ $? -ne 0 ]; then
       logErrorMsg "Failed to kill the running 'ovs-vswitchd' !";
     fi
     startDate=$(date +%s);
@@ -158,7 +158,7 @@ setupOVSDB() {
   # re-create DB
   logDebugMsg "(Re-)creating DB";
   ovsdb-tool create $OVS_DATABASE $OVS_DB_SCHEMA_VSWITCH;
-  if ! $?; then
+  if [ $? -ne 0 ]; then
     logErrorMsg "Failed to create OVS DB '$OVS_DATABASE' from schema $OVS_DB_SCHEMA_VSWITCH";
   fi
 }
@@ -171,19 +171,19 @@ setupOVSDB() {
 startOVSservices() {
 
   # start OVS server (without SSL for now)
-  logDebugMsg "Staring OVS servicer with DB-socket '$HOST_DB_SOCK'.";
+  logDebugMsg "Staring OVS service with DB-socket '$HOST_DB_SOCK'.";
   ovsdb-server $OVS_DATABASE --remote=punix:$HOST_DB_SOCK \
              --remote=db:Open_vSwitch,Open_vSwitch,manager_options \
              --pidfile=$OVS_SERVER_PID_FILE --detach \
              --log-file=$OVS_SERVER_LOG;
-  if ! $?; then
+  if [ $? -ne 0 ]; then
     logErrorMsg "Starting OVS server with DB-socket '$HOST_DB_SOCK' failed!";
   fi
 
   # initialize the OVS server, and create the main database socket
   logDebugMsg "Initializing OVS server (creating DB socket '$HOST_DB_SOCK').";
   ovs-vsctl --db=unix:$HOST_DB_SOCK --no-wait init;
-  if ! $?; then
+  if [ $? -ne 0 ]; then
     logErrorMsg "Initialization of OVS server, using DB-socket '$HOST_DB_SOCK', failed!";
   fi
 
@@ -193,7 +193,7 @@ startOVSservices() {
   ovs-vswitchd --dpdk -c 0x1 -n 4 -w $IB_PCI_ADDR --socket-mem $SOCKET0_MEM,$SOCKET1_MEM \
                -- unix:$HOST_DB_SOCK --pidfile=$OVS_DAEMON_PID_FILE --detach \
                --log-file=$OVS_DAEMON_LOG;
-  if ! $?; then
+  if [ $? -ne 0 ]; then
     logErrorMsg "Starting OVS daemon (for Mellanox) failed! Check log file '$OVS_DAEMON_LOG'.";
   fi
 
@@ -209,7 +209,7 @@ startOVSservices() {
   # add the virtual bridge
   logDebugMsg "Adding virtual bridge '$VRDMA_BRIDGE', using DB-socket '$HOST_DB_SOCK'.";
   ovs-vsctl --no-wait --db=unix:$HOST_DB_SOCK add-br $VRDMA_BRIDGE -- set bridge $VRDMA_BRIDGE datapath_type=netdev;
-  if ! $?; then
+  if [ $? -ne 0 ]; then
     logErrorMsg "Adding virtual bridge '$VRDMA_BRIDGE', using DB-socket '$HOST_DB_SOCK', failed!";
   fi
 }
@@ -225,7 +225,7 @@ unloadOSVkernelModule() {
   if [ -n "$(lsmod | grep openvswitch)" ]; then
     logDebugMsg "Unloading kernel module 'openvswitch'."
     rmmod openvswitch;
-    if ! $?; then
+    if [ $? -ne 0 ]; then
       logErrorMsg "Unloading kernel module 'openvswitch' failed!";
     fi
   fi
@@ -268,7 +268,7 @@ setupOVSports() {
   ovs-vsctl --db=unix:$HOST_DB_SOCK --no-wait \
                   add-port $VRDMA_BRIDGE $dpdkPortName \
                   -- set Interface $dpdkPortName type=dpdk;
-  if ! $?; then
+  if [ $? -ne 0 ]; then
     logErrorMsg "Adding DPDK-port '$dpdkPortName' to vRDMA-bridge '$VRDMA_BRIDGE', using DB socket '$HOST_DB_SOCK' failed!";
   fi
 
@@ -287,7 +287,7 @@ setupOVSports() {
     ovs-vsctl --db=unix:$HOST_DB_SOCK --no-wait \
                     add-port $VRDMA_BRIDGE $portName \
                     -- set Interface $portName type=dpdkvhostuser;
-    if ! $?; then
+    if [ $? -ne 0 ]; then
       logErrorMsg "Failed to bind VM's '$vmNo/$VMS_PER_HOST' port '$portName' to bridge '$VRDMA_BRIDGE', using DB socket '$dbSocket' !";
     fi
 
@@ -299,7 +299,7 @@ setupOVSports() {
   logDebugMsg "Activating link '$dpdkPortName'.";
   ip link set $dpdkPortName up \
          && ip link set $dpdkPortName promisc on;
-  if ! $?; then
+  if [ $? -ne 0 ]; then
     logErrorMsg "Failed to active link '$dpdkPortName'";
   fi
 }
@@ -335,13 +335,13 @@ activateBridge() {
   # activate vRDMA bridge
   logDebugMsg "Activating vRDMA bridge '$VRDMA_BRIDGE'.";
   ip link set $VRDMA_BRIDGE up;
-  if ! $?; then
+  if [ $? -ne 0 ]; then
     logErrorMsg "Failed to active the vRDMA bridge '$VRDMA_BRIDGE'!";
   fi
 
   # configure vRDMA bridge networking
   ip addr add $VRDMA_NET dev $VRDMA_BRIDGE;
-  if ! $?; then
+  if [ $? -ne 0 ]; then
     logErrorMsg "Failed to configure the network '$VRDMA_NET' on vRDMA bridge '$VRDMA_BRIDGE'!";
   fi
 
@@ -379,7 +379,7 @@ startlocalDHCPserver() {
   # remove ip from bridge (if there is alread a valid IP on the bridge, the DHCP will not assign for it again)
   logDebugMsg "Remove IP '$VRDMA_BRIDGE_IP' from vRDMA bridge '$VRDMA_BRIDGE'.";
   ip addr del $VRDMA_BRIDGE_IP dev $VRDMA_BRIDGE;
-  if ! $?; then
+  if [ $? -ne 0 ]; then
     logErrorMsg "Failed to remove IP '$VRDMA_BRIDGE_IP' from vRDMA bridge '$VRDMA_BRIDGE' !";
   fi
 
@@ -397,7 +397,7 @@ startlocalDHCPserver() {
   # start a dhclient for the bridge, so the DHCP server will assign an availabel IP to the bridge
   logDebugMsg "Enabling 'dhclient' for vRDMA bridge '$VRDMA_BRIDGE'.";
   dhclient $VRDMA_BRIDGE;
-  if ! $?; then
+  if [ $? -ne 0 ]; then
     logErrorMsg "Failed to enable 'dhclient' for vRDMA bridge '$VRDMA_BRIDGE'.";
   fi
 }

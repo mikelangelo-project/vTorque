@@ -101,12 +101,16 @@ FLAG_FILE_DIR="$VM_JOB_DIR/flags";
 #
 # set debug flag if enabled in user space
 #
-DEBUG=$([ -f $FLAG_FILE_DIR/.debug ]);
+if [ -f "$FLAG_FILE_DIR/.debug" ]; then
+  DEBUG=true;
+fi
 
 #
 # set trace flag if enabled in user space
 #
-TRACE=$([ -f $FLAG_FILE_DIR/.trace ]);
+if [ -f "$FLAG_FILE_DIR/.trace" ]; then
+  TRACE=true;
+fi
 
 #
 # as last source the config.sh

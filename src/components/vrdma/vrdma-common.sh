@@ -247,7 +247,7 @@ removeBridge() {
   logDebugMsg "Removing vRDMA bridge..";
   for dbSocket in $(getSocketList); do
     ovs-vsctl --db=unix:$dbSocket --no-wait del-br $VRDMA_BRIDGE;
-    if ! $?; then
+    if [ $? -ne 0 ]; then
       logErrorMsg "Failed to remove vRDMA '$VRDMA_BRIDGE' bridge!";
     fi
   done

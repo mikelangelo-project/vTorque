@@ -200,6 +200,11 @@ PBS_RES_REQ_RAM="";
 #
 CLEANED_PBS_RES_REQ="";
 
+#
+# print to stdout
+#
+PRINT_TO_STDOUT=true;
+
 
 #============================================================================#
 #                                                                            #
@@ -1291,6 +1296,7 @@ to '$VM_JOB_DIR_PREFIX/$jobID'";
   # Job submission was successful, so create a symlink based on the jobID to the RUID dir.
   # This way, the root scripts can write debug msgs to the job's debug log.
   ln -s "$VM_JOB_DIR" "$VM_JOB_DIR_PREFIX/$jobID";
+  LOG_FILE="$VM_JOB_DIR_PREFIX/$jobID/debug.log";
 }
 
 
@@ -1507,7 +1513,7 @@ cannot be loaded - No such file or directory.";
   fi
 
   # pass on to the real qsub
-  logDebugMsg "Executing cmd: '$submitCmd'";
+  logDebugMsg "Executing cmd:\n-----\n$submitCmd\n-----";
   logDebugMsg "------REAL_QSUB_START------";
 
   # execute submission cmd, fetch both stderr and stdout into output

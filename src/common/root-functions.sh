@@ -205,7 +205,7 @@ _killLocalJobVMs() {
   vmList=$(virsh list --all | grep $JOBID | grep -vE 'Id|Name|-----' | cut -d' ' -f2);
   for vm in $vmList; do
     if $DEBUG; then
-      virsh $VIRSH_OPTS destroy $vm 2>/dev/null | tee -a $LOG_FILE;
+      virsh $VIRSH_OPTS destroy $vm |& tee -a $LOG_FILE;
     else
       virsh $VIRSH_OPTS destroy $vm 2>/dev/null;
     fi
@@ -441,7 +441,6 @@ teardownIOcm() {
       # execute
       $IOCM_SCRIPT_DIR/iocm-stop.sh;
       res=$?;
-      logDebugMsg "IOcm tear down return code: '$res'";
     } || { #catch
       logWarnMsg "IOcm cannot be stopped, skipping it.";
       res=-9;
@@ -492,7 +491,7 @@ stopService() {
 # Determines count of local VMs for the job
 #
 getVMCountOnLocalhost() {
-  return $("$VM_JOB_DIR/$LOCALHOST/*.xml" | wc -l);
+  return $(ls "$VM_JOB_DIR/$LOCALHOST/*.xml" | wc -l);
 }
 
 

@@ -241,6 +241,7 @@ _destroyVMsOnHost() {
   if [ $exitCode -ne 0 ]; then
     # cleanup required
     logWarnMsg "Destroying VMs on node '$node' failed. Exit code: '$exitCode'." $exitCode;
+    touch $CANCEL_FLAG_FILE;
   else
     logDebugMsg "VMs on node '$node' are being destroyed.";
   fi

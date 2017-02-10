@@ -42,6 +42,12 @@ IOCM_JSON_CONFIG="$VM_JOB_DIR/$LOCALHOST/iocm-config.json";
 #
 IOCM_INTERFACE_NAME="ib0";
 
+#
+# Debug log for iocm
+#
+IOCM_LOG_FILE="$VM_JOB_DIR/$LOCALHOST/iocm.log";
+
+
 
 #============================================================================#
 #                                                                            #
@@ -55,10 +61,9 @@ IOCM_INTERFACE_NAME="ib0";
 # If not it aborts with an error.
 #
 checkIOcmPreconditions() {
-  # check uname
-  kernelVersion="$(uname -a)";
-  if [[ $kernelVersion =~ ]]; then
-    logDebugMsg "IOcm Kernel version: $kernelVersion";
+  # check for kernel mod 'stats'
+  if [ -n "$(lsmod | grep stats)" ]; then
+    logDebugMsg "IOcm Kernel detected, version: $kernelVersion";
   else
     logErrorMsg "No IOcm kernel available.";
   fi

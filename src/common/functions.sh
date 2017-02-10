@@ -453,7 +453,7 @@ checkCancelFlag() {
   fi
 
   if [ -f "$CANCEL_FLAG_FILE" ]; then
-    logWarnMsg "Abort flag file '$CANCEL_FLAG_FILE' found, aborting now.";
+    logWarnMsg "Cancel flag file '$CANCEL_FLAG_FILE' found, aborting now.";
     [ ! $doNotExit ] && abort;
     exit 0;
   fi

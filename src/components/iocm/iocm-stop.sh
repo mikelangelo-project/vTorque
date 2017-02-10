@@ -19,8 +19,8 @@ set -o nounset;
 shopt -s expand_aliases;
 
 # source the config and common functions
-ABSOLUTE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
-source "$ABSOLUTE_PATH/iocm-common.sh";
+IOCM_ABSOLUTE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
+source "$IOCM_ABSOLUTE_PATH/iocm-common.sh";
 
 
 
@@ -36,7 +36,14 @@ source "$ABSOLUTE_PATH/iocm-common.sh";
 #
 unsetCores() {
   logDebugMsg "Releasing iocm cores..";
-  $ABSOLUTE_PATH/dynamic-io-manager/src/stop_io_manager.py;
+  $IOCM_ABSOLUTE_PATH/dynamic-io-manager/src/stop_io_manager.py;
+  res=$?;
+  if [ $res -eq 0 ]; then
+    logInfoMsg "IOCM stopped.";
+  else
+    logWarnMsg "Failed to stop IOCM, return code: '$res'";
+  fi
+  return $res;
 }
 
 #---------------------------------------------------------
@@ -59,9 +66,12 @@ cleanupIOCM() {
 
 # release cores managed by IOcm
 unsetCores;
+res=$?;
 
-# clean up config file
-cleanupIOCM;
+if [ $res -eq 0 ]; then
+  # clean up config file
+  cleanupIOCM;
+fi
 
 # pass on return code
-exit $?;
+exit $res;

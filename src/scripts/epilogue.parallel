@@ -57,27 +57,25 @@ source "$SCRIPT_BASE_DIR/common/root-functions.sh";
 logDebugMsg "Running Epilogue-Parallel as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
 logInfoMsg "Root epilogue.parallel script started.";
 
-# capture STDOUT/STDERR outputs to log file
-captureOutputStreams;
-
-# stop snap monitoring task
-stopSnapTask;
-
-# clean up
-cleanUp;
-
 # VM job ?
 if isVMJob; then
-  
+
   # clear up vRDMA config
   tearDownvRDMA_P1;
-  
+
   # clear up IOcm config
   teardownIOcm;
 
   # copy libvirt log from global logs dir to vm job dir (for vm jobs)
   copyVMlogFile;
+
+  # clean up
+  cleanUpVMs;
+
 fi
+
+# stop snap monitoring task
+stopSnapTask;
 
 # in case there was a script for this in the $TORQUE_HOME/mom_priv
 # that has been renamed (by the Makefile) to *.orig, call it now

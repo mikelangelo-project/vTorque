@@ -393,7 +393,7 @@ IOCM_MIN_CORES=0;
 IOCM_MAX_CORES=7;
 
 # list of nodes that have the iocm kernel in place
-IOCM_NODES=".*";
+IOCM_NODES="omtnode.*";
 
 
 #============================================================================#

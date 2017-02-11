@@ -303,7 +303,7 @@ remote processes to finish their work.!";
 
   # cancelled meanwhile ?
   checkCancelFlag;
-      
+
   # done, locks are gone - clean up locks dir
   logDebugMsg "Locks are gone, all remote processes have finished - removing LOCKFILES_DIR='$LOCKFILES_DIR' and LOCKFILE='$LOCKFILE'.";
   rm -Rf $LOCKFILES_DIR;

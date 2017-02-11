@@ -74,6 +74,12 @@ setCores() {
     logErrorMsg "No flag file found for IOCM, cannot setup IOCM!";
   fi
 
+  logInfoMsg "IOCM starting..";
+  logDebugMsg "IOCM log file: '$IOCM_LOG_FILE'.";
+  touch "$IOCM_LOG_FILE";
+  chown $USERNAME:$USERNAME "$IOCM_LOG_FILE";
+
+  # debugging ?
   if $DEBUG; then
     {
       # call in debug mode as process (blocking + all stdout/err printed)
@@ -81,14 +87,13 @@ setCores() {
         --process \
         --config $IOCM_JSON_CONFIG \
           &>> $IOCM_LOG_FILE;
-    } & logInfoMsg "IOCM starting, iocm log file: '$IOCM_LOG_FILE'.";
-    chown $USERNAME:$USERNAME "$IOCM_LOG_FILE";
+    } & : ;
     return 0;
   fi
 
   # start iocm as background process
   $IOCM_ABSOLUTE_PATH/dynamic-io-manager/src/start_io_manager.py \
-      --config $IOCM_JSON_CONFIG;
+    --config $IOCM_JSON_CONFIG &>> $IOCM_LOG_FILE;
 
   # success ?
   if [ $? -eq 0 ]; then

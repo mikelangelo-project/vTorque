@@ -293,7 +293,8 @@ checkPreconditions() {
   if [ -z ${VM_JOB_DIR-} ]; then
     echo "ERROR: Directory 'VM_JOB_DIR' is not set!";
     exit 5;
-  elif [ ! -d "$VM_JOB_DIR" ]; then
+  elif [ ! -d "$VM_JOB_DIR" ] \
+      && $(! mkdir -p "$VM_JOB_DIR"); then
     echo "ERROR: Directory VM_JOB_DIR='$VM_JOB_DIR' does not exist!";
     exit 6;
   elif [ ! -w "$VM_JOB_DIR" ]; then
@@ -303,8 +304,6 @@ checkPreconditions() {
 
   templates="$SCRIPT_PROLOGUE_TEMPLATE \
 $SCRIPT_PROLOGUE_PARALLEL_TEMPLATE \
-$SCRIPT_EPILOGUE_TEMPLATE \
-$SCRIPT_EPILOGUE_PARALLEL_TEMPLATE \
 $JOB_SCRIPT_WRAPPER_TEMPLATE";
 
   # check file permission, job will fail if not correct
@@ -759,51 +758,51 @@ applyVMDefaultParameter() {
 
   # debugging ?
   if [ -z ${VM_PARAMETER['DEBUG']-} ]; then
-    logDebugMsg "Applying DEBUG='$DEBUG' as default VM parameter.";
+    logTraceMsg "Applying DEBUG='$DEBUG' as default VM parameter.";
     VM_PARAMETER['DEBUG']="$DEBUG";
   fi
 
   # trace ?
   if [ -z ${VM_PARAMETER['TRACE']-} ]; then
-    logDebugMsg "Applying TRACE='$TRACE' as default VM parameter.";
+    logTraceMsg "Applying TRACE='$TRACE' as default VM parameter.";
     VM_PARAMETER['TRACE']="$TRACE";
   fi
 
   # file-system to use
   if [ -z ${VM_PARAMETER['FILESYSTEM_TYPE']-} ]; then
-    logDebugMsg "Applying FILESYSTEM_TYPE='$FILESYSTEM_TYPE_DEFAULT' as default VM parameter.";
+    logTraceMsg "Applying FILESYSTEM_TYPE='$FILESYSTEM_TYPE_DEFAULT' as default VM parameter.";
     VM_PARAMETER['FILESYSTEM_TYPE']="$FILESYSTEM_TYPE_DEFAULT";
   fi
 
   # vcpu pinning
   if [ -z ${VM_PARAMETER['VCPU_PINNING']-} ]; then
-    logDebugMsg "Applying VCPU_PINNING='$VCPU_PINNING_DEFAULT' as default VM parameter.";
+    logTraceMsg "Applying VCPU_PINNING='$VCPU_PINNING_DEFAULT' as default VM parameter.";
     VM_PARAMETER['VCPU_PINNING']="$VCPU_PINNING_DEFAULT";
   fi
 
   # amount of vcpus
   if [ -z ${VM_PARAMETER['VCPUS']-} ]; then
-    logDebugMsg "Applying VCPUS='$VCPUS_DEFAULT' as default VM parameter.";
+    logTraceMsg "Applying VCPUS='$VCPUS_DEFAULT' as default VM parameter.";
     VM_PARAMETER['VCPUS']="$VCPUS_DEFAULT";
   fi
 
   # vms per node
   if [ -z ${VM_PARAMETER['VMS_PER_NODE']-} ]; then
-    logDebugMsg "Applying VMS_PER_NODE='$VMS_PER_NODE_DEFAULT' as default VM parameter.";
+    logTraceMsg "Applying VMS_PER_NODE='$VMS_PER_NODE_DEFAULT' as default VM parameter.";
     VM_PARAMETER['VMS_PER_NODE']="$VMS_PER_NODE_DEFAULT";
   fi
 
   # amount of RAM
   if [ -z ${VM_PARAMETER['RAM']-} ]; then
-    logDebugMsg "Applying RAM='$RAM_DEFAULT' as default VM parameter.";
+    logTraceMsg "Applying RAM='$RAM_DEFAULT' as default VM parameter.";
     VM_PARAMETER['RAM']="$RAM_DEFAULT";
   fi
 
   # VM image
   if [ -z ${VM_PARAMETER['IMG']-} ]; then
-    logDebugMsg "Applying IMG='$IMG_DEFAULT' as default VM parameter.";
+    logTraceMsg "Applying IMG='$IMG_DEFAULT' as default VM parameter.";
     VM_PARAMETER['IMG']="$GLOBAL_IMG_DIR/$IMG_DEFAULT";
-    logDebugMsg "Applying DISTRO='$DISTRO_DEFAULT' as default VM parameter.";
+    logTraceMsg "Applying DISTRO='$DISTRO_DEFAULT' as default VM parameter.";
     VM_PARAMETER['DISTRO']="$DISTRO_DEFAULT";
   fi
 
@@ -820,37 +819,37 @@ applyVMDefaultParameter() {
 
   # optional persistent disk (mount on rank0)
   if [ -z ${VM_PARAMETER['DISK']-} ]; then
-    logDebugMsg "Applying DISK='$DISK_DEFAULT' as default VM parameter.";
+    logTraceMsg "Applying DISK='$DISK_DEFAULT' as default VM parameter.";
     VM_PARAMETER['DISK']="$DISK_DEFAULT";
   fi
 
   # arch for the VM
   if [ -z ${VM_PARAMETER['ARCH']-} ]; then
-    logDebugMsg "Applying ARCH='$ARCH_DEFAULT' as default VM parameter.";
+    logTraceMsg "Applying ARCH='$ARCH_DEFAULT' as default VM parameter.";
     VM_PARAMETER['ARCH']="$ARCH_DEFAULT";
   fi
 
   # hypervisor to use
   if [ -z ${VM_PARAMETER['HYPERVISOR']-} ]; then
-    logDebugMsg "Applying HYPERVISOR='$HYPERVISOR_DEFAULT' as default VM parameter.";
+    logTraceMsg "Applying HYPERVISOR='$HYPERVISOR_DEFAULT' as default VM parameter.";
     VM_PARAMETER['HYPERVISOR']="$HYPERVISOR_DEFAULT";
   fi
 
   # enable ioCM
   if [ -z ${VM_PARAMETER['IOCM']-} ]; then
-    logDebugMsg "Applying IOCM='$IOCM_ENABLED_DEFAULT' as default VM parameter.";
+    logTraceMsg "Applying IOCM='$IOCM_ENABLED_DEFAULT' as default VM parameter.";
     VM_PARAMETER['IOCM']=$IOCM_ENABLED_DEFAULT;
   fi
 
   # min amount of ioCM cores
   if [ -z ${VM_PARAMETER['IOCM_MIN_CORES']-} ]; then
-    logDebugMsg "Applying IOCM_MIN_CORES='$IOCM_MIN_CORES_DEFAULT' as default VM parameter.";
+    logTraceMsg "Applying IOCM_MIN_CORES='$IOCM_MIN_CORES_DEFAULT' as default VM parameter.";
     VM_PARAMETER['IOCM_MIN_CORES']="$IOCM_MIN_CORES_DEFAULT";
   fi
 
   # max amount of ioCM cores
   if [ -z ${VM_PARAMETER['IOCM_MAX_CORES']-} ]; then
-    logDebugMsg "Applying IOCM_MAX_CORES='$IOCM_MAX_CORES_DEFAULT' as default VM parameter.";
+    logTraceMsg "Applying IOCM_MAX_CORES='$IOCM_MAX_CORES_DEFAULT' as default VM parameter.";
     VM_PARAMETER['IOCM_MAX_CORES']="$IOCM_MAX_CORES_DEFAULT";
   fi
 
@@ -956,8 +955,8 @@ generateWrapperScripts() {
   # generate Prologue (VM boot script)
   # and Epilogue (VM tear down script)
   #
-  logDebugMsg "Generating Prologue[.parallel] (vm boot scripts).";
-  logDebugMsg "and Epilogue[.parallel] (vm destroy scripts).";
+  logDebugMsg "Generating user prologue[.parallel] wrappers (vm boot scripts).";
+  logDebugMsg "and user epilogue[.parallel] warppers (vm destroy scripts).";
 
 
   #
@@ -966,42 +965,25 @@ generateWrapperScripts() {
 
   # ensure destination dirs are in place for the resulting scripts
   mkdir -p $(dirname $SCRIPT_PROLOGUE) 2>/dev/null;
-  mkdir -p $(dirname $SCRIPT_EPILOGUE) 2>/dev/null;
 
-  # copy prologue template
+  # copy user prologue template
   cp $SCRIPT_PROLOGUE_TEMPLATE $SCRIPT_PROLOGUE && chmod 700 $SCRIPT_PROLOGUE;
   if [ $? -ne 0 ]; then
     logErrorMsg "Make sure you have write access for dir \
 '$(dirname $SCRIPT_PROLOGUE)' and read access for file '$SCRIPT_PROLOGUE_TEMPLATE' !";
   fi
 
-  # copy prologue.parallel template
+  # copy user prologue.parallel template
   cp $SCRIPT_PROLOGUE_PARALLEL_TEMPLATE $SCRIPT_PROLOGUE_PARALLEL && chmod 700 $SCRIPT_PROLOGUE_PARALLEL;
   if [ ! $? ]; then
     logErrorMsg "Make sure you have write access for dir \
 '$(dirname $SCRIPT_PROLOGUE_PARALLEL)' and read access for file '$SCRIPT_PROLOGUE_PARALLEL_TEMPLATE' !";
   fi
 
-  # copy epilogue template
-  cp $SCRIPT_EPILOGUE_TEMPLATE $SCRIPT_EPILOGUE && chmod 700 $SCRIPT_EPILOGUE;
-  if [ ! $? ]; then
-    logErrorMsg "Make sure you have write access for dir \
-'$(dirname $SCRIPT_EPILOGUE)' and read access for file '$SCRIPT_EPILOGUE_TEMPLATE' !";
-  fi
-
-  # copy epilogue.parallel template
-  cp $SCRIPT_EPILOGUE_PARALLEL_TEMPLATE $SCRIPT_EPILOGUE_PARALLEL && chmod 700 $SCRIPT_EPILOGUE_PARALLEL;
-  if [ ! $? ]; then
-    logErrorMsg "Make sure you have write access for dir \
-'$(dirname $SCRIPT_EPILOGUE_PARALLEL)' and read access for file '$SCRIPT_EPILOGUE_PARALLEL_TEMPLATE' !";
-  fi
-
   # substitute place-holders in the prologue and epilogue scripts
-  logDebugMsg "Replacing place-holders in pro/epilogue scripts:";
+  logDebugMsg "Replacing place-holders in pro scripts:";
   logDebugMsg " 1) '$SCRIPT_PROLOGUE'";
   logDebugMsg " 2) '$SCRIPT_PROLOGUE_PARALLEL'";
-  logDebugMsg " 3) '$SCRIPT_EPILOGUE'";
-  logDebugMsg " 4) '$SCRIPT_EPILOGUE_PARALLEL'";
 
   # replace all VM parameters
   # (contains parsed args and default values for missing ones)
@@ -1016,8 +998,6 @@ generateWrapperScripts() {
 that matches key='$key' with value: '$value'";
     sed -i "0,/$placeHolder/{s,$placeHolder,$value,}" $SCRIPT_PROLOGUE;
     sed -i "0,/$placeHolder/{s,$placeHolder,$value,}" $SCRIPT_PROLOGUE_PARALLEL;
-    sed -i "0,/$placeHolder/{s,$placeHolder,$value,}" $SCRIPT_EPILOGUE;
-    sed -i "0,/$placeHolder/{s,$placeHolder,$value,}" $SCRIPT_EPILOGUE_PARALLEL;
   done
 
   # put all keys into a map so we can iterate them
@@ -1033,21 +1013,17 @@ that matches key='$key' with value: '$value'";
     logTraceMsg "Replacing: all place-holders '__${key}__' with '$value'.";
     sed -i "0,/__RUID__/{s,__${key}__,$value,}" $SCRIPT_PROLOGUE;
     sed -i "0,/__RUID__/{s,__${key}__,$value,}" $SCRIPT_PROLOGUE_PARALLEL;
-    sed -i "0,/__RUID__/{s,__${key}__,$value,}" $SCRIPT_EPILOGUE;
-    sed -i "0,/__RUID__/{s,__${key}__,$value,}" $SCRIPT_EPILOGUE_PARALLEL;
   done
 
   # set user pro/epilogue scripts
   logTraceMsg "Replacing: all place-holders '__PROLOGUE_SCRIPT__' with '$SCRIPT_PROLOGUE' \
-in scripts '$SCRIPT_PROLOGUE' and '$SCRIPT_EPILOGUE'.";
+in script '$SCRIPT_PROLOGUE'.";
   sed -i "0,/__PROLOGUE_SCRIPT__/{s,__PROLOGUE_SCRIPT__,$USER_PROLOGUE_SCRIPT,}" $SCRIPT_PROLOGUE;
-  sed -i "0,/__EPILOGUE_SCRIPT__/{s,__EPILOGUE_SCRIPT__,$USER_EPILOGUE_SCRIPT,}" $SCRIPT_EPILOGUE;
 
   # set user VM pro/epilogue scripts
   logTraceMsg "Replacing: all place-holders '__VM_PROLOGUE_SCRIPT__' with '$SCRIPT_PROLOGUE' \
-in scripts '$SCRIPT_PROLOGUE' and '$SCRIPT_EPILOGUE'.";
+in script '$SCRIPT_PROLOGUE'.";
   sed -i "0,/__VM_PROLOGUE_SCRIPT__/{s,__VM_PROLOGUE_SCRIPT__,$USER_VM_PROLOGUE_SCRIPT,}" $SCRIPT_PROLOGUE;
-  sed -i "0,/__VM_EPILOGUE_SCRIPT__/{s,__VM_EPILOGUE_SCRIPT__,$USER_VM_EPILOGUE_SCRIPT,}" $SCRIPT_EPILOGUE;
 
 }
 
@@ -1063,6 +1039,7 @@ generateJobScriptWrapper() {
   # environment (+vm contextualization like IP-networking, .. ?)
   #
   logDebugMsg "Generating job script wrapper for vm-based execution.";
+  logDebugMsg " 3) '$SCRIPT_PROLOGUE_PARALLEL'";
 
   # copy template
   mkdir -p $(realpath $(dirname $JOB_SCRIPT_WRAPPER)) 2>/dev/null;
@@ -1186,16 +1163,12 @@ generateFiles() {
   logDebugMsg " Wrapper for user Prologue script:           '$SCRIPT_PROLOGUE'";
   logDebugMsg " Wrapper for user Prologue.parallel script:  '$SCRIPT_PROLOGUE_PARALLEL'";
   logDebugMsg " Wrapper Job script:                         '$JOB_SCRIPT_WRAPPER'";
-  logDebugMsg " Wrapper for user Epilogue script:           '$SCRIPT_EPILOGUE'";
-  logDebugMsg " Wrapper for user Epilogue.parallel' script: '$SCRIPT_EPILOGUE_PARALLEL'";
   logDebugMsg "----------------Generated_Wrapper_Files_END-------------------------";
 
   # do a simple syntax check
   logDebugMsg "Performing simple syntax check for generated scripts";
   if bash -n $SCRIPT_PROLOGUE \
       && bash -n $SCRIPT_PROLOGUE_PARALLEL \
-      && bash -n $SCRIPT_EPILOGUE \
-      && bash -n $SCRIPT_EPILOGUE_PARALLEL \
       && bash -n $JOB_SCRIPT_WRAPPER; then
     logDebugMsg "Generated scripts have passed basic validation checks";
   else
@@ -1207,10 +1180,10 @@ generateFiles() {
   #
   if [ $JOB_TYPE == "@BATCH_JOB@" ]; then
     # replace the job-script torque knows about with the generated wrapper and add prologue/epilogue
-    PARAMETERS_REAL_QSUB="$PARAMETERS_CLEANED -l ${CLEANED_PBS_RES_REQ}prologue=$SCRIPT_PROLOGUE,epilogue=$SCRIPT_EPILOGUE $JOB_SCRIPT_WRAPPER";
+    PARAMETERS_REAL_QSUB="$PARAMETERS_CLEANED -l ${CLEANED_PBS_RES_REQ}prologue=$SCRIPT_PROLOGUE $JOB_SCRIPT_WRAPPER";
   elif [ $JOB_TYPE == "@STDIN_JOB@" ]; then
     # replace the job-script torque knows about with the generated wrapper and add prologue/epilogue
-    PARAMETERS_REAL_QSUB="$PARAMETERS_CLEANED -l ${CLEANED_PBS_RES_REQ}prologue=$SCRIPT_PROLOGUE,epilogue=$SCRIPT_EPILOGUE $JOB_SCRIPT_WRAPPER";
+    PARAMETERS_REAL_QSUB="$PARAMETERS_CLEANED -l ${CLEANED_PBS_RES_REQ}prologue=$SCRIPT_PROLOGUE $JOB_SCRIPT_WRAPPER";
   elif [ $JOB_TYPE == "@INTERACTIVE_JOB@" ]; then # interactive job
     # future work
     logErrorMsg "\n*** !!! ***\
@@ -1219,7 +1192,7 @@ Please note, this is future work.\n\
 Torque requires a patch for this feature.\n\
 *** !!! ***\n";
     # replace the job-script torque knows about with the generated wrapper and add prologue/epilogue
-    PARAMETERS_REAL_QSUB="$PARAMETERS_CLEANED -l ${CLEANED_PBS_RES_REQ}prologue=$SCRIPT_PROLOGUE,epilogue=$SCRIPT_EPILOGUE";
+    PARAMETERS_REAL_QSUB="$PARAMETERS_CLEANED -l ${CLEANED_PBS_RES_REQ}prologue=$SCRIPT_PROLOGUE";
   else
     logErrorMsg "Unknown type of job: '$JOB_TYPE'";
   fi
@@ -1316,7 +1289,11 @@ showLog() {
       && ! $IS_INTERACTIVE_JOB \
       && [ ! -z ${SHOW_LOG-} ] \
       && $SHOW_LOG; then
-    tail -f -n1 $LOG_FILE;
+    if [ ! -e "$LOG_FILE" ]; then
+      touch "$LOG_FILE";
+    fi
+    trap _printLogFileName SIGHUP SIGINT SIGTERM SIGKILL;
+    tail -f -n0 $LOG_FILE;
   fi
 }
 
@@ -1324,34 +1301,28 @@ showLog() {
 #---------------------------------------------------------
 #
 # Abort function that is called by the (global) signal trap.
-# Cleans ups the created job dir with generated files
-# and cancels the job if already submitted.
+# Cleans ups the created job dir with generated files.
 #
 _abort() {
-  exitCode=0;
-  if ! ${SHOW_LOG-false}; then
-    logInfoMsg "Canceling job submission" true;
-    # clean up the created tmp dir
-    ! $DEBUG && logInfoMsg "Removing dir '$VM_JOB_DIR/'" true;
-    ! $DEBUG && rm -Rf $VM_JOB_DIR;
-    # and qdel the job if already submitted but script not exited
-    if [ ! -n $JOBID ]; then
-      logDir="$(dirname $LOG_FILE)";
-      if [ ! -d "$logDir" ]; then
-        mkdir -p "$logDir";
-      fi
-      if $DEBUG; then
-        qdel $JOBID |& tee -a $LOG_FILE;
-      else
-        qdel $JOBID;
-      fi
-      exitCode=$?;
-    fi
-    ! $DEBUG && logInfoMsg "Job dir has been removed '$VM_JOB_DIR'." true;
-  else
-     echo -e "\nLog file: '$LOG_FILE'";
-  fi
-  return $exitCode;
+
+  # inform user
+  logInfoMsg "Canceling job submission" true;
+
+  # clean up the created tmp dir
+  ! $DEBUG \
+    && logInfoMsg "Removing dir '$VM_JOB_DIR/'" true \
+    && rm -Rf $VM_JOB_DIR;
+
+  return 0;
+}
+
+
+#---------------------------------------------------------
+#
+# Alternative sig trap hook, put in place when job is submitted
+#
+_printLogFileName() {
+  echo -e "\nLog file: '$LOG_FILE'";
 }
 
 
@@ -1378,13 +1349,13 @@ fi
 logDebugMsg "***************** BEGIN OF QSUB WRAPPER ********************";
 
 # log the call
-logCmdLine;
+logCmdLine "TRACE";
 
 # cached parameters
 declare -a PARAMETERS=$@;
 
-# debug log
-logDebugMsg "All parameter received:  '$PARAMETERS'";
+# trace logging
+logDebugMsg "Arguments received:  '$PARAMETERS'";
 
 #
 # check if needed files are present, etc
@@ -1436,6 +1407,8 @@ if ! $VMJOB_REQ_DETECTED; then
 fi
 #else: it's a VM job
 
+logInfoMsg "Generating files for VM job, please be patient..";
+
 # ensure flag file dir exists
 if [ ! -e "$FLAG_FILE_DIR" ]; then
   mkdir -p "$FLAG_FILE_DIR" \
@@ -1471,7 +1444,6 @@ Skippping job submission." true;
   logInfoMsg "1) Get an interactive job with cmd 'qsub -I $PARAMETERS_CLEANED'" true;
   logInfoMsg "2) When on the node, run the prologue script '$SCRIPT_PROLOGUE', only." true;
   logInfoMsg "3) Run the job script '$JOB_SCRIPT_WRAPPER'." true;
-  logInfoMsg "4) Run the epilogue script '$SCRIPT_EPILOGUE', only." true;
   res=0;
 
 # jobfile or input stream present ?

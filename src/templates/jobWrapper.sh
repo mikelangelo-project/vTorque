@@ -524,6 +524,7 @@ createJobEnvironmentFiles;
 #
 # execute the actual user job
 #
+logInfoMsg "Starting user job script..";
 logDebugMsg "Job-Type to execute: $JOB_TYPE";
 
 # what kind of job is it ? (interactive, STDIN, batch-script)

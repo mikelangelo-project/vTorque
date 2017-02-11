@@ -87,6 +87,12 @@ source "$SCRIPT_BASE_DIR/common/functions.sh";
 # get list of domain XMLs
 declare -a VM_DOMAIN_XML_LIST=($(ls $DOMAIN_XML_PATH_NODE/*.xml));
 
+#
+# prevent duplicate log msgs
+#
+PRINT_TO_STDOUT=false;
+
+
 
 #============================================================================#
 #                                                                            #
@@ -120,7 +126,7 @@ _waitForFiles() {
 
   startDate=$(date +%s);
   filesCreatedFlag="$DOMAIN_XML_PATH_NODE/.done";
-  
+
   # init of VMs to boot is done
   while [ ! -f "$filesCreatedFlag" ]; do
     # wait
@@ -129,7 +135,7 @@ _waitForFiles() {
     # timeout (150sec) reached ?
     isTimeoutReached 150 $startDate;
   done
-  
+
   # check if the domain XML file exists
   if [ ! -n "$(ls $DOMAIN_XML_PATH_NODE/*.xml)" ]; then
     logErrorMsg "Files for node have been generated, but no domain XML files could be found.";
@@ -142,7 +148,7 @@ _waitForFiles() {
 # Prepares all files for local VM(s) and triggers boot
 #
 prepareVMs() {
-  
+
   logDebugMsg "Preparing VM files..";
 
   # wait for needed files to come into place
@@ -160,6 +166,11 @@ prepareVMs() {
 
     # construct filename of metadata yaml file that was used to create the seed.img
     metadataFile="$VM_JOB_DIR/$LOCALHOST/${i}-metadata";
+
+    # check if file exists
+    [ ! -e "$metadataFile" ] \
+      && logErrorMsg "Metadata file '$metadataFile' doesn't exist !";
+
     # grep vhostname from metadata file
     vHostName=$(grep 'hostname: ' $metadataFile | cut -d' ' -f2);
 
@@ -219,7 +230,7 @@ function waitForVMs() {
 
     # check if an error occurred before lock files could be created
     checkErrorFlag;
-    
+
     # check if job has been cancled meanwhile
     checkCancelFlag;
 
@@ -322,7 +333,7 @@ and VM '$vhostName' with MAC='$mac' is still not available.";
       # found ?
       if [ -n "$vmIP" ]; then
         logTraceMsg "Seems like we can ping VM's hostname '$vhostName' and it resolves to '$vmIP'";
-      
+
         # check if arp knowns already the MAC for VM's IP
         tmp=$($ARP_BIN -an | grep -i "$vmIP");
 
@@ -387,7 +398,12 @@ and VM '$vhostName' with MAC='$mac' is still not available.";
     checkRemoteNodes;
 
     # wait a moment before we try it again
-    logDebugMsg "Waiting for VM's ($mac / $vmIP) SSH/HTTP server to become available..";
+    if [[ "$DISTRO" =~ $REGEX_OSV ]]; then
+      protocol="HTTP";
+    else
+      protocol="SSH";
+    fi
+    logDebugMsg "Waiting for VM's ($mac / $vmIP) to become available via $protocol ..";
     sleep 1;
 
     # timeout reached ?
@@ -460,6 +476,7 @@ _abort() { # it should not happen that we reach this function, but in case..
 
 # debug log
 logDebugMsg "************* BEGIN OF JOB PROLOGUE.PARALLEL *****************";
+logInfoMsg "User prologue.parallel wrapper script started.";
 
 checkPreconditions;
 
@@ -475,6 +492,7 @@ res=$?;
 
 # debug log
 logDebugMsg "************** END OF JOB PROLOGUE.PARALLEL ******************";
+logInfoMsg "User prologue.parallel wrapper script finished.";
 
 # print the consumed time in debug mode
 runTimeStats;

@@ -79,12 +79,18 @@ _log() {
   # print log msg to job log file (may not exists during first cycles)
   if $printToSTDout \
       || [ $processName == "qsub" ]; then
-    # log file exists ?
-    if [ -f $LOG_FILE ]; then
+    # stdout/err exists ?
+    if [ ! -e /proc/$$/fd/1 ] || [ ! -e /proc/$$/fd/2 ]; then
+      # log file exists ?
+      if [ -f $LOG_FILE ]; then
+        echo -e "$color[$LOCALHOST|$(date +%Y-%m-%dT%H:%M:%S)|$processName|$logLevel]$NC $logMsg" &>> $LOG_FILE;
+      fi
+    elif [ -f $LOG_FILE ]; then
       echo -e "$color[$LOCALHOST|$(date +%Y-%m-%dT%H:%M:%S)|$processName|$logLevel]$NC $logMsg" |& tee -a $LOG_FILE;
+    else
+      # fallback: print msg to the system log and to stdout/stderr
+      logger "[$processName|$logLevel] $logMsg";
     fi
-    # print msg to the system log and to stdout/stderr
-    logger "[$processName|$logLevel] $logMsg";
   else
     # print msg to the system log and to stdout/stderr
     logger "[$processName|$logLevel] $logMsg";
@@ -166,10 +172,11 @@ createRAMDisk() {
 #
 _cleanUpSharedFS() {
   # running inside root epilogue ?
-  if [ $# -ne 1 ] || [ "$1" != "rootNodeOnly" ]; then
-    logDebugMsg "Skipping cleanup on sister node.";
+  if [ $# -eq 0 ] \
+      || [ "$1" != "rootNode" ]; then
+    logDebugMsg "Skipping cleanup on sister node as we have a shared fs.";
   else # yes
-    logDebugMsg "Cleaning up shared file system ";
+    logDebugMsg "Cleaning up shared file system on root node '$LOCALHOST'.";
     if [ -n "$(lsof | grep $SHARED_FS_JOB_DIR/$LOCALHOST)" ]; then
       # print info
       logErrorMsg "Cannot clean shared file system '$SHARED_FS_JOB_DIR', it is in use.";
@@ -198,18 +205,98 @@ _cleanUpRAMDisk() {
 
 #---------------------------------------------------------
 #
-# Kills all local VMs that are related to the current job
+# Destroys all local job related VMs.
 #
-_killLocalJobVMs() {
-  # kill all VMs that match the JOBID
-  vmList=$(virsh list --all | grep $JOBID | grep -vE 'Id|Name|-----' | cut -d' ' -f2);
-  for vm in $vmList; do
-    if $DEBUG; then
-      virsh $VIRSH_OPTS destroy $vm |& tee -a $LOG_FILE;
+_stopLocalJobVMs() {
+
+  if [ $# -ne 3 ]; then
+    logErrorMsg "Function '_destroyVM' called with '$#' arguments, '3' are expected.\nProvided params are: '$@'" 2;
+  fi
+
+  i=$1;
+  totalCount=$2;
+  domainXML=$3;
+  startDate="$(date +%s)";
+
+  # domain XML exists ?
+  if [ ! -f "$domainXML" ]; then
+    logWarnMsg "The guest's domain XML file '$domainXML' doesn't exist.";
+    return 1;
+  fi
+
+  # grep domain name from VMs domainXML
+  domainName="$(grep -E '<name>.*</name>' $domainXML | cut -d'>' -f2 | cut -d'<' -f1)";
+  logTraceMsg "VM number '$i/$totalCount' has domainName '$domainName'.";
+
+  # construct libVirt log file name for the VM
+  vmLogFile=$VMLOG_FILE_PREFIX/$i-libvirt.log; # keep in sync with the name used in the prologue
+
+  # create lock file
+  logDebugMsg "Waiting for VM domain name '$domainName', using lock dir: '$LOCKFILES_DIR'";
+  lockFile="$LOCKFILES_DIR/$domainName";
+  touch $lockFile;
+
+  # if user disk is present, we need a clean shutdown first
+  # FIXME the seed.img and sys iso needs to be skipped !
+  if false && [ -n "$(grep '<disk type=' $domainXML | grep file | grep disk)" ]; then
+
+    logTraceMsg "There is a disk attached to VM '$i/$totalCount' with domainName '$domainName'.";
+
+    # shutdown VM
+    logTraceMsg "Shutdown VM '$i/$totalCount' with domainName '$domainName'.";
+    if $DEBUG;then
+      addParam="--log $vmLogFile"
     else
-      virsh $VIRSH_OPTS destroy $vm 2>/dev/null;
+      addParam="";
     fi
-  done
+    output=$(virsh $VIRSH_OPTS $addParam shutdown $domainName 2>&1);
+    logDebugMsg "virsh output:\n$output";
+
+    # wait until shutdown status is reached
+    timeOut=false;
+    while ! $timeOut \
+        && [ -n "$(virsh list --all | grep ' $domainName ' | grep -iE 'shut off|ausgeschaltet')" ]; do
+
+      # wait a moment before checking again
+      logTraceMsg "Waiting for VM '$i/$totalCount' with domainName '$domainName' to shutdown..";
+      sleep 2;
+
+      # soft timeout reached ?
+      timeOut=$(isTimeoutReached $TIMEOUT $startDate true);
+
+    done
+    # timeout reached ?
+    if $timeOut; then
+      # clean shut down finished
+      msg="VM '$i/$totalCount' with domainName '$domainName', timeout \
+of '$TIMEOUT' sec has been reached while waiting for shutdown to finish.";
+      indicateRemoteError "$lockFile" "$msg";
+      logErrorMsg "$msg";
+    else
+      # clean shut down finished
+      logDebugMsg "VM '$i/$totalCount' with domainName '$domainName' has been \
+shutdown or timeout of '$TIMEOUT' sec has been reached.";
+    fi
+  fi
+
+  # destroy libvirt domain
+  logDebugMsg "Destroying VM '$i/$totalCount' with domainName '$domainName'.";
+  if $DEBUG;then
+    addParam="--log $vmLogFile"
+  else
+    addParam="";
+  fi
+  output=$(virsh $VIRSH_OPTS $addParam destroy $domainName 2>&1);
+  logDebugMsg "virsh output:\n$output";
+
+  logDebugMsg "VM '$i/$totalCount' with domainName '$domainName' has been clean up.";
+
+  # remove lock file
+  logDebugMsg "Removing lock file for virsh domain name: '$domainName'.";
+  rm -f "$lockFile";
+
+  # done
+  return 0;
 }
 
 
@@ -234,11 +321,33 @@ _flushARPcache() {
 #
 # Clean up after the job has ran.
 #
-cleanUp() {
+cleanUpVMs() {
 
-  # kill running job VMs
-  _killLocalJobVMs;
-  
+  # log shutdown
+  logDebugMsg "Shutting down and destroying all local VMs now.";
+
+  declare -a VM_DOMAIN_XML_LIST=($(ls $DOMAIN_XML_PATH_NODE/*.xml));
+
+  # let remote processes know that we started our work
+  informRemoteProcesses;
+
+  # shutdown all VMs
+  vmNo=0;
+  totalCount=${#VM_DOMAIN_XML_LIST[@]};
+  for domainXML in ${VM_DOMAIN_XML_LIST[@]}; do
+    # increase counter
+    vmNo=$(($vmNo + 1));
+    # destroy local VMs
+    logDebugMsg "Processing VM number '$vmNo/$totalCount' booted from domainXML='$domainXML'.";
+    if $PARALLEL; then
+      _stopLocalJobVMs $vmNo $totalCount $domainXML & continue;
+    else
+      _stopLocalJobVMs $vmNo $totalCount $domainXML;
+    fi
+  done
+
+  logDebugMsg "Destroyed ($vmNo) local VM, done.";
+
   # clean up tmp files (images, etc)
   if $USE_RAM_DISK; then
     _cleanUpRAMDisk;
@@ -248,7 +357,7 @@ cleanUp() {
 
   # flush arp cache
   _flushARPcache;
-  
+
   # kill all processes owned by user
   skill -KILL -u $USERNAME;
 }
@@ -541,7 +650,7 @@ function spawnProcess() {
     logDebugMsg "Spawning root process..";
     # cache start date
     startDate="$(date +%s)";
-    
+
     # ensure flag file dir exists
     if [ ! -e "$FLAG_FILE_DIR/$LOCALHOST" ]; then
       { 
@@ -549,7 +658,7 @@ function spawnProcess() {
           && chown $USERNAME:$USERNAME "$FLAG_FILE_DIR/$LOCALHOST";
       } || logErrorMsg "Failed to create flag files dir '$FLAG_FILE_DIR/$LOCALHOST'.";
     fi
-    
+
     # wait for userPrologue to generate VM files
     logDebugMsg "Waiting for flag file '$FLAG_FILE_DIR/$LOCALHOST/.userPrologueDone' to become available..";
     while [ ! -e "$FLAG_FILE_DIR/$LOCALHOST/.userPrologueDone" ]; do
@@ -561,19 +670,19 @@ function spawnProcess() {
       checkCancelFlag;
     done
     logTraceMsg "Flag file '$FLAG_FILE_DIR/$LOCALHOST/.userPrologueDone' found."
-    
+
     # boot all (localhost) VMs
     bootVMs;
-    
+
     # setup IOcm
     setupIOCM;
-    
+
     # indicate work is done
     {
       touch "$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone" \
         && chown $USERNAME:$USERNAME "$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone";
     } || logErrorMsg "Failed to create flag file '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone' and change owner to '$USERNAME'.";
-    
+
   } & return 0;
 }
 

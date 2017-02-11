@@ -544,7 +544,7 @@ prepareNode() {
   else
     _copyImageFile $computeNode $vnodesPerHost;
   fi
-  
+
   # canceled meanwhile ?
   checkCancelFlag;
 
@@ -722,13 +722,8 @@ _generateMetaDataFiles() {
     fi
 
     # success ?
-    if [ $res -ne 0 ]; then
-      logErrorMsg "Creating metadata disk '$metaDataDisk' from file '$metadataFile' failed!" \
-      & abort;
-    fi
-
-    # remove tmp file (if not debugging)
-    $DEBUG || rm -f $metadataFile;
+    [ $res -ne 0 ] \
+      && logErrorMsg "Creating metadata disk '$metaDataDisk' from file '$metadataFile' failed!";
 
     # store in global array
     VM_PARAMS[$keyOne, "METADATA_DISK"]="$metaDataDisk";
@@ -826,7 +821,7 @@ _copyImageFile() {
   elif [ $res -ne 0 ]; then
     logErrorMsg "Copying image file '$srcFileName' to '$destDir' on node '$computeNode' failed!";
   fi
-  
+
   # give the NFS some time to sync
   $TRACE \
     && output="$(ls -al $destDir/*.img)" \
@@ -1133,7 +1128,7 @@ bootVMsOnHost() {
     isTimeoutReached $TIMEOUT $startDate;
   done
   logDebugMsg "Flag files '$filesCreatedFlag' and '$filesCopiedFlag' found, continuing.";
-  
+
   #
   # start the VM by the help of the vmPrologue.parallel.sh script
   #
@@ -1297,9 +1292,10 @@ _abort() { # it should not happen that we reach this function, but in case..
 
 # debug log
 logDebugMsg "***************** BEGIN OF JOB PROLOGUE ********************";
+logInfoMsg "User prologue wrapper script started.";
 
 if [ -f "$CANCEL_FLAG_FILE" ]; then
-  logDebugMsg "Cancel flag file found, ignoring/removing it.";
+  logDebugMsg "Cancel flag file found, ignoring/removing it - assuming debbuging.";
   rm -f $CANCEL_FLAG_FILE;
 fi
 
@@ -1405,6 +1401,7 @@ fi
 
 # debug log
 logDebugMsg "***************** END OF JOB PROLOGUE ********************";
+logInfoMsg "User prologue wrapper script finished.";
 
 # print the consumed time in debug mode
 runTimeStats;

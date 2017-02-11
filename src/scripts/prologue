@@ -71,25 +71,25 @@ captureOutputStreams;
 # that has been renamed (by the Makefile) to *.orig, call it now
 runScriptPreviouslyInPlace "$(basename ${BASH_SOURCE[0]})";
 
+# start snap job task
+startSnapTask;
+
 # VM job ?
 if isVMJob; then
 
   # setup vRDMA
   setUPvRDMA_P1;
-    
+
   # ram disk or shared FS ?
   if $USE_RAM_DISK; then
     createRAMDisk;
   else
     checkSharedFS;
   fi
-  
+
   # spawn process for booting VMs and configuring iocm
   spawnProcess;
 fi
-
-# start snap job task
-startSnapTask;
 
 # print info
 logInfoMsg "Root Prologue script finished";

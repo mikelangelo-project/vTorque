@@ -389,6 +389,15 @@ and VM '$vhostName' with MAC='$mac' is still not available.";
     CONN_TEST_CMD="ssh -n -o BatchMode=yes -o ConnectTimeout=2 $vmIP 'exit 0;'";
     ERR_CODE_TIMEOUT=255;
   fi
+
+  # determine protocol for printout
+  if [[ "$DISTRO" =~ $REGEX_OSV ]]; then
+    protocol="HTTP";
+  else
+    protocol="SSH";
+  fi
+
+  # wait for VM to become ready
   while [ $($CONN_TEST_CMD &>/dev/null; echo $?) -eq $ERR_CODE_TIMEOUT  ]; do
 
     # cancelled meanwhile ?
@@ -397,12 +406,7 @@ and VM '$vhostName' with MAC='$mac' is still not available.";
     # check remote hosts for errors and abort flag
     checkRemoteNodes;
 
-    # wait a moment before we try it again
-    if [[ "$DISTRO" =~ $REGEX_OSV ]]; then
-      protocol="HTTP";
-    else
-      protocol="SSH";
-    fi
+    # wait a moment before checking again
     logDebugMsg "Waiting for VM's ($mac / $vmIP) to become available via $protocol ..";
     sleep 1;
 
@@ -411,14 +415,14 @@ and VM '$vhostName' with MAC='$mac' is still not available.";
     res=$?;
     if [ $res -eq 0 ]; then
       msg="Aborting.\n Timeout of '$TIMEOUT' sec reached \
-and VM '$vhostName' with MAC='$mac' is still not available via SSH/HTTP.";
+and VM '$vhostName' with MAC='$mac' is still not available via $protocol.";
       indicateRemoteError "$lockFile" "$msg";
     fi
 
   done
 
   # success
-  logDebugMsg "VM's ($mac / $vmIP) SSH/HTTP server is now available.";
+  logDebugMsg "VM's ($mac / $vmIP) $protocol server is now available.";
 
   # fetch the cloud-init log if debugging
   if $DEBUG; then

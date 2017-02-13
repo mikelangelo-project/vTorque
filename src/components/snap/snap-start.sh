@@ -46,10 +46,6 @@ tagTask() {
     return -1;
   fi
 
-  # tag the snap monitoring task
-  logDebugMsg "Tagging snap monitoring task for job '$JOBID' with tag '$SNAP_TASK_TAG' using format '$SNAP_TAG_FORMAT'";
-  logTraceMsg "~~~~~~~~~~Environment_Start~~~~~~~~~~\n$(env)\n~~~~~~~~~~~Environment_End~~~~~~~~~~~";
-
   # ensure dir exists
   destDir=$(dirname $SNAP_TASK_JSON_FILE);
   if [ ! -d $destDir ] ;then
@@ -65,19 +61,16 @@ tagTask() {
   sed -i "s,__SNAP_TASK_NAME__,$SNAP_TASK_TAG,g" $SNAP_TASK_JSON_FILE;
   logTraceMsg "~~~~~~~~~~SNAP_TASK_JASON_Start~~~~~~~~~~\n$(cat $SNAP_TASK_JSON_FILE | python -m json.tool)\n~~~~~~~~~~SNAP_TASK_JASON_End~~~~~~~~~~";
 
-  # create Task
-  logDebugMsg "Tagging snap monitoring task for job '$JOBID' with tag '$SNAP_TASK_TAG' using format '$SNAP_TAG_FORMAT'";
-  logTraceMsg "~~~~~~~~~~Environment_Start~~~~~~~~~~\n$(env)\n~~~~~~~~~~~Environment_End~~~~~~~~~~~";
-
   # verbose logging
   logTraceMsg "Content of snap's JSON config file\
 \n~~~~~~~~~~~Snap_Config_File_BEGIN~~~~~~~~~~~\n\
 $(cat $SNAP_TASK_TEMPLATE_FILE | python -m json.tool)\
 \n~~~~~~~~~~~~Snap_Config_File_END~~~~~~~~~~~~";
 
-  # create and start task
+  # create and start tagged snap task
+  logDebugMsg "Tagging snap monitoring task for job '$JOBID' with tag '$SNAP_TASK_TAG' using format '$SNAP_TAG_FORMAT'";
   snapCtlOutput="$($SNAPCTL task create -t $SNAP_TASK_JSON_FILE)";
-  res=$?
+  res=$?;
 
   # logging
   if [ $res -ne 0 ]; then

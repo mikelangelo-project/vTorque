@@ -54,8 +54,10 @@ source "$SCRIPT_BASE_DIR/common/root-functions.sh";
 #                                                                            #
 #============================================================================#
 
-logDebugMsg "Running Epilogue as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
+# logging
 logInfoMsg "Root epilogue script started.";
+logDebugMsg "Running Epilogue as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
+logTraceMsg "~~~~~~~~~~Environment_Start~~~~~~~~~~\n$(env)\n~~~~~~~~~~~Environment_End~~~~~~~~~~~";
 
 # let's copy stderr/stdout
 captureOutputStreams;

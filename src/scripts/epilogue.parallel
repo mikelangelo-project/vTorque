@@ -54,8 +54,10 @@ source "$SCRIPT_BASE_DIR/common/root-functions.sh";
 #                                                                            #
 #============================================================================#
 
-logDebugMsg "Running Epilogue-Parallel as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
+# logging
 logInfoMsg "Root epilogue.parallel script started.";
+logDebugMsg "Running Epilogue-Parallel as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
+logTraceMsg "~~~~~~~~~~Environment_Start~~~~~~~~~~\n$(env)\n~~~~~~~~~~~Environment_End~~~~~~~~~~~";
 
 # VM job ?
 if isVMJob; then

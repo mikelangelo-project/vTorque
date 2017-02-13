@@ -61,8 +61,10 @@ source "$SCRIPT_BASE_DIR/common/root-functions.sh";
 #
 waitUntilJobDirIsAvailable;
 
-logDebugMsg "Running prologue as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
+# logging
 logInfoMsg "Root prologue script started";
+logDebugMsg "Running prologue as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
+logTraceMsg "~~~~~~~~~~Environment_Start~~~~~~~~~~\n$(env)\n~~~~~~~~~~~Environment_End~~~~~~~~~~~";
 
 # capture STDOUT/STDERR outputs to log file
 captureOutputStreams;

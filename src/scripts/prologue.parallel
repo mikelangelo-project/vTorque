@@ -60,8 +60,10 @@ source "$SCRIPT_BASE_DIR/common/root-functions.sh";
 #
 waitUntilJobDirIsAvailable;
 
-logDebugMsg "Running Prologue-Parallel as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
+# logging
 logInfoMsg "Root VM prologue.parallel script started.";
+logDebugMsg "Running Prologue-Parallel as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
+logTraceMsg "~~~~~~~~~~Environment_Start~~~~~~~~~~\n$(env)\n~~~~~~~~~~~Environment_End~~~~~~~~~~~";
 
 # in case there was a script for this in the $TORQUE_HOME/mom_priv
 # that has been renamed (by the Makefile) to *.orig, call it now

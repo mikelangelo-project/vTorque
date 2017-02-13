@@ -1063,6 +1063,8 @@ generateJobScriptWrapper() {
       JOB_WRAPPER_FILENAME=$(realpath $(dirname $JOB_SCRIPT_WRAPPER))/INTERACTIVE;
       # not used in this case, just ensure it doesn't contain anything
       LAST_PARAM="";
+      # create indicator flag for x-forwarding request issued by user
+      touch "$FLAG_FILES_DIR/.xIsRequested";
     elif $IS_READLINE_JOB; then
       logTraceMsg "STDIN job detected.";
       # set job type

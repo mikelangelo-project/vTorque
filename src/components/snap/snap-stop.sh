@@ -50,8 +50,6 @@ untagTask() {
 
   # release tag the snap monitoring task
   logDebugMsg "Release snap monitoring task for job '$JOBID' with tag '$SNAP_TASK_TAG' using format '$SNAP_TAG_FORMAT'";
-  logTraceMsg "~~~~~~~~~~Environment_Start~~~~~~~~~~\n$(env)\n~~~~~~~~~~~Environment_End~~~~~~~~~~~";
-
   if [ ! -f "$SNAP_TASK_ID_FILE" ]; then
     logWarnMsg "Snap Task ID file '$SNAP_TASK_ID_FILE' not found.";
     return 1;

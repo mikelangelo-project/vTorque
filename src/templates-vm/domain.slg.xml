@@ -117,5 +117,10 @@ __DISK_XML__
     <memballoon model='virtio'>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x12' function='0x0'/>
     </memballoon>
+    <!-- console log file -->
+    <console type='file'>
+      <source path='__CONSOLE_LOG__'/>
+      <target type='serial' port='0'/>
+    </console>
   </devices>
 </domain>

@@ -230,27 +230,33 @@ _stopLocalJobVMs() {
 
   # construct libVirt log file name for the VM
   vmLogFile=$VMLOG_FILE_PREFIX/$i-libvirt.log; # keep in sync with the name used in the prologue
+  consoleLog="$VM_JOB_DIR/$LOCALHOST/$i-console.log";
 
   # create lock file
   logDebugMsg "Waiting for VM domain name '$domainName', using lock dir: '$LOCKFILES_DIR'";
   lockFile="$LOCKFILES_DIR/$domainName";
   touch $lockFile;
 
+  #
   # if user disk is present, we need a clean shutdown first
-  # FIXME the seed.img and sys iso needs to be skipped !
-  if false && [ -n "$(grep '<disk type=' $domainXML | grep file | grep disk)" ]; then
+  # the seed.img and sys iso needs to be skipped, thus we check if there are 3 in total
+  #
+  if [ 2 -lt $(grep '<disk type=' $domainXML | grep file | grep disk | wc -l) ]; then
 
     logTraceMsg "There is a disk attached to VM '$i/$totalCount' with domainName '$domainName'.";
 
     # shutdown VM
     logTraceMsg "Shutdown VM '$i/$totalCount' with domainName '$domainName'.";
     if $DEBUG;then
-      addParam="--log $vmLogFile"
+      output=$(virsh $VIRSH_OPTS --log $vmLogFile shutdown $domainName |& tee -a "$LOG_FILE");
+      # ensure log file is user reabable
+      chmod 644 "$vmLogFile";
     else
-      addParam="";
+      output=$(virsh $VIRSH_OPTS shutdown $domainName 2>> "$LOG_FILE");
     fi
-    output=$(virsh $VIRSH_OPTS $addParam shutdown $domainName 2>&1);
     logDebugMsg "virsh output:\n$output";
+    # ensure log file is user reabable
+    chmod 644 "$consoleLog";
 
     # wait until shutdown status is reached
     timeOut=false;
@@ -282,16 +288,19 @@ shutdown or timeout of '$TIMEOUT' sec has been reached.";
   # destroy libvirt domain
   logDebugMsg "Destroying VM '$i/$totalCount' with domainName '$domainName'.";
   if $DEBUG;then
-    addParam="--log $vmLogFile"
+    output=$(virsh $VIRSH_OPTS --log $vmLogFile destroy $domainName |& tee -a "$LOG_FILE");
+    # ensure log file is user reabable
+    chmod 644 "$vmLogFile";
   else
-    addParam="";
+    output=$(virsh $VIRSH_OPTS --log $vmLogFile destroy $domainName 2>> "$LOG_FILE");
   fi
-  output=$(virsh $VIRSH_OPTS $addParam destroy $domainName 2>&1);
   logDebugMsg "virsh output:\n$output";
 
-  logDebugMsg "VM '$i/$totalCount' with domainName '$domainName' has been clean up.";
+  # ensure log file is user reabable
+  chmod 644 "$consoleLog";
 
   # remove lock file
+  logDebugMsg "VM '$i/$totalCount' with domainName '$domainName' has been clean up.";
   logDebugMsg "Removing lock file for virsh domain name: '$domainName'.";
   rm -f "$lockFile";
 
@@ -705,16 +714,24 @@ function bootVMs() {
     # grep vhostname from metadata file
     vHostName="$(grep 'hostname: ' $metadataFile | cut -d' ' -f2)";
 
+    # construct logfile names
+    vmLogFile="$VMLOG_FILE_PREFIX/$i-libvirt.log";
+    consoleLog="$VM_JOB_DIR/$LOCALHOST/$i-console.log";
+
     # boot VM
     logDebugMsg "Booting VM number '$i/$totalCount' on compute node '$LOCALHOST' from domainXML='$domainXML'.";
     if $DEBUG; then
-      vmLogFile=$VMLOG_FILE_PREFIX/$i-libvirt.log;
       output=$(virsh $VIRSH_OPTS --log $vmLogFile create $domainXML |& tee -a $LOG_FILE);
+      # ensure log file is user reabable
+      chmod 644 "$vmLogFile";
     else
-      output=$(virsh $VIRSH_OPTS create $domainXML);
+      output=$(virsh $VIRSH_OPTS create $domainXML 2>> "$LOG_FILE");
     fi
     res=$?;
     logDebugMsg "virsh create cmd output:\n'$output'";
+
+    # ensure log files is user reabable
+    chmod 644 "$consoleLog";
 
     # check if it's running
     vmName="$(grep '<name>' $domainXML | cut -d'>' -f2 | cut -d'<' -f1)";

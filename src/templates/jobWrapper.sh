@@ -390,10 +390,31 @@ $(curl --connect-timeout 2 -X GET http://$FIRST_VM:8000/file//pbs_vm_nodefile?op
     logErrorMsg "Returned tid='$tid' is not a number";
   fi
 
+  logDebugMsg "===============JOB_OUTPUT_BEGIN====================";
+  console_log="$VM_JOB_DIR/`hostname`/1-console.log"
+  exec {CON_FD}<$console_log
+  con_eof=0
+  con_part_line=''
   # wait on executed app to finish
   app_finished=0;
   logDebugMsg "Command tid=$tid wait to finish...";
   while [ $app_finished -ne 1 ]; do
+    if $DEBUG; then
+      con_eof=0
+      while [[ $con_eof -eq 0 ]]
+      do
+        # this will read also partial lines (with not \n at end)
+        if read con_line <&$CON_FD; then
+          # printf "CON: %s\n" "${con_part_line}${con_line}"
+          logDebugMsg "CON: ${con_part_line}${con_line}";
+          con_part_line=''
+        else
+          con_part_line+="$con_line"
+          # printf "CON-part: %s\n" "${con_part_line}"
+          con_eof=1
+        fi
+      done
+    fi
     sleep 5;
     app_finished=$(\
       curl --connect-timeout 2 \
@@ -405,18 +426,8 @@ $(curl --connect-timeout 2 -X GET http://$FIRST_VM:8000/file//pbs_vm_nodefile?op
       logErrorMsg "Failed to check if application with tid='$tid' is finished.";
     fi
   done
-
+  exec {CON_FD}>&-
   logDebugMsg "Command tid=$tid finished";
-  logDebugMsg "===============JOB_OUTPUT_BEGIN====================";
-
-  # But job output is in VM console.log only. Most of it is on head node,
-  # but some parts are only on worker nodes (stdout/err).
-  # => needs to be written to nfs-mounted home ($VM_JOB_DIR)
-  if $DEBUG; then
-    # TODO tail -f vm-console-log
-    echo -n ''
-  fi
-
   # store the return code (ssh returns the return value of the command in
   # question, or 255 if an error occurred in ssh itself.)
   # TODO what does curl return on error?

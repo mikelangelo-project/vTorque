@@ -409,6 +409,21 @@ generateMAC() {
 
 #---------------------------------------------------------
 #
+# Determines count of local VMs for the job
+#
+getVMsPerNode() {
+  # check vmsPerNode file exists
+  if [ ! -f "$VM_JOB_DIR/.vms_per_node" ]; then
+    logWarnMsg "Required file '$VM_JOB_DIR/.vms_per_node' not found.";
+    return 0;
+  fi
+  cat "$VM_JOB_DIR/.vms_per_node";
+  return $?;
+}
+
+
+#---------------------------------------------------------
+#
 # Checks whether the job is a VM job.
 #
 function isVMJob() {
@@ -465,9 +480,15 @@ checkCancelFlag() {
 # Abort function that is called by the (global) signal trap.
 #
 abort() {
-  # tell all processes to abort
-  touch $CANCEL_FLAG_FILE;
-  # error coe provided ?
+
+  # tell all processes to abort, 
+  # check if dir already exists, if not the cancel took place before
+  # first log messages were written and job submimtted
+  if [ -e $(dirname "$CANCEL_FLAG_FILE") ]; then
+    touch $CANCEL_FLAG_FILE;
+  fi
+
+  # error code provided ?
   if [ $# -eq 1 ]; then
     if ! [[ $1 =~ ^[0-9]+$ ]]; then
       logTraceMsg "Non-Numeric error code provided to function 'abort': value='$1' !";
@@ -478,9 +499,11 @@ abort() {
   else
     exitCode=1; # default
   fi
+
   # call running script's abort function;
   _abort;
   res=$?;
+
   # exit with combo of error codes
   exit $(($exitCode + ($res * 10)));
 }

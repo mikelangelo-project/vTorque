@@ -981,7 +981,7 @@ generateWrapperScripts() {
   fi
 
   # substitute place-holders in the prologue and epilogue scripts
-  logDebugMsg "Replacing place-holders in pro scripts:";
+  logDebugMsg "Replacing place-holders in prologue[.parallel] scripts:";
   logDebugMsg " 1) '$SCRIPT_PROLOGUE'";
   logDebugMsg " 2) '$SCRIPT_PROLOGUE_PARALLEL'";
 

@@ -65,28 +65,29 @@ _log() {
 
   # log file exists ?
   if [ -z ${LOG_FILE-} ] \
-       || [ ! -f $LOG_FILE ]; then
+       || [ ! -f "$LOG_FILE" ]; then
     # get dir
-    logFileDir=$(dirname $LOG_FILE);
+    logFileDir=$(dirname "$LOG_FILE");
     # ensure dir exists
-    [ ! -d $logFileDir ] && mkdir -p $logFileDir;
+    [ ! -d $logFileDir ] \
+      && mkdir -p $logFileDir;
     # create log file
-    touch $LOG_FILE;
+    touch "$LOG_FILE";
     # set correct owner
-    chown $USERNAME:$USERNAME -R $(dirname $LOG_FILE);
+    chown $USERNAME:$USERNAME -R $(dirname "$LOG_FILE");
   fi
 
   # print log msg to job log file (may not exists during first cycles)
   if $printToSTDout \
-      || [ $processName == "qsub" ]; then
+      || [ "$processName" == "qsub" ]; then
     # stdout/err exists ?
     if [ ! -e /proc/$$/fd/1 ] || [ ! -e /proc/$$/fd/2 ]; then
       # log file exists ?
       if [ -f $LOG_FILE ]; then
-        echo -e "$color[$LOCALHOST|$(date +%Y-%m-%dT%H:%M:%S)|$processName|$logLevel]$NC $logMsg" &>> $LOG_FILE;
+        echo -e "$color[$LOCALHOST|$(date +%Y-%m-%dT%H:%M:%S)|$processName|$logLevel]$NC $logMsg" &>> "$LOG_FILE";
       fi
     elif [ -f $LOG_FILE ]; then
-      echo -e "$color[$LOCALHOST|$(date +%Y-%m-%dT%H:%M:%S)|$processName|$logLevel]$NC $logMsg" |& tee -a $LOG_FILE;
+      echo -e "$color[$LOCALHOST|$(date +%Y-%m-%dT%H:%M:%S)|$processName|$logLevel]$NC $logMsg" |& tee -a "$LOG_FILE";
     else
       # fallback: print msg to the system log and to stdout/stderr
       logger "[$processName|$logLevel] $logMsg";
@@ -94,7 +95,7 @@ _log() {
   else
     # print msg to the system log and to stdout/stderr
     logger "[$processName|$logLevel] $logMsg";
-    echo -e "$color[$LOCALHOST|$(date +%Y-%m-%dT%H:%M:%S)|$processName|$logLevel]$NC $logMsg" &>> $LOG_FILE;
+    echo -e "$color[$LOCALHOST|$(date +%Y-%m-%dT%H:%M:%S)|$processName|$logLevel]$NC $logMsg" &>> "$LOG_FILE";
   fi
 
   # re-enable 'set -x' if it was enabled before
@@ -255,8 +256,9 @@ _stopLocalJobVMs() {
       output=$(virsh $VIRSH_OPTS shutdown $domainName 2>> "$LOG_FILE");
     fi
     logDebugMsg "virsh output:\n$output";
-    # ensure log file is user reabable
-    chmod 644 "$consoleLog";
+    # ensure console log file is user reabable, if it exists
+    [ -f "$consoleLog" ] \
+      && chmod 644 "$consoleLog";
 
     # wait until shutdown status is reached
     timeOut=false;
@@ -296,8 +298,9 @@ shutdown or timeout of '$TIMEOUT' sec has been reached.";
   fi
   logDebugMsg "virsh output:\n$output";
 
-  # ensure log file is user reabable
-  chmod 644 "$consoleLog";
+  # ensure console log file is user reabable, if exists
+  [ -f "$consoleLog" ] \
+      && chmod 644 "$consoleLog";
 
   # remove lock file
   logDebugMsg "VM '$i/$totalCount' with domainName '$domainName' has been clean up.";
@@ -335,6 +338,10 @@ cleanUpVMs() {
   # log shutdown
   logDebugMsg "Shutting down and destroying all local VMs now.";
 
+  if [ ! -e $(dirname "$DOMAIN_XML_PATH_NODE") ]; then
+    logDebugMsg "Skipping VM cleanup, no domain *.xml files found";
+    return 0;
+  fi
   declare -a VM_DOMAIN_XML_LIST=($(ls $DOMAIN_XML_PATH_NODE/*.xml));
 
   # let remote processes know that we started our work
@@ -606,15 +613,6 @@ stopService() {
 
 #---------------------------------------------------------
 #
-# Determines count of local VMs for the job
-#
-getVMCountOnLocalhost() {
-  return $(ls "$VM_JOB_DIR/$LOCALHOST/*.xml" | wc -l);
-}
-
-
-#---------------------------------------------------------
-#
 # copy libvirt log from global logs dir to vm job dir (for vm jobs)
 #
 copyVMlogFile() {
@@ -730,8 +728,9 @@ function bootVMs() {
     res=$?;
     logDebugMsg "virsh create cmd output:\n'$output'";
 
-    # ensure log files is user reabable
-    chmod 644 "$consoleLog";
+    # ensure console log file is user reabable, if exists
+    [ -f "$consoleLog" ] \
+      && chmod 644 "$consoleLog";
 
     # check if it's running
     vmName="$(grep '<name>' $domainXML | cut -d'>' -f2 | cut -d'<' -f1)";

@@ -521,11 +521,6 @@ prepareNode() {
   vnodesPerHost=$2; #number_of_vms_per_host
   amountOfVMs=$3; #total count of vms: number_of_hosts*number_of_vms_per_host
 
-  #
-  number=1;
-  success=false;
-  filesCreatedFlag="$DOMAIN_XML_PATH_PREFIX/$computeNode/.done";
-
   logTraceMsg "Preparing files for '$vnodesPerHost' VM(s) on node '$computeNode' of '$amountOfVMs' total.";
 
   # create the dir that will be shared with VMs
@@ -540,20 +535,15 @@ prepareNode() {
   # copy the VM OS image
   logTraceMsg "Copying image file for VM '$number/$vnodesPerHost' on node '$computeNode'.";
   if $PARALLEL; then
-    _copyImageFile $computeNode $vnodesPerHost & echo -e "";
+    _copyImageFile $computeNode $vnodesPerHost & : ;
   else
     _copyImageFile $computeNode $vnodesPerHost;
+    # create flag file to indicate parallel remote processes that we are done
+    logDebugMsg "Created/transfered files for all '$vnodesPerHost' VM(s) on host '$node' of '$amountOfVMs' VMs in total.";
   fi
 
   # canceled meanwhile ?
   checkCancelFlag;
-
-  # create flag file to indicate parallel remote processes that we are done
-  logDebugMsg "Created/transfered files for all '$vnodesPerHost' VM(s) on host '$node' of '$amountOfVMs' VMs in total.";
-
-  # create flag file to indicate node is ready
-  logDebugMsg "Creating flag file '$filesCreatedFlag' to indicate host '$node's files are ready.";
-  touch "$filesCreatedFlag";
 
   # done
   return 0;
@@ -610,9 +600,11 @@ _generateMetaDataFiles() {
       logErrorMsg "Something went wrong, the metadata template place-holder is still in place ?!";
     fi
 
-    # use hidden tmp file in user's home
+    # create destination dir for metadata file
     mkdir -p "$VM_JOB_DIR/$computeNode";
     metadataFile="$VM_JOB_DIR/$computeNode/$number-metadata";
+
+    # use ramdisk or shared fs for the job ?
     if $USE_RAM_DISK; then
       metamataDiskDir="$RAMDISK/$computeNode";
     else
@@ -792,8 +784,9 @@ _copyImageFile() {
     counter=$(($counter + 1));
   done
 
-  # construct file name for 'images copied'-flag
+  # construct file names of flags
   filesCopiedFlag="$VM_JOB_DIR/$computeNode/.imgCopied";
+  filesCreatedFlag="$DOMAIN_XML_PATH_PREFIX/$computeNode/.done";
 
   # finalize cmd
   cmd="$cp_cmd; res=\$?; echo \$res > $filesCopiedFlag; ls -al $destDir";
@@ -828,6 +821,10 @@ _copyImageFile() {
     && logTraceMsg "Image files in destination dir '$destDir':\n-----\n$output\n-----";
 
   logDebugMsg "Image file '$srcFileName' for '$vmsPerHost' VM(s) on host '$computeNode' transferred to '$destDir'.";
+
+  # create flag file to indicate node is ready
+  logDebugMsg "Creating flag file '$filesCreatedFlag' to indicate host '$node's files are ready.";
+  touch "$filesCreatedFlag";
 }
 
 
@@ -986,7 +983,7 @@ for VM '$number/$countPerHost' on node '$computeNode' of '$totalCount' VMs total
 #
 # Creates a cpu pinning for the VM's domainXML
 #
-_createCPUpinning() {
+_createCPUpinning() { #TODO move to .parallel and enable user to provide a filename
 
   # check amount of params
   if [ $# -ne 3 ]; then
@@ -1004,7 +1001,7 @@ _createCPUpinning() {
     return 1;
   fi
 
-  # vcpu pinning enabled ?
+  # VCPU pinning enabled ?
   if ! ${VM_PARAMS[$keyOne, VCPU_PINNING]}; then # no, skip it
     logTraceMsg "VCPU_PINNING is disabled, skipping generation.";
     sed -i "s,__VCPU_PINNING__,,g" $domainXML;
@@ -1018,6 +1015,30 @@ _createCPUpinning() {
   # construct XML for pinning
   logTraceMsg "VCPUs parameter is: '${VM_PARAMS[$keyOne, VCPUS]}'.";
 
+  # fetch numa infos
+  numaInfo=$(lscpu | grep NUMA | sed 's, ,,g' | cut -d':' -f2);
+  if [ -z "$numaInfo" ]; then
+    logDebugMsg "No NUMA nodes detected.";
+  fi
+
+  declare -a numaDomains;
+  i=-2;
+  numaNodeCount=1;
+  for val in $numaInfo; do
+    i=$(($i+1));
+    if [ $i -eq -1 ]; then
+      logDebugMsg "Number of NUMA nodes detected: '$val'";
+      numaNodeCount=$val;
+      continue;
+    fi
+    # convert e.g. '0-3,8-11' to '0 1 2 3 8 9 10 11'
+    numaDomains[$i]=`eval eval "echo -n {$(echo $val | sed 's/,/\} \&\& echo -n \" \" \&\& echo -n \{/g')}"`;
+  done
+
+  # total cores avail
+  cpuCount=$(grep -c ^processor /proc/cpuinfo);
+  # number of cores per numa node
+  coresPerNUMADomain=$(($cpuCount / $numaNodeCount));
   # integer counter for the cores we are creating a pinning for
   cpuNo=1;
   # amount of cores already pinned
@@ -1030,12 +1051,14 @@ _createCPUpinning() {
   done
   logTraceMsg "Previously processed amount of VCPUs for pinning: '$previousCPUs'";
 
-  # ensure total count doesn't exceed available cpu count
-  cpuCount=$(grep -c ^processor /proc/cpuinfo);
+  # ensure total count doesn't exceed available CPU count
   if [ $cpuCount -lt $previousCPUs ]; then
     logErrorMsg "We have '$cpuCount' on localhost, but pinning requires at \
 least '$(($previousCPUs + ${VM_PARAMS[$keyOne, VCPUS]}))'";
   fi
+
+  #TODO check if there are more VMs than NUMA domains
+  #     otherwise create intelligent pinning
 
   # the pinning (string)
   pinning="";
@@ -1120,7 +1143,8 @@ bootVMsOnHost() {
   startDate="$(date +%s)";
 
   # wait until prepare nodes is ready (PARALLEL=true)
-  while [ ! -f "$filesCreatedFlag" ] || [ ! -f "$filesCopiedFlag" ]; do
+  while [ ! -f "$filesCreatedFlag" ] \
+      || [ ! -f "$filesCopiedFlag" ]; do
     logTraceMsg "Waiting for VM related files to be created, copied, etc..";
     logTraceMsg "Lock files to check: '$filesCreatedFlag', '$filesCopiedFlag'.";
     sleep 1;
@@ -1139,7 +1163,7 @@ bootVMsOnHost() {
 
   # execute via SSH
   checkCancelFlag;
-  ssh $computeNode "$cmd";
+  ssh $SSH_OPTS $computeNode "$cmd";
   res=$?;
 
   # successful boot init ? (booting still takes place now)
@@ -1345,9 +1369,10 @@ for computeNode in $nodes; do
   # stage file + boot VMs in parallel ?
   logDebugMsg "Staging files and booting VM(s) on node '$computeNode'.";
   if $PARALLEL; then
-    # async #FIXME: bug in bootVMsObHost when running with &
-    $(prepareNode "$computeNode" "$vnodesPerHost" "$amountOfVMs" \
-        & bootVMsOnHost "$computeNode") &
+    # non-blocking
+    prepareNode "$computeNode" "$vnodesPerHost" "$amountOfVMs" \
+      & bootVMsOnHost "$computeNode" \
+      & continue;
   else
     # blocking
     prepareNode "$computeNode" "$vnodesPerHost" "$amountOfVMs";

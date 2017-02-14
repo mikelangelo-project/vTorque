@@ -63,6 +63,12 @@ _log() {
   # get caller's name (script file name or parent process if remote)
   processName="$(getCallerName)";
 
+  # for shorter log level names, prepend the log message with a space to
+  # have all messages starting at the same point, more convenient to read
+  if [[ $logLevel =~ ^(WARN|INFO)$ ]]; then
+    logMsg=" $logMsg";
+  fi
+
   # log file exists ?
   if [ -z ${LOG_FILE-} ] \
        || [ ! -f "$LOG_FILE" ]; then
@@ -300,7 +306,7 @@ shutdown or timeout of '$TIMEOUT' sec has been reached.";
 
   # ensure console log file is user reabable, if exists
   [ -f "$consoleLog" ] \
-      && chmod 644 "$consoleLog";
+    && chmod 644 "$consoleLog";
 
   # remove lock file
   logDebugMsg "VM '$i/$totalCount' with domainName '$domainName' has been clean up.";
@@ -361,6 +367,11 @@ cleanUpVMs() {
       _stopLocalJobVMs $vmNo $totalCount $domainXML;
     fi
   done
+
+  if $PARALLEL; then
+    # TODO wait for VMs to stop
+     :
+  fi
 
   logDebugMsg "Destroyed ($vmNo) local VM, done.";
 
@@ -431,6 +442,8 @@ startSnapTask(){
     logWarnMsg "Snap cannot tag task, skipping it.";
     return -9;
   }
+  res=$?;
+  logDebugMsg "Snap task tag return code: '$res'";
   return $?;
 }
 
@@ -453,7 +466,9 @@ stopSnapTask() {
     logWarnMsg "Snap cannot clear tag from task, skipping it.";
     return -9;
   }
-  return $?;
+  res=$?;
+  logDebugMsg "Snap task tag clearing return code: '$res'";
+  return $res;
 }
 
 
@@ -473,7 +488,7 @@ setUPvRDMA_P1() {
     logDebugMsg "vRDMA disabled, skipping setup.";
     return 0;
   fi
-  
+
   logDebugMsg "vRDMA is enabled, starting setup..";
   # try
   {
@@ -483,7 +498,9 @@ setUPvRDMA_P1() {
     logWarnMsg "vRDMA cannot be started, skipping it.";
     return -9;
   }
-  return $?;
+  res=$?;
+  logDebugMsg "vRDMA setup return code: '$res'";
+  return $res;
 }
 
 
@@ -510,7 +527,9 @@ tearDownvRDMA_P1() {
     logWarnMsg "vRDMA cannot be stopped, skipping it.";
     return -9;
   }
-  return $?;
+  res=$?;
+  logDebugMsg "vRDMA tear down return code: '$res'";
+  return $res;
 }
 
 
@@ -529,7 +548,7 @@ setupIOCM() {
     logDebugMsg "IOCM disabled, skipping setup.";
     return 0;
   fi
-  
+
   logDebugMsg "IOcm is enabled, starting setup..";
   # try
   {
@@ -539,7 +558,9 @@ setupIOCM() {
     logWarnMsg "IOcm cannot be started, skipping it.";
     return -9;
   }
-  return $?;
+  res=$?;
+  logDebugMsg "IOcm setup return code: '$res'";
+  return $res;
 }
 
 
@@ -566,7 +587,9 @@ teardownIOcm() {
     logWarnMsg "IOcm cannot be stopped, skipping it.";
     return -9;
   }
-  return $?;
+  res=$?;
+  logDebugMsg "IOcm tear down return code: '$res'";
+  return $res;
 }
 
 
@@ -606,7 +629,7 @@ waitUntilJobDirIsAvailable() {
 
 #---------------------------------------------------------
 #
-# Spawns a process that boots VMs and configures iocm 
+# Spawns a process that boots VMs and configures iocm
 #
 #
 function spawnProcess() {
@@ -619,7 +642,7 @@ function spawnProcess() {
 
     # ensure flag file dir exists
     if [ ! -e "$FLAG_FILE_DIR/$LOCALHOST" ]; then
-      { 
+      {
         mkdir -p "$FLAG_FILE_DIR/$LOCALHOST" \
           && chown $USERNAME:$USERNAME "$FLAG_FILE_DIR/$LOCALHOST";
       } || logErrorMsg "Failed to create flag files dir '$FLAG_FILE_DIR/$LOCALHOST'.";
@@ -698,11 +721,11 @@ function bootVMs() {
         || [ ! -n "$(virsh list | grep $vmName)" ] ; then
       # abort with error code 2
       logErrorMsg "Booting VM '$vmName' from domain XML file '$domainXML' failed!" 2 \
-      & abort 2;
+        & abort 2;
     elif [[ "$output" =~ operation\ is\ not\ valid ]]; then
       # abort with error code 9
       logErrorMsg "Booting VM '$vmName' from domain XML file '$domainXML' failed! Maybe it is running already?" 9 \
-      & abort 9;
+        & abort 9;
     fi
     logDebugMsg "VM is running.";
   done

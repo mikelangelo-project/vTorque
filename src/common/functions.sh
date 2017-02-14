@@ -46,17 +46,18 @@ trap abort SIGHUP SIGINT SIGTERM SIGKILL;
 #
 log4bsh_mapName() {
 
-  local runningScript=$1;
+  local scriptName=$1;
 
-  runningScript="${process%%.sh}"; # cut off .sh extension
-  runningScript="${runningScript##-*}";  # cut off leading '-'
-  runningScript="$(basename $runningScript)";
+  scriptName="$(basename $scriptName)"; # cut off path name
+  scriptName="${scriptName%%.sh}"; # cut off .sh extension
+  scriptName="${scriptName##-*}";  # cut off leading '-'
 
-  if [[ "$runningScript" =~ "$JOBID.SC" ]]; then
-    runningScript="jobWrapper";
+  # job script on the nodes ? (Torque places them there as $TORQUE_HOME/aux/$PBS_JOBID.SC)
+  if [[ "$scriptName" =~ "$JOBID.SC" ]]; then
+    scriptName="jobWrapper";
   fi
 
-  echo $runningScript;
+  echo $scriptName;
 }
 
 #
@@ -481,7 +482,7 @@ checkCancelFlag() {
 #
 abort() {
 
-  # tell all processes to abort, 
+  # tell all processes to abort,
   # check if dir already exists, if not the cancel took place before
   # first log messages were written and job submimtted
   if [ -e $(dirname "$CANCEL_FLAG_FILE") ]; then

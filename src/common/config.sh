@@ -102,8 +102,8 @@ MAC_PREFIX="52:54:00"
 #
 DISABLED_HOSTS_LIST="*";
 
-# Indicates whether to run vmPro/Epilogues in parallel
-# default is true, useful for debugging only. Do not use in production.
+# Indicates whether to run vmPro/Epilogues in parallel, default is true.
+# False is useful for debugging, only. Do not use in production.
 #
 PARALLEL=false;
 
@@ -360,6 +360,9 @@ IOCM_MAX_CORES_DEFAULT=4;
 #
 PRINT_TO_STDOUT=false;
 
+# abort on error
+ABORT_ON_ERROR=true;
+
 # disable log rotate
 LOG_ROTATE=false;
 
@@ -410,7 +413,7 @@ VRDMA_ENABLED=true;
 #
 # list of nodes supporting RoCE feature for Infiniband
 #
-VRDMA_NODES='c3tnode0[1,2]';
+VRDMA_NODES='c3tnode0.*';
 
 
 #============================================================================#
@@ -507,11 +510,6 @@ if ! $DEBUG; then
   # '-q' quiet
   SSH_OPTS="$SSH_OPTS -q";
   SCP_OPTS="$SCP_OPTS -q";
-fi
-# parallel mode ?
-if $PARALLEL; then
-  # '-f' to go to background just before command execution
-  SSH_OPTS="$SSH_OPTS -f";
 fi
 
 #

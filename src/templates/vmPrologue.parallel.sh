@@ -145,11 +145,13 @@ _waitForFiles() {
 
 #---------------------------------------------------------
 #
-# Prepares all files for local VM(s) and triggers boot
+# Creates env file dir for each local VM(s) and triggers
+# boot via a flag file that is picked up by root prologue's
+# spawned process.
 #
 prepareVMs() {
 
-  logDebugMsg "Preparing VM files..";
+  logDebugMsg "Preparing VM boot..";
 
   # wait for needed files to come into place
   _waitForFiles;
@@ -160,7 +162,7 @@ prepareVMs() {
   # let remote processes know that we started our work
   informRemoteProcesses;
 
-  # boot all VMs dedicated to the current node we run on
+  # create env file dir for each VM
   i=1;
   for domainXML in ${VM_DOMAIN_XML_LIST[@]}; do
 
@@ -222,7 +224,7 @@ function waitForVMs() {
     # wait until SSH server becomes available
     if $PARALLEL; then
       # async
-      _waitForVMtoBecomeAvailable "v$LOCALHOST-$i" "$mac" & echo -n "";
+      _waitForVMtoBecomeAvailable "v$LOCALHOST-$i" "$mac" & : ;
     else
       # blocking
       _waitForVMtoBecomeAvailable "v$LOCALHOST-$i" "$mac";

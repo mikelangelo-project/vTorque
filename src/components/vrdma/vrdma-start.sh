@@ -94,7 +94,9 @@ setupLibvirtd() {
   if [ -n "$(pidof libvirtd)" ]; then
     killall libvirtd;
   fi
-  [ ! -d '$LIBVIRT_RUN_DIR' ] && mkdir -p $LIBVIRT_RUN_DIR;
+  [ ! -d "$LIBVIRT_RUN_DIR" ] \
+    && (mkdir -p "$LIBVIRT_RUN_DIR" || \
+          logErrorMsg "Failed to create socket dir '$LIBVIRT_RUN_DIR'.");
 
   # generate a customized config file (based on the template) for libvert daemon with the correct connection socket
   cp "$LIBVIRT_ETC_DIR/libvirtd.conf" "$LIBVIRT_CONFIG";
@@ -103,13 +105,26 @@ setupLibvirtd() {
   fi
 
   # replace the default socket with the correct one
-  sed -i "s,#unix_sock_dir = \"\/var\/run\/libvirt\",unix_sock_dir = \"$LIBVIRT_RUN_DIR\",g" $LIBVIRT_CONFIG;
+  logTraceMsg "Setting path for socket dir to '$LIBVIRT_RUN_DIR' in file '$LIBVIRT_CONFIG'";
+  sed -i "s,#unix_sock_dir = \"\/var\/run\/libvirt\",unix_sock_dir = \"$LIBVIRT_RUN_DIR\",g" "$LIBVIRT_CONFIG";
   if [ $? -ne 0 ]; then
     logErrorMsg "Preparing libvirtd's config file '$LIBVIRT_CONFIG' failed!";
   fi
 
+  # logging
+  logDebugMsg "Starting libvirt with config file '$LIBVIRT_CONFIG'.";
+  logTraceMsg "~~~~~~~~~libvirt_config_file_start~~~~~~~~~~\n\
+$(cat $LIBVIRT_CONFIG)\n\
+~~~~~~~~~libvirt_config_file_start~~~~~~~~~~";
+
   # start the libvirt daemon with the generated config file
-  libvirtd -d -p $LIBVIRT_PID -f $LIBVIRT_CONFIG;
+  libvirtd -d -p "$LIBVIRT_PID" -f "$LIBVIRT_CONFIG";
+  res=$?;
+  # successful ?
+  if [ $res -ne 0 ]; then
+    logErrorMsg "Failed to start libvirt with config for vRDMA with error code '$res'.";
+  fi
+  return 0;
 }
 
 
@@ -118,7 +133,6 @@ setupLibvirtd() {
 # Sets up the OSV DB with the vswitch schema.
 #
 setupOVSDB() {
-
 
   # ensure it is not running
   if [ -n "$(pidof ovsdb-server)" ]; then
@@ -147,13 +161,14 @@ setupOVSDB() {
     done
   fi
 
-
   # remove lock if it is still there
-  [ -f "${OVS_DATABASE}.~lock~" ] && rm -f ${OVS_DATABASE}.~lock~;
+  [ -f "${OVS_DATABASE}.~lock~" ] \
+    && rm -f ${OVS_DATABASE}.~lock~;
 
   # clean up DB
   logDebugMsg "Cleaning up DB if present.";
-  [ -f "$OVS_DATABASE" ] && rm $OVS_DATABASE;
+  [ -f "$OVS_DATABASE" ] \
+    && rm -f $OVS_DATABASE;
 
   # re-create DB
   logDebugMsg "(Re-)creating DB";
@@ -176,8 +191,9 @@ startOVSservices() {
              --remote=db:Open_vSwitch,Open_vSwitch,manager_options \
              --pidfile=$OVS_SERVER_PID_FILE --detach \
              --log-file=$OVS_SERVER_LOG;
-  if [ $? -ne 0 ]; then
-    logErrorMsg "Starting OVS server with DB-socket '$HOST_DB_SOCK' failed!";
+  res=$?;
+  if [ $res -ne 0 ]; then
+    logErrorMsg "Starting OVS server with DB-socket '$HOST_DB_SOCK' failed with error code '$res' !";
   fi
 
   # initialize the OVS server, and create the main database socket

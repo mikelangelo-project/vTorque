@@ -592,7 +592,7 @@ runJobInVM() {
 #---------------------------------------------------------
 #
 # Keeps VMs live in debug mode and if env var 'KEEP_VM_ALIVE'
-# is set to true. Allows to inspect what happend inside the VM. 
+# is set to true. Allows to inspect what happend inside the VM.
 #
 keepVMsAliveIfRequested() {
   if $DEBUG \

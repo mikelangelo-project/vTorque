@@ -427,12 +427,11 @@ startSnapTask(){
   # try
   {
     $SNAP_SCRIPT_DIR/snap-start.sh;
-    res=$?;
   } || { #catch
     logWarnMsg "Snap cannot tag task, skipping it.";
-    res=-9;
+    return -9;
   }
-  return $res;
+  return $?;
 }
 
 
@@ -450,13 +449,11 @@ stopSnapTask() {
   # try
   {
     $SNAP_SCRIPT_DIR/snap-stop.sh;
-    res=$?;
-    logDebugMsg "Snap task tag clearing return code: '$res'";
   } || { #catch
     logWarnMsg "Snap cannot clear tag from task, skipping it.";
-    res=-9;
+    return -9;
   }
-  return $res;
+  return $?;
 }
 
 
@@ -471,23 +468,22 @@ setUPvRDMA_P1() {
   enabled=$($VRDMA_ENABLED && [ -f "$FLAG_FILE_DIR/.vrdma" ]);
 
   # does the local node support the required feature ?
-  if $enabled \
-      && [[ "$LOCALHOST" =~ ^$VRDMA_NODES$ ]]; then
-    logDebugMsg "vRDMA is enabled, starting setup..";
-    # try
-    {
-      # execute
-      $VRDMA_SCRIPT_DIR/vrdma-start.sh;
-      res=$?;
-    } || { #catch
-      logWarnMsg "vRDMA cannot be started, skipping it.";
-      res=-9;
-    }
-  else
-    logDebugMsg "vRDMA is disabled, either globally or by the user.";
-    res=0;
+  if ! $enabled \
+      || ! [[ "$LOCALHOST" =~ ^$VRDMA_NODES$ ]]; then
+    logDebugMsg "vRDMA disabled, skipping setup.";
+    return 0;
   fi
-  return $res;
+  
+  logDebugMsg "vRDMA is enabled, starting setup..";
+  # try
+  {
+    # execute
+    $VRDMA_SCRIPT_DIR/vrdma-start.sh;
+  } || { #catch
+    logWarnMsg "vRDMA cannot be started, skipping it.";
+    return -9;
+  }
+  return $?;
 }
 
 
@@ -501,22 +497,20 @@ tearDownvRDMA_P1() {
   enabled=$($VRDMA_ENABLED && [ -f "$FLAG_FILE_DIR/.vrdma" ]);
 
   # enabled and does the local node support the required feature ?
-  if $enabled \
-      && [[ "$LOCALHOST" =~ ^$VRDMA_NODES$ ]]; then
-    # try
-    {
-      # execute
-      $VRDMA_SCRIPT_DIR/vrdma-stop.sh;
-      res=$?;
-      logDebugMsg "vRDMA tear down return code: '$res'";
-    } || { #catch
-      logWarnMsg "vRDMA cannot be stopped, skipping it.";
-      res=-9;
-    }
-  else
-    res=0;
+  if ! $enabled \
+      || ! [[ "$LOCALHOST" =~ ^$VRDMA_NODES$ ]]; then
+    logDebugMsg "vRDMA disabled, skipping tear down.";
+    return 0;
   fi
-  return $res;
+  # try
+  {
+    # execute
+    $VRDMA_SCRIPT_DIR/vrdma-stop.sh;
+  } || { #catch
+    logWarnMsg "vRDMA cannot be stopped, skipping it.";
+    return -9;
+  }
+  return $?;
 }
 
 
@@ -530,22 +524,22 @@ setupIOCM() {
   enabled=$($IOCM_ENABLED && [ -f "$FLAG_FILE_DIR/.iocm" ]);
 
   # does the local node support the required feature ?
-  if $enabled \
-      && [[ "$LOCALHOST" =~ ^$IOCM_NODES$ ]]; then
-    logDebugMsg "IOcm is enabled, starting setup..";
-    # try
-    {
-      # execute
-      $IOCM_SCRIPT_DIR/iocm-start.sh;
-      res=$?;
-    } || { #catch
-      logWarnMsg "IOcm cannot be started, skipping it.";
-      res=-9;
-    }
-  else
-    res=0;
+  if ! $enabled \
+      || ! [[ "$LOCALHOST" =~ ^$IOCM_NODES$ ]]; then
+    logDebugMsg "IOCM disabled, skipping setup.";
+    return 0;
   fi
-  return $res;
+  
+  logDebugMsg "IOcm is enabled, starting setup..";
+  # try
+  {
+    # execute
+    $IOCM_SCRIPT_DIR/iocm-start.sh;
+  } || { #catch
+    logWarnMsg "IOcm cannot be started, skipping it.";
+    return -9;
+  }
+  return $?;
 }
 
 
@@ -559,54 +553,19 @@ teardownIOcm() {
   enabled=$($IOCM_ENABLED && [ -f "$FLAG_FILE_DIR/.iocm" ]);
 
   # enabled and does the local node support the required feature ?
-  if $enabled \
-      && [[ "$LOCALHOST" =~ ^$IOCM_NODES$ ]]; then
-    # try
-    {
-      # execute
-      $IOCM_SCRIPT_DIR/iocm-stop.sh;
-      res=$?;
-    } || { #catch
-      logWarnMsg "IOcm cannot be stopped, skipping it.";
-      res=-9;
-    }
-  else
-    res=0;
+  if ! $enabled \
+      || ! [[ "$LOCALHOST" =~ ^$IOCM_NODES$ ]]; then
+    logDebugMsg "IOCM disabled, skipping tear down.";
+    return 0;
   fi
-  return $res;
-}
-
-
-#---------------------------------------------------------
-#
-# Starts a given service and returns the result code.
-#
-startService() {
-
-  if [ $# -ne 1 ]; then
-    logErrorMsg "Function 'startService' called with '$#' arguments, '1' is expected.\nProvided params are: '$@'" 2;
-  fi
-
-  serviceName="$1";
-
-  service $serviceName start;
-  return $?;
-}
-
-
-#---------------------------------------------------------
-#
-# Stops a given service and returns the result code.
-#
-stopService() {
-
-  if [ $# -ne 1 ]; then
-    logErrorMsg "Function 'stopService' called with '$#' arguments, '1' is expected.\nProvided params are: '$@'" 2;
-  fi
-
-  serviceName="$1";
-
-  service $serviceName stop;
+  # try
+  {
+    # execute
+    $IOCM_SCRIPT_DIR/iocm-stop.sh;
+  } || { #catch
+    logWarnMsg "IOcm cannot be stopped, skipping it.";
+    return -9;
+  }
   return $?;
 }
 

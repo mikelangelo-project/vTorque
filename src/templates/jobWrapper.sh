@@ -433,7 +433,7 @@ $(curl --connect-timeout 2 -X GET http://$FIRST_VM:8000/file//pbs_vm_nodefile?op
 # Executes user's batch job script in first/rank0 (standard
 # linux guest) VM.
 #
-runBatchJobOnSLG() {
+runSTDINJobOnSLG() {
 
   # the first node in the list is 'rank 0'
   logDebugMsg "Executing SLG STDIN job script '$JOB_SCRIPT' on first vNode '$FIRST_VM'.";

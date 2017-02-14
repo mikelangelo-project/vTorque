@@ -92,9 +92,6 @@ __DISK_XML__
     <serial type='pty'>
       <target port='0'/>
     </serial>
-    <console type='pty'>
-      <target type='serial' port='0'/>
-    </console>
     <channel type='spicevmc'>
       <target type='virtio' name='com.redhat.spice.0'/>
       <address type='virtio-serial' controller='0' bus='0' port='1'/>

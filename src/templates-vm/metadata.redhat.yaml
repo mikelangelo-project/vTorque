@@ -315,6 +315,6 @@ runcmd:
  - [ ping, -c1, __HOSTNAME__ ]
 
 
-# final_message, polling process checks logs for this msg
+# final_message
 final_message: "The system is finally up, after $UPTIME seconds"
 

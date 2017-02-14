@@ -679,13 +679,13 @@ function bootVMs() {
     logDebugMsg "Booting VM number '$i/$totalCount' on compute node '$LOCALHOST' from domainXML='$domainXML'.";
     if $DEBUG; then
       output=$(virsh $VIRSH_OPTS --log $vmLogFile create $domainXML |& tee -a $LOG_FILE);
+      logDebugMsg "virsh create cmd output:\n'$output'";
       # ensure log file is user reabable
       chmod 644 "$vmLogFile";
     else
       output=$(virsh $VIRSH_OPTS create $domainXML 2>> "$LOG_FILE");
     fi
     res=$?;
-    logDebugMsg "virsh create cmd output:\n'$output'";
 
     # ensure console log file is user reabable, if exists
     [ -f "$consoleLog" ] \

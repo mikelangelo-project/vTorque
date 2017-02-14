@@ -315,11 +315,6 @@ runcmd:
  # 'arp -an's and create a profile for the virtual job environment
  - [ ping, -c1, __HOSTNAME__ ]
 
-#
-# write everything into a dedicated log file
-#
-output: {all: '| tee -a /var/log/cloud-init-output.log'}
-
 # final_message
 final_message: "The system is finally up, after $UPTIME seconds"
 

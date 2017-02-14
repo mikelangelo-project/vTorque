@@ -1205,9 +1205,10 @@ Torque requires a patch for this feature.\n\
   # remove double '-l'
   PARAMETERS_REAL_QSUB=$(echo $PARAMETERS_REAL_QSUB | sed "s,-l -l,-l,g");
 
+  # exclusive node allocation (and not already set) ?
   if $PBS_EXCLUSIVE_NODE_ALLOC \
-  		&& [ ! -n "$(echo $PARAMETERS_REAL_QSUB | grep naccesspolicy)" ]; then
-  	PARAMETERS_REAL_QSUB="$PARAMETERS_REAL_QSUB -l naccesspolicy=uniqueuser";
+      && [ ! -n "$(echo $PARAMETERS_REAL_QSUB | grep naccesspolicy)" ]; then
+    PARAMETERS_REAL_QSUB="$PARAMETERS_REAL_QSUB -l naccesspolicy=uniqueuser";
   fi
 
   # done
@@ -1247,6 +1248,9 @@ exportFlags() {
     echo ${VM_PARAMETER['IOCM_MIN_CORES']} > "$FLAG_FILE_DIR/.iocm"; #min cores
     echo ${VM_PARAMETER['IOCM_MAX_CORES']} >> "$FLAG_FILE_DIR/.iocm"; #max cores
   fi
+
+  # write out count of VMs per node
+  echo "${VM_PARAMETER['VMS_PER_NODE']}" > "$VM_JOB_DIR/.vms_per_node";
 }
 
 

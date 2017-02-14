@@ -363,12 +363,12 @@ startlocalDHCPserver() {
 
   # ensure the DHCP server is not running, yet
   if [ -n "$(ps aux | grep dhcpd | grep -v grep)" ]; then
-    stopService "isc-dhcp-server";
+    service isc-dhcp-server stop;
   fi
 
   # start the DHCP service
   logDebugMsg "Starting local DHCP server for vRDMA bridge '$VRDMA_BRIDGE' ..";
-  startService "isc-dhcp-server";
+  service isc-dhcp-server start;
 
   # wait until it is running
   while [ ! -n "$(ps aux | grep dhcpd | grep -v grep)" ]; do

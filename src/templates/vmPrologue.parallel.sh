@@ -384,16 +384,11 @@ and VM '$vhostName' with MAC='$mac' is still not available.";
     logDebugMsg "DISTRO '$DISTRO' is OSv, using HTTP check";
     CONN_TEST_CMD="curl --connect-timeout 2 http://$vmIP:8000";
     ERR_CODE_TIMEOUT=28;
+    protocol="HTTP";
   else
     logDebugMsg "DISTRO '$DISTRO' is linux, using SSH check";
     CONN_TEST_CMD="ssh -n -o BatchMode=yes -o ConnectTimeout=2 $vmIP 'exit 0;'";
     ERR_CODE_TIMEOUT=255;
-  fi
-
-  # determine protocol for printout
-  if [[ "$DISTRO" =~ $REGEX_OSV ]]; then
-    protocol="HTTP";
-  else
     protocol="SSH";
   fi
 
@@ -421,7 +416,7 @@ and VM '$vhostName' with MAC='$mac' is still not available via $protocol.";
 
   done
 
-  # success
+  # success, VM is available now
   logDebugMsg "VM's ($mac / $vmIP) $protocol server is now available.";
 
   # fetch the cloud-init log if debugging
@@ -429,11 +424,9 @@ and VM '$vhostName' with MAC='$mac' is still not available via $protocol.";
     destFile="$VM_JOB_DIR/$LOCALHOST/cloud-init_$vhostName.log";
     logDebugMsg "Fetching cloud-init.log from '$vmIP' as '$destFile'.".
     # standard linux or OSv ?
-    if [[ "$DISTRO" =~ $REGEX_OSV ]]; then
-      # OSv doesn't have a dedicated cloud-init log.
-      # Relevant info is written to console.
-      :
-    else
+    if [[ "$DISTRO" =~ $SUPPORTED_STANDARD_LINUX_GUESTS ]]; then
+
+      # fetch cloud init log file
       scp $SCP_OPTS $vmIP:$CLOUD_INIT_LOG $destFile;
 
       # determine syslog filename
@@ -449,7 +442,8 @@ and VM '$vhostName' with MAC='$mac' is still not available via $protocol.";
       logDebugMsg "Fetching syslog from '$vmIP'".
       scp $SCP_OPTS $vmIP:$sysLogFile $VM_JOB_DIR/$LOCALHOST/syslog_$vhostName.log;
     fi
-
+  # else: OSv doesn't have a dedicated cloud-init log.
+    # Relevant info is written to console
   fi
 
   # remove lock file

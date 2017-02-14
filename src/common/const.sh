@@ -216,7 +216,7 @@ LOCKFILES_DIR="$VM_JOB_DIR/locks";
 #
 # Location of cloud-init log inside VM (required to be in sync with the metadata-template(s))
 #
-CLOUD_INIT_LOG="/var/log/cloud-init-output.log";
+CLOUD_INIT_LOG="/var/log/cloud-init.log";
 
 #
 # Path to syslog file on redhat based operating systems

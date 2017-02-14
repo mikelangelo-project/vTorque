@@ -76,7 +76,7 @@ mounts:
  - [ "__VM_NFS_OPT__", /opt, "nfs", "rw,intr,noatime", "0", "0" ]
  - [ "__VM_NFS_WS__", /workspace, "nfs", "rw,intr,noatime", "0", "0" ]
  # make PBS_NODEFILE available inside VM
- - [ "__VM_NODE_FILE_DIR__", "/var/spool/torque/aux", "9p", "trans=virtio,version=9p2000.L,ro,chmod=0444,uid=0,guid=0", "0", "0" ]
+ - [ "/var/spool/torque/aux", "/var/spool/torque/aux", "9p", "trans=virtio,version=9p2000.L,ro,chmod=0444,uid=0,guid=0", "0", "0" ]
  # make the pbs env available via profile.d (other part see below and domain.xml)
  - [ "/var/spool/torque/vm", "/var/spool/torque/vm", "9p", "trans=virtio,version=9p2000.L,ro,chmod=0444,uid=0,guid=0", "0", "0" ]
 
@@ -314,11 +314,7 @@ runcmd:
  # 'arp -an's and create a profile for the virtual job environment
  - [ ping, -c1, __HOSTNAME__ ]
 
-#
-# write everything into a dedicated log file
-#
-output: {all: '| tee -a /var/log/cloud-init-output.log'}
 
-# final_message
+# final_message, polling process checks logs for this msg
 final_message: "The system is finally up, after $UPTIME seconds"
 

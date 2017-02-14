@@ -77,7 +77,7 @@ mounts:
  - [ "__VM_NFS_OPT__", /opt, "nfs", "rw,intr,noatime", "0", "0" ]
  - [ "__VM_NFS_WS__", /workspace, "nfs", "rw,intr,noatime", "0", "0" ]
  # make PBS_NODEFILE available inside VM
- - [ "__VM_NODE_FILE_DIR__", "/var/spool/torque/aux", "9p", "trans=virtio,version=9p2000.L,ro,chmod=0444,uid=0,guid=0", "0", "0" ]
+ - [ "/var/spool/torque/aux", "/var/spool/torque/aux", "9p", "trans=virtio,version=9p2000.L,ro,chmod=0444,uid=0,guid=0", "0", "0" ]
  # make the pbs env available via profile.d (other part see below and domain.xml)
  - [ "/var/spool/torque/vm", "/var/spool/torque/vm", "9p", "trans=virtio,version=9p2000.L,ro,chmod=0444,uid=0,guid=0", "0", "0" ]
 
@@ -283,16 +283,16 @@ write_files:
  #
  # profile for mpirun
  #
- - path: /etc/profile.d/00-mpirun_wrapper.sh
-   permissions: 0644
+ - path: "/etc/profile.d/00-mpirun_wrapper.sh"
+   permissions: "0644"
    content: |
      # ensure the wrapper is found before the mpirun executable
      export PATH=/usr/local/bin/mpirun:$PATH;
  #
  # profile for HPC stack
  #
- - path: /etc/profile.d/99-mikelangelo-hpc_stack.sh
-   permissions: 0644
+ - path: "/etc/profile.d/99-mikelangelo-hpc_stack.sh"
+   permissions: "0644"
    content: |
      export SCRIPT_BASE_DIR=__SCRIPT_BASE_DIR__;
 

@@ -320,7 +320,7 @@ runBatchJobOnSLG() {
   logDebugMsg "Command to execute: 'ssh $SSH_OPTS $FIRST_VM \"$cmd\"'";
   logDebugMsg "===============JOB_OUTPUT_BEGIN====================";
   if $DEBUG; then
-    ssh $FIRST_VM "$cmd" |& "$LOG_FILE";
+    ssh $FIRST_VM "$cmd" |& tee -a "$LOG_FILE";
   else
     ssh $FIRST_VM "$cmd" 2>> "$LOG_FILE";
   fi
@@ -448,7 +448,7 @@ runBatchJobOnSLG() {
   logDebugMsg "Command to execute: 'ssh $SSH_OPTS $FIRST_VM \"$cmd\"'";
   logDebugMsg "===============JOB_OUTPUT_BEGIN====================";
   if $DEBUG; then
-    ssh $FIRST_VM "$cmd" |& "$LOG_FILE";
+    ssh $FIRST_VM "$cmd" |& tee -a "$LOG_FILE";
   else
     ssh $FIRST_VM "$cmd" 2>> "$LOG_FILE";
   fi
@@ -485,7 +485,7 @@ runInteractiveJobOnSLG(){
 
   # debugging ?
   if $DEBUG; then
-    ssh $FIRST_VM $sshOpts "$cmd" |& "$LOG_FILE";
+    ssh $FIRST_VM $sshOpts "$cmd" |& tee -a "$LOG_FILE";
   else
     ssh $FIRST_VM $sshOpts "$cmd" &>> "$LOG_FILE";
   fi

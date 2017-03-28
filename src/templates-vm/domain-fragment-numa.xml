@@ -1,0 +1,4 @@
+  <numatune>
+     <memory mode='strict' placement='auto'/>
+  </numatune>
+  <vcpu placement='auto'>__VCPUS__</vcpu>

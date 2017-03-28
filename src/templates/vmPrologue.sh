@@ -173,7 +173,7 @@ ARCH=__ARCH__;
 # [optional] VM's cpu architecture, default is kvm
 HYPERVISOR=__HYPERVISOR__;
 
-# [optional] VM's cpu pinning map
+# [optional] VM's cpu pinning (either a mapping or boolean for auto mapping)
 VCPU_PINNING=__VCPU_PINNING__;
 
 VMS_PER_NODE=__VMS_PER_NODE__;
@@ -996,122 +996,39 @@ _createCPUpinning() { #TODO move to .parallel and enable user to provide a filen
   computeNode=$3;
   keyOne="${number}-${computeNode}";
 
-  if [ ! -f $domainXML ]; then
+  if [ ! -f "$domainXML" ]; then
     logWarnMsg "Parameter '$1' is not a valid (domain XML) file.\n Skipping the CPU pinning feature.";
     return 1;
   fi
 
-  # VCPU pinning enabled ?
-  if ! ${VM_PARAMS[$keyOne, VCPU_PINNING]}; then # no, skip it
-    logTraceMsg "VCPU_PINNING is disabled, skipping generation.";
+  local pinningFile;
+
+  # VCPU pinning param available ?
+  if [ -z ${VM_PARAMS[$keyOne, 'VCPU_PINNING']-} ]; then # no, skip it
+    logTraceMsg "VCPU_PINNING is disabled, skipping it.";
     sed -i "s,__VCPU_PINNING__,,g" $domainXML;
     return 0;
-  elif [ -z ${VM_PARAMS[$keyOne, VCPUS]-} ] \
-        || [ ${VM_PARAMS[$keyOne, VCPUS]-} -lt 1 ]; then
+  elif [ ${VM_PARAMS[$keyOne, VCPUS]-} -lt 1 ]; then # too few VCPUs
     # abort with error
-    logErrorMsg "Invalid VCPU parameter for VM '$number' on host '$computeNode': '${VM_PARAMS[$keyOne, VCPUS]-}'";
+    logErrorMsg "Invalid amount of VCPUs '${VM_PARAMS[$keyOne, VCPUS]-}' for VM '$number' on host '$computeNode': '${VM_PARAMS[$keyOne, VCPUS]-}'";
+  elif [[ ${VM_PARAMS[$keyOne, 'VCPU_PINNING']} =~ ^(false)$ ]]; then # disabled
+    # no pinning requested, nothing to do
+    logDebugMsg "vCPU pinning is disabled.";
+    sed -i -e "s,__VCPU_PINNING__,,g" "$domainXML";
+  elif [[ ${VM_PARAMS[$keyOne, 'VCPU_PINNING']} =~ ^(auto|true)$ ]]; then # auto config requested
+    # auto pinning requested
+    logDebugMsg "Auto vCPU pinning is enabled.";
+    # use a tmp file in order to populate the XML fragment
+    pinningFile="$VM_JOB_DIR/$LOCALHOST/numa_pinning";
+    # prepare xml fragment and store the result in 'pinningFile'
+    sed "s,__VCPU_PINNING__,${VM_PARAMS[$keyOne, VCPUS]-},g" "$DOMAIN_NUMA_XML_TEMPLATE" > "$pinningFile";
+    # replace placeholder with conent of 'pinningFile'
+    sed -i -e "/__VCPU_PINNING__/e cat '$pinningFile'" -e "s,__VCPU_PINNING__,,g" "$domainXML";
+  else # no, we got a mapping file provided
+    pinningFile="${VM_PARAMS[$keyOne, 'VCPU_PINNING']}";
+    logDebugMsg "User provided vCPU pinning is enabled, file: '$pinningFile'.";
+    sed -i -e "/__VCPU_PINNING__/e cat '$pinningFile'" -e "s,__VCPU_PINNING__,,g" "$domainXML";
   fi
-
-  # construct XML for pinning
-  logTraceMsg "VCPUs parameter is: '${VM_PARAMS[$keyOne, VCPUS]}'.";
-
-  # fetch numa infos
-  numaInfo=$(lscpu | grep NUMA | sed 's, ,,g' | cut -d':' -f2);
-  if [ -z "$numaInfo" ]; then
-    logDebugMsg "No NUMA nodes detected.";
-  fi
-
-  declare -a numaDomains;
-  i=-2;
-  numaNodeCount=1;
-  for val in $numaInfo; do
-    i=$(($i+1));
-    if [ $i -eq -1 ]; then
-      logDebugMsg "Number of NUMA nodes detected: '$val'";
-      numaNodeCount=$val;
-      continue;
-    fi
-    # convert e.g. '0-3,8-11' to '0 1 2 3 8 9 10 11'
-    numaDomains[$i]=`eval eval "echo -n {$(echo $val | sed 's/,/\} \&\& echo -n \" \" \&\& echo -n \{/g')}"`;
-  done
-
-  # total cores avail
-  cpuCount=$(grep -c ^processor /proc/cpuinfo);
-  # number of cores per numa node
-  coresPerNUMADomain=$(($cpuCount / $numaNodeCount));
-  # integer counter for the cores we are creating a pinning for
-  cpuNo=1;
-  # amount of cores already pinned
-  previousCPUs=0;
-  # count all previously pinned cores
-  while [ $cpuNo -lt $number ]; do
-    key="${cpuNo}-${computeNode}";
-    previousCPUs=$(($previousCPUs + ${VM_PARAMS[$key, VCPUS]}));
-    cpuNo=$(($cpuNo+1));
-  done
-  logTraceMsg "Previously processed amount of VCPUs for pinning: '$previousCPUs'";
-
-  # ensure total count doesn't exceed available CPU count
-  if [ $cpuCount -lt $previousCPUs ]; then
-    logErrorMsg "We have '$cpuCount' on localhost, but pinning requires at \
-least '$(($previousCPUs + ${VM_PARAMS[$keyOne, VCPUS]}))'";
-  fi
-
-  #TODO check if there are more VMs than NUMA domains
-  #     otherwise create intelligent pinning
-
-  # the pinning (string)
-  pinning="";
-  # ensure that we create the mapping for the exact count of VCPUs
-  i=0;
-  while [ $i -lt "${VM_PARAMS[$keyOne, VCPUS]}" ]; do
-    line="    <vcpupin vcpu='$i' cpuset='$(($i + $previousCPUs))'/>";
-    pinning=$(echo -e "$pinning\n\t$line");
-    i=$(($i+1));
-  done
-
-  # create path to file if not exists, yet
-  mkdir -p $(dirname $PINNING_FILE) 2>/dev/null;
-  if [ ! -d "$(dirname $PINNING_FILE)" ]; then
-    logErrorMsg "Pinning file dir '$(dirname $PINNING_FILE)' does not exist and could not be created!";
-  fi
-
-  # add line break
-  logTraceMsg "VCPU pinning created, merging into domain XML\n-----\n$pinning\n------";
-  # complete the pinning xml section
-  echo -e "  <vcpu placement='static'>${VM_PARAMS[$keyOne, VCPUS]}</vcpu>\n  <cputune>\n  $pinning\n  </cputune>" > $PINNING_FILE;
-  # apply mapping to domain XML
-  sed -i -e "/__VCPU_PINNING__/e cat $PINNING_FILE" -e "s,__VCPU_PINNING__,,g" $domainXML;
-}
-
-
-#---------------------------------------------------------
-#
-# Creates NUMA pinning file for VM cores.
-#
-_createNUMApinning() {
-
-  # check amount of params
-  if [ $# -ne 1 ]; then
-    logErrorMsg "Function '_createNUMApinning' called with '$#' arguments, '1' is expected.\nProvided params are: '$@'" 2;
-  fi
-
-  # domain XML file, we are merging the pinning into it
-  domainXML=$1;
-
-  if [ ! -f $domainXML ]; then
-    logWarnMsg "Parameter '$1' is not a valid (domain XML) file.\n Skipping the NUMA pinning feature.";
-    return -1;
-  fi
-
-  # does the compute node support NUMA ?
-  countOfNumaDomains=$(numactl --hardware | grep available | cut -d':' -f2 | cut -d' ' -f1);
-  if [ -z $countOfNumaDomains ]; then
-    logDebugMsg "No NUMA domains detected. Skipping this feature."
-    return -1;
-  fi
-
-  #TODO impl
 }
 
 

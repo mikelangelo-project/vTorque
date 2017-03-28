@@ -365,6 +365,7 @@ DOMAIN_XML_TEMPLATE_OSV="$VM_TEMPLATE_DIR/domain.osv.xml";
 DOMAIN_METADATA_XML_TEMPLATE="$VM_TEMPLATE_DIR/domain-fragment-metadata.xml";
 DOMAIN_DISK_XML_TEMPLATE="$VM_TEMPLATE_DIR/domain-fragment-disk.xml";
 DOMAIN_VRDMA_XML_TEMPLATE="$VM_TEMPLATE_DIR/domain-fragment-vrdma.xml";
+DOMAIN_NUMA_XML_TEMPLATE="$VM_TEMPLATE_DIR/domain-fragment-numa.xml";
 
 
 #============================================================================#

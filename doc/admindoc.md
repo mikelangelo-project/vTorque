@@ -13,11 +13,11 @@ The aim of this project is, to extend the functionality of the [Torque Resource 
 ## Table of contents
 
 * [Directory Structure](#directory-structure)
-* [Requirements](#Requirements)
+* [Requirements](#requirements)
 * [How To Deploy](#how-to-deploy)
 * [Configuration](#configuration)
 * [How It Works](#how-it-works)
-* [Acknowledgments](#acknowledgments)
+* [Acknowledgment](#acknowledgment)
 
 ## Directory Structure
 

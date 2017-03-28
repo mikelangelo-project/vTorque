@@ -98,11 +98,12 @@ declare -A REGEXPR=( \
                      [DISK]="^[0-9]+(K|M|G)$" \
                      [ARCH]="^(x86_64)$" \
                      [HYPERVISOR]="^(kvm|skvm|KVM|sKVM|SKVM)$" \
-                     [VCPU_PINNING]="^enabled|true|0|disabled|false|1$" \
+                     [VCPU_PINNING]="^(disabled|Disabled|DISABLED|false|False|FALSE|no|No|NO|1|\
+auto|enabled|Enabled|ENABLED|true|True|TRUE|yes|Yes|YES|0)$" \
                      [VM_PROLOGUE]="^(\w|[0-9]|.|_|-)+$" \
                      [VM_EPILOGUE]="^(\w|[0-9]|.|_|-)+$" \
-                     [VRDMA]="^enabled|true|0|disabled|false|1$" \
-                     [IOCM]="^enabled|true|0|disabled|false|1$" \
+                     [VRDMA]="^(enabled|true|0|disabled|false|1)$" \
+                     [IOCM]="^(enabled|true|0|disabled|false|1)$" \
                      [IOCM_MIN_CORES]="^[0-9]+$" \
                      [IOCM_MAX_CORES]="^[0-9]+$" \
                      [FS_TYPE]="^($FILESYSTEM_TYPE_RD|$FILESYSTEM_TYPE_SFS)$" \
@@ -350,39 +351,55 @@ is expected.\nProvided params are: '$@'" 2;
 
     # validate parsed key/value
     logTraceMsg "validating parameter set key='$key', value='$value'";
-    if [ -n "$key" ]; then
-      if [ ! -n "${REGEXPR[$key]-}" ]; then
-        logErrorMsg "No RegExpr found for key '$key'!" 2;
-      elif [[ $value =~ ${REGEXPR[$key]} ]]; then
-        logTraceMsg "Valid key=value pair found.";
-        logTraceMsg "key: '$key', value: '$value'";
-        # set the flag in case it's not set yet
-        VMJOB_REQ_DETECTED=true;
-        # command line parameter overwrite inline ones
-        # resolve relative path for files
-        if [ $key == "VM_PROLOGUE" ] \
-           || [ $key == "VM_EPILOGUE" ]; then
-          # ensure we do not have a relative path
-          VM_PARAMETER[$key]="$(realpath $value)";
-          # check if file exists, if not abort
-          if [ ! -f ${VM_PARAMETER[$key]} ]; then
-            logErrorMsg "The given argument '$key' is not a valid file '${VM_PARAMETER[$key]}' !";
-          fi
-        else
-          # copy as it is
-          VM_PARAMETER[$key]=$value;
-        fi
-          # put into map
-          logTraceMsg "putting \"key='$key' => value='$value'\" into VM_PARAMETER map.";
-          VM_PARAMETER["$key"]=$value;
-      else
-        # invalid key/value
-        logDebugMsg "Invalid value='$value' for key='$key' => found REGEXPR is '${REGEXPR[$key]}'.";
-        usage $key $value ${REGEXPR[$key]};
-      fi
-    else #empty $key
+    if [ -z "$key" ]; then
+      #empty $key
       # stop here, nothing to parse
       break;
+    fi
+    
+    if [ ! -n "${REGEXPR[$key]-}" ]; then
+      logErrorMsg "No RegExpr found for key '$key'!" 2;
+    elif [[ $value =~ ${REGEXPR[$key]} ]]; then
+      logTraceMsg "Valid key=value pair found.";
+      logTraceMsg "key: '$key', value: '$value'";
+      # set the flag in case it's not set yet
+      VMJOB_REQ_DETECTED=true;
+      # command line parameter overwrite inline ones
+      # resolve relative path for files
+      if [ $key == "VM_PROLOGUE" ] \
+         || [ $key == "VM_EPILOGUE" ]; then
+        # ensure we do not have a relative path
+        value="$(realpath $value)";
+        # check if file exists, if not abort
+        if [ ! -f "$value" ]; then
+          logErrorMsg "The given argument '$key' is not a valid file '$value' !";
+        fi
+      elif [ $key == "VCPU_PINNING" ]; then
+        # check if it is a boolean or a mapping file
+        if [[ "$value" =~ ^(disabled|Disabled|DISABLED|false|False|FALSE|no|No|NO|1)$ ]]; then
+          value='false';
+        elif [[ "$value" =~ ^(auto|enabled|Enabled|ENABLED|true|True|TRUE|yes|Yes|YES|0)$ ]]; then
+          value='true';
+        else
+          # ensure we do not have a relative path
+          local mappingFile="$(realpath $value)";
+          if [ ! -f "$mappingFile" ]; then
+            logErrorMsg "VCPU mapping file is not a valid file: '$mappingFile'.";
+          fi
+          # cache it
+          VM_PARAMETER[$key]="$mappingFile";
+        fi
+      else
+        # copy as it is
+        VM_PARAMETER[$key]=$value;
+      fi
+      # put into map
+      logTraceMsg "putting \"key='$key' => value='$value'\" into VM_PARAMETER map.";
+      VM_PARAMETER["$key"]=$value;
+    else
+      # invalid key/value
+      logDebugMsg "Invalid value='$value' for key='$key' => found REGEXPR is '${REGEXPR[$key]}'.";
+      usage $key $value ${REGEXPR[$key]};
     fi
   done
 }
@@ -1112,7 +1129,7 @@ script wrapper '$JOB_SCRIPT_WRAPPER'.";
     #  (that do not contain any '-vm ..' args) with file contents
     sed -i "0,/__INLINE_RES_REQUESTS__/{s,__INLINE_RES_REQUESTS__,$(cat $JOB_WRAPPER_RES_REQUEST_FILE),}" $JOB_SCRIPT_WRAPPER;
   else
-    logDebugMsg "Nothing to merge, no inline '#PBS' detected (its cache file doesn't exist).";
+    logDebugMsg "Nothing to merge, no inline '#PBS' detected (corresponding cache file doesn't exist).";
     sed -i "0,/__INLINE_RES_REQUESTS__/{s,__INLINE_RES_REQUESTS__,#,}"  $JOB_SCRIPT_WRAPPER;
   fi
 

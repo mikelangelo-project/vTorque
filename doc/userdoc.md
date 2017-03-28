@@ -48,7 +48,7 @@ For further details and a full list of supported parameters can be found in the 
 - DISK <path>
 - ARCH <x86_64>
 - HYPERVISOR <kvm|skvm>
-- VCPU_PINNING <true|false>
+- VCPU_PINNING <path to virsh xml fragment|auto|enabled|true|yes|0|disabled|false|no|1>
 - VM_PROLOGUE <path>
 - VM_EPILOGUE <path>
 - VRDMA <true|false>

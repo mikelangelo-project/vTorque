@@ -1510,7 +1510,7 @@ cannot be loaded - No such file or directory.";
 
   # check if there was any error
   if [ $res -ne 0 ]; then
-    logErrorMsg "Job Submit failed.";
+    logErrorMsg "Job Submit failed with return code '$res'.";
   fi
   logTraceMsg "Real qsub return code: '$res'";
 fi

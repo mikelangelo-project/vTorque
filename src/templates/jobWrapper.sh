@@ -320,9 +320,9 @@ runBatchJobOnSLG() {
   logDebugMsg "Command to execute: 'ssh $SSH_OPTS $FIRST_VM \"$cmd\"'";
   logDebugMsg "===============JOB_OUTPUT_BEGIN====================";
   if $DEBUG; then
-    ssh $FIRST_VM "$cmd" |& tee -a "$LOG_FILE";
+    ssh $FIRST_VM "$cmd"; # |& tee -a "$LOG_FILE";
   else
-    ssh $FIRST_VM "$cmd" 2>> "$LOG_FILE";
+    ssh $FIRST_VM "$cmd"; # 2>> "$LOG_FILE";
   fi
   # store the return code (ssh returns the return value of the command in
   # question, or 255 if an error occurred in ssh itself.)

@@ -35,78 +35,19 @@ source $ABSOLUTE_PATH/functions.sh;
 #                                                                            #
 #============================================================================#
 
-
-
-#---------------------------------------------------------
-#
-# Overrides _log function from functions.sh
-#
-# param1: logMsgType - DEBUG, TRACE, INFO, WARN, ERROR
-# param2: msg
-#
-_log() {
-
-  # disable 'set -x' in case it is enabled
-  cachedBashOpts="$-";
-  _unsetXFlag $cachedBashOpts;
-
-  # check amount of params
-  if [ $# -ne 3 ]; then
-    logErrorMsg "Function '_log' called with '$#' arguments, '3' are expected.\nProvided params are: '$@'" 2;
-  fi
-
-  logLevel=$1;
-  color=${COLORS[$logLevel]};
-  logMsg=$2;
-  printToSTDout=$3;
-
-  # get caller's name (script file name or parent process if remote)
-  processName="$(getCallerName)";
-
-  # for shorter log level names, prepend the log message with a space to
-  # have all messages starting at the same point, more convenient to read
-  if [[ $logLevel =~ ^(WARN|INFO)$ ]]; then
-    logMsg=" $logMsg";
-  fi
-
-  # log file exists ?
-  if [ -z ${LOG_FILE-} ] \
-       || [ ! -f "$LOG_FILE" ]; then
-    # get dir
-    logFileDir=$(dirname "$LOG_FILE");
-    # ensure dir exists
-    [ ! -d $logFileDir ] \
-      && mkdir -p $logFileDir;
-    # create log file
-    touch "$LOG_FILE";
-    # set correct owner
-    chown $USERNAME:$USERNAME -R $(dirname "$LOG_FILE");
-  fi
-
-  # print log msg to job log file (may not exists during first cycles)
-  if $printToSTDout \
-      || [ "$processName" == "qsub" ]; then
-    # stdout/err exists ?
-    if [ ! -e /proc/$$/fd/1 ] || [ ! -e /proc/$$/fd/2 ]; then
-      # log file exists ?
-      if [ -f $LOG_FILE ]; then
-        echo -e "$color[$LOCALHOST|$(date +%Y-%m-%dT%H:%M:%S)|$processName|$logLevel]$NC $logMsg" &>> "$LOG_FILE";
-      fi
-    elif [ -f $LOG_FILE ]; then
-      echo -e "$color[$LOCALHOST|$(date +%Y-%m-%dT%H:%M:%S)|$processName|$logLevel]$NC $logMsg" |& tee -a "$LOG_FILE";
-    else
-      # fallback: print msg to the system log and to stdout/stderr
-      logger "[$processName|$logLevel] $logMsg";
-    fi
-  else
-    # print msg to the system log and to stdout/stderr
-    logger "[$processName|$logLevel] $logMsg";
-    echo -e "$color[$LOCALHOST|$(date +%Y-%m-%dT%H:%M:%S)|$processName|$logLevel]$NC $logMsg" &>> "$LOG_FILE";
-  fi
-
-  # re-enable 'set -x' if it was enabled before
-  _setXFlag $cachedBashOpts;
-}
+# log file exists ?
+if [ -z ${LOG_FILE-} ] \
+    || [ ! -f "$LOG_FILE" ]; then # no, not yet
+  # get dir
+  logFileDir=$(dirname "$LOG_FILE");
+  # ensure dir exists
+  [ ! -d $logFileDir ] \
+    && mkdir -p $logFileDir;
+  # create log file
+  touch "$LOG_FILE";
+  # set correct owner
+  chown $USERNAME:$USERNAME -R $(dirname "$LOG_FILE");
+fi
 
 
 #---------------------------------------------------------
@@ -443,7 +384,7 @@ startSnapTask(){
     return -9;
   }
   res=$?;
-  logDebugMsg "Snap task tag return code: '$res'";
+  #logDebugMsg "Snap task tag return code: '$res'";
   return $?;
 }
 
@@ -467,7 +408,7 @@ stopSnapTask() {
     return -9;
   }
   res=$?;
-  logDebugMsg "Snap task tag clearing return code: '$res'";
+  #logDebugMsg "Snap task tag clearing return code: '$res'";
   return $res;
 }
 
@@ -499,7 +440,7 @@ setUPvRDMA_P1() {
     return -9;
   }
   res=$?;
-  logDebugMsg "vRDMA setup return code: '$res'";
+  #logDebugMsg "vRDMA setup return code: '$res'";
   return $res;
 }
 
@@ -528,7 +469,7 @@ tearDownvRDMA_P1() {
     return -9;
   }
   res=$?;
-  logDebugMsg "vRDMA tear down return code: '$res'";
+  #logDebugMsg "vRDMA tear down return code: '$res'";
   return $res;
 }
 
@@ -559,7 +500,7 @@ setupIOCM() {
     return -9;
   }
   res=$?;
-  logDebugMsg "IOcm setup return code: '$res'";
+  #logDebugMsg "IOcm setup return code: '$res'";
   return $res;
 }
 
@@ -588,7 +529,7 @@ teardownIOcm() {
     return -9;
   }
   res=$?;
-  logDebugMsg "IOcm tear down return code: '$res'";
+  #logDebugMsg "IOcm tear down return code: '$res'";
   return $res;
 }
 

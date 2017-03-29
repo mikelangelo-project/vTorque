@@ -371,10 +371,34 @@ runJobOnOSv() {
 $(curl --connect-timeout 2 -X GET http://$FIRST_VM:8000/file//pbs_vm_nodefile?op=GET -v) \
 \n----------------------------";
 
+  # copy PBS_* environment variables into VM.
+  # PBS_VM_NODEFILE is actually available at /pbs_vm_nodefile, so take that into account.
+  # And similar for PBS_NP - see createJobEnvironmentFiles() above:
+  #   export PBS_NP='$VCPUS'; #'$PBS_NP';
+  MY_ENV_VARS=$(set | grep "^PBS_")
+  for key_val in $MY_ENV_VARS; do
+    # allow '=' in value
+    key=$(echo "$key_val" | sed 's/=.*$//')
+    val=$(echo "$key_val" | sed 's/^[^=]*=//')
+    if [ "$key" == "PBS_VM_NODEFILE" ]; then
+      val="/pbs_vm_nodefile"
+    fi
+    if [ "$key" == "PBS_NP" ]; then
+      val="$VCPUS"
+    fi
+    logDebugMsg "Setting in OSv environ: key=$key val=$val"
+    CURL_CMD="curl --connect-timeout 2 \
+              -X POST http://$FIRST_VM:8000/env/$key?val=$val"
+    if $DEBUG; then
+      $CURL_CMD |& tee -a "$LOG_FILE";
+    else
+      $CURL_CMD &>> "$LOG_FILE";
+    fi
+  done
+
   #
   # run job script
   #
-  # TODO set env variables
   cmd=$(cat "$JOB_SCRIPT");
   # execute command
   logDebugMsg "Command to execute: 'PUT http://$FIRST_VM:8000/app \"$cmd\"'";

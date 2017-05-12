@@ -82,7 +82,7 @@ if [ -z ${PBS_JOBID-} ] \
     || [ ! -n "$PBS_JOBID" ]; then
   # no, assuming debug/test execution
   if [ $# -lt 1 ]; then
-    logErrorMsg "PBS_JOBID is not set! usage: $(basename ${BASH_SOURCE[0]}) <jobID>";
+    echo "ERROR: PBS_JOBID is not set! usage: $(basename ${BASH_SOURCE[0]}) <jobID>";
   else
     export PBS_JOBID=$1;
   fi

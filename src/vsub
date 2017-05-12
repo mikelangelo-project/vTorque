@@ -1459,21 +1459,24 @@ generateFiles;
 exportFlags;
 
 # generate files, only ?
-if $DO_NOT_SUBMIT_JOB; then #yes
+if $DO_NOT_SUBMIT_JOB; then 
+
+  #yes
   logInfoMsg "User requested to generate files for VM-based execution, only.\
 Skippping job submission." true;
   logInfoMsg "=====submit_cmd=====\n$REAL_QSUB $PARAMETERS_REAL_QSUB" true;
   logInfoMsg "====================" true;
   logInfoMsg "1) Get an interactive job with cmd 'qsub -I $PARAMETERS_CLEANED'" true;
-  logInfoMsg "2) When on the node, run the prologue script '$SCRIPT_PROLOGUE', only." true;
-  logInfoMsg "3) Run the job script '$JOB_SCRIPT_WRAPPER'." true;
+  logInfoMsg "2) Re-execute the root-prologue with cmd: sudo /var/spool/torque/mom_priv/prologue $RUID $USER" true;
+  logInfoMsg "3) When on the node, run the prologue script '$SCRIPT_PROLOGUE', only." true;
+  logInfoMsg "4) Run the job script '$JOB_SCRIPT_WRAPPER'." true;
   res=0;
 
-# jobfile or input stream present ?
+# job script as file or input stream present ?
 else
 
   #
-  # now submit now the job via the real qsub command
+  # submit the job via the real qsub command
   #
 
   # interative, stdin- or script-based job ?
@@ -1496,10 +1499,12 @@ else
     # ensure the job script exists
     if [ ! -n "$JOB_SCRIPT" ] \
        || [ ! -e $JOB_SCRIPT ]; then
+      # abort with error
       logErrorMsg "Job script file '$LAST_PARAM' (='$JOB_SCRIPT') \
 cannot be loaded - No such file or directory.";
     elif [ -e $JOB_SCRIPT ] \
         && [ ! -f $JOB_SCRIPT ]; then
+      # abort with error
       logErrorMsg "Job script '$JOB_SCRIPT' (='$JOB_SCRIPT') is not a file.";
     fi
 

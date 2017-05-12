@@ -577,7 +577,7 @@ function spawnProcess() {
   # spawn
   {
 
-    logDebugMsg "Spawning root process..";
+    logDebugMsg "Spawning root process (pid=$!)..";
     # cache start date
     startDate="$(date +%s)";
 

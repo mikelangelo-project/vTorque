@@ -191,7 +191,7 @@ SSH_TIMEOUT=5;
 #
 # NFS export for VM's "/home"
 #
-VM_NFS_HOME="172.18.2.6:/nfs/homes/mikelangelo";
+VM_NFS_HOME="172.18.2.6:/nfs/homes/mikelangelo/__USERNAME__";
 
 #
 # NFS export for VM's "/opt"

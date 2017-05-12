@@ -36,10 +36,17 @@ package_upgrade: false
 # add the user and its group with exactly same UID/GID (crucial for NFS access)
 #
 bootcmd:
+ #
+ # add user and its group
+ #
  - groupadd -g __GROUP_ID__ __USER_NAME__
  - useradd -u __USER_ID__ -g __GROUP_ID__ -s /bin/bash -M __USER_NAME__
  #
- # Create the workspace mount point in case it is not present
+ # create user's home dir
+ #
+  - mkdir /home/__USER_NAME__
+ #
+ # create the workspace mount point in case it is not present
  #
  - mkdir /workspace
  #
@@ -73,9 +80,9 @@ __SW_PACKAGES__
 # mount the NFS shares
 #
 mounts:
- - [ "__VM_NFS_HOME__", /home, "nfs", "rw,intr,noatime", "0", "0" ]
- - [ "__VM_NFS_OPT__", /opt, "nfs", "rw,intr,noatime", "0", "0" ]
- - [ "__VM_NFS_WS__", /workspace, "nfs", "rw,intr,noatime", "0", "0" ]
+ - [ "__VM_NFS_HOME__", /home/__USER_NAME__, "nfs", "rw,intr,noatime,uid=__USER_ID__,gid=__GROUP_ID__", "0", "0" ]
+ - [ "__VM_NFS_OPT__", /opt, "nfs", "rw,intr,noatime,uid=__USER_ID__,gid=__GROUP_ID__", "0", "0" ]
+ - [ "__VM_NFS_WS__", /workspace, "nfs", "rw,intr,noatime,uid=__USER_ID__,gid=__GROUP_ID__", "0", "0" ]
  # make PBS_NODEFILE available inside VM
  - [ "/var/spool/torque/aux", "/var/spool/torque/aux", "9p", "trans=virtio,version=9p2000.L,ro,chmod=0444,uid=0,guid=0", "0", "0" ]
  # make the pbs env available via profile.d (other part see below and domain.xml)

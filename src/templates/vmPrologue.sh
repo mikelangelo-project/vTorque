@@ -642,20 +642,25 @@ _generateMetaDataFiles() {
         sed -i 's,__DEBUG_OR_PROD__,#\n# security\n#\ndisable_root: true\nssh_pwauth: false\n,g' $metadataFile;
     fi
 
+    # substitute username placeholder in NFS's $HOME path
+    userID=$(id -u);
+    userName=$(id -u -n);
+    VM_NFS_HOME=$(echo ${VM_NFS_HOME-} | sed "s,__USERNAME__,$userName,g");
+
     # substitute values
     sed -i "s,__RUID__,$RUID,g" $metadataFile;
     sed -i "s,__HOSTNAME__,$computeNode,g" $metadataFile;
     sed -i "s,__VHOSTNAME__,$vhostName,g" $metadataFile;
     sed -i "s,__GROUP_ID__,$groudID,g" $metadataFile;
-    sed -i "s,__USER_ID__,$(id -u),g" $metadataFile; #required for nfs access
+    sed -i "s,__USER_ID__,$userID,g" $metadataFile; #required for nfs access
     sed -i "s,__USER_NAME__,$JOB_OWNER,g" $metadataFile;
     sed -i "s,__VM_JOB_DIR__,$VM_JOB_DIR,g" $metadataFile;
     # sed -i "s,__VM_NODE_FILE__,$VM_NODE_FILE,g" $metadataFile; // not used in any template, and VM_NODE_FILE in not set
     sed -i "s,__VM_NODE_FILE_DIR__,$VM_NODE_FILE_DIR,g" $metadataFile;
     sed -i "s,__VM_ENV_FILE_DIR__,$VM_ENV_FILE_DIR/$computeNode/$vhostName,g" $metadataFile;
     sed -i "s,__SCRIPT_BASE_DIR__,$SCRIPT_BASE_DIR,g" $metadataFile;
-    sed -i "s,__USERNAME__,$(id -u -n),g" $metadataFile;
-    sed -i "s,__VM_NFS_HOME__,$VM_NFS_HOME,g" $metadataFile; #/home
+    sed -i "s,__USERNAME__,$userName,g" $metadataFile;
+    sed -i "s,__VM_NFS_HOME__,$VM_NFS_HOME,g" $metadataFile; #/home/<username>
     sed -i "s,__VM_NFS_OPT__,$VM_NFS_OPT,g" $metadataFile; #/opt
     sed -i "s,__VM_NFS_WS__,$VM_NFS_WS,g" $metadataFile; #/workspace (scratch-fs)
     sed -i "s,__NAME_SERVER__,$NAME_SERVER,g" $metadataFile;

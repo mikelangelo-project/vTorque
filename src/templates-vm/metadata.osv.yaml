@@ -20,13 +20,41 @@
 #
 hostname: __VHOSTNAME__
 
+
+#
+# add the user and its group with exactly same UID/GID (crucial for NFS access)
+#
+bootcmd:
+ #
+ # create user's home dir
+ #
+  - mkdir /home/__USER_NAME__
+ 
+ #
+ # create the workspace mount point in case it is not present
+ #
+ - mkdir /workspace
+ #
+ # rename '/scratch' in VMs to '/workspace' and make it a hard requirement for images
+ # for now support both via a symlink
+ - rmdir /scratch
+ - ln -s /workspace /scratch
+ #
+ # create dirs for mount points
+ #
+ - mkdir -p /var/spool/torque/aux
+ - mkdir -p /var/spool/torque/vm
+
+
+
 #
 # mount the NFS shares
 #
 mounts:
- - [ "__VM_NFS_HOME__", /home, "nfs", "uid=__USER_ID__,gid=__GROUP_ID__,rw,intr,noatime", "0", "0" ]
- - [ "__VM_NFS_OPT__", /opt, "nfs", "uid=__USER_ID__,gid=__GROUP_ID__,rw,intr,noatime", "0", "0" ]
- - [ "__VM_NFS_WS__", /workspace, "nfs", "uid=__USER_ID__,gid=__GROUP_ID__,rw,intr,noatime", "0", "0" ]
+ - [ "__VM_NFS_HOME__", /home/__USER_NAME__, "nfs", "rw,intr,noatime,uid=__USER_ID__,gid=__GROUP_ID__", "0", "0" ]
+ - [ "__VM_NFS_OPT__", /opt, "nfs", "rw,intr,noatime,uid=__USER_ID__,gid=__GROUP_ID__", "0", "0" ]
+ - [ "__VM_NFS_WS__", /workspace, "nfs", "rw,intr,noatime,uid=__USER_ID__,gid=__GROUP_ID__", "0", "0" ]
+
 
 #
 # create files
@@ -39,9 +67,10 @@ files:
     [ -f "$file" ] && source $file;
 
 #
-# ping the physical host, otherwise it cannot see the VM's IP with the help of
-# 'arp -an's and create a profile for the virtual job environment
+# ping the physical host, otherwise it cannot see the VM's IP by the help of
+# an udp-ping
 #
+#runcmd:
 run:
   - PUT: /app/
     command: "/usr/bin/udpping.so __HOSTNAME__ 3333 5 500"

@@ -6,9 +6,12 @@ source "$SCRIPT_BASE_DIR/common/const.sh";
 # does the job submission contain a '-vm' resource request ?
 if [ -n "$(echo $@ | grep ' -vm ')" ]; then
   # no, forward to PBS qsub directly
+  logDebugMsg "No vm job, forwarding to Torque.";
+  logTraceMsg "qsub args:\n $@";
   $REAL_QSUB $@;
 else
   # yes, forward job submission request to vTorque's vsub
+  logDebugMsg "VM job detected,forwarding to vTorque.";
   $SCRIPT_BASE_DIR/vsub $@;
 fi
 

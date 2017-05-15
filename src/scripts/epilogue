@@ -86,6 +86,10 @@ stopSnapTask;
 # that has been renamed (by the Makefile) to *.orig, call it now
 runScriptPreviouslyInPlace "$(basename ${BASH_SOURCE[0]})";
 
+# kill all remaining user processes
+logDebugMsg "Killing any remaining user processes for user '$USERNAME'.";
+pkill -u $USERNAME;
+
 logInfoMsg "Root epilogue finished."
 
 # print the consumed time in debug mode

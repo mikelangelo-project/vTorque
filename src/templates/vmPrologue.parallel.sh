@@ -85,7 +85,7 @@ source "$SCRIPT_BASE_DIR/common/functions.sh";
 
 
 # get list of domain XMLs
-declare -a VM_DOMAIN_XML_LIST=($(ls $DOMAIN_XML_PATH_NODE/*.xml));
+declare -a VM_DOMAIN_XML_LIST=();
 
 #
 # prevent duplicate log msgs
@@ -106,15 +106,21 @@ PRINT_TO_STDOUT=false;
 # Checks preconditions and aborts if sth is not in place.
 #
 checkPreconditions() {
-  if [ -f "$CANCEL_FLAG_FILE" ]; then
-    logWarnMsg "Cancel flag file '$CANCEL_FLAG_FILE' found.";
-    if $DEBUG; then
-      logDebugMsg "Assuming test+debug, removing it.";
-      rm -f $CANCEL_FLAG_FILE;
-    else
-      logErrorMsg "Aborting now.";
-    fi
+
+  if [ ! -f "$CANCEL_FLAG_FILE" ] \
+       && [ -e "$DOMAIN_XML_PATH_NODE" ]; then
+    logTraceMsg "Preconditions check passed successfully.";
+    return 0;
   fi
+
+  logWarnMsg "Cancel flag file '$CANCEL_FLAG_FILE' found.";
+  if $DEBUG; then
+    logDebugMsg "Assuming test+debug, removing cancel flag file '$CANCEL_FLAG_FILE' ..";
+    rm -f $CANCEL_FLAG_FILE;
+  else
+    logErrorMsg "Aborting now.";
+  fi
+  return 1;
 }
 
 
@@ -129,16 +135,21 @@ _waitForFiles() {
 
   # init of VMs to boot is done
   while [ ! -f "$filesCreatedFlag" ]; do
-    # wait
+    # check cancel flag
+    checkCancelFlag;
+    # wait for flag file
     logDebugMsg "Waiting for VM-files on '$LOCALHOST' to be placed in dir '$DOMAIN_XML_PATH_NODE' ..";
     sleep 1;
     # timeout (150sec) reached ?
     isTimeoutReached 150 $startDate;
   done
 
+  # initialize list of domain XMLs
+  VM_DOMAIN_XML_LIST=($(ls $DOMAIN_XML_PATH_NODE/*.xml));
+
   # check if the domain XML file exists
-  if [ ! -n "$(ls $DOMAIN_XML_PATH_NODE/*.xml)" ]; then
-    logErrorMsg "Files for node have been generated, but no domain XML files could be found.";
+  if [ -z ${VM_DOMAIN_XML_LIST-} ]; then
+    logErrorMsg "No domain XML files found in dir '$DOMAIN_XML_PATH_NODE'.";
   fi
 }
 
@@ -478,6 +489,7 @@ _abort() { # it should not happen that we reach this function, but in case..
 logDebugMsg "************* BEGIN OF JOB PROLOGUE.PARALLEL *****************";
 logInfoMsg "User prologue.parallel wrapper script started.";
 
+# ensure pre-conditions are met
 checkPreconditions;
 
 # ensure that we do not loose anything for debug.log

@@ -105,14 +105,14 @@ DISABLED_HOSTS_LIST="*";
 # Indicates whether to run vmPro/Epilogues in parallel, default is true.
 # False is useful for debugging, only. Do not use in production.
 #
-PARALLEL=false;
+PARALLEL=true;
 
 #
 # Allows users to define custom images.
 # NOTE: introduces security implications, may allow users to mount NFS shares
 #       with chosen uids
 #
-ALLOW_USER_IMAGES=true;
+ALLOW_USER_IMAGES=false;
 
 #
 # Amount of core reserved for the host OS
@@ -127,7 +127,7 @@ HOST_OS_RAM_MB=2048;
 #
 # if user images are not allowed, the image must reside in this dir
 #
-GLOBAL_IMG_DIR="/images/pool";
+VM_IMG_DIR="/images/pool";
 
 #
 # indicates whether we use DNS to resolve VM IPs dynamically
@@ -191,7 +191,7 @@ SSH_TIMEOUT=5;
 #
 # NFS export for VM's "/home"
 #
-VM_NFS_HOME="172.18.2.6:/nfs/homes/mikelangelo/__USERNAME__";
+VM_NFS_HOME="172.18.2.6:/nfs/homes/mikelangelo";
 
 #
 # NFS export for VM's "/opt"

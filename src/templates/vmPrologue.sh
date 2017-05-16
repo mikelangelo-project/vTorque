@@ -645,7 +645,7 @@ _generateMetaDataFiles() {
     # substitute username placeholder in NFS's $HOME path
     userID=$(id -u);
     userName=$(id -u -n);
-    VM_NFS_HOME=$(echo ${VM_NFS_HOME-} | sed "s,__USERNAME__,$userName,g");
+    VM_NFS_HOME=$(echo ${VM_NFS_HOME-} | sed "s,__USER_NAME__,$userName,g");
 
     # substitute values
     sed -i "s,__RUID__,$RUID,g" $metadataFile;
@@ -659,7 +659,6 @@ _generateMetaDataFiles() {
     sed -i "s,__VM_NODE_FILE_DIR__,$VM_NODE_FILE_DIR,g" $metadataFile;
     sed -i "s,__VM_ENV_FILE_DIR__,$VM_ENV_FILE_DIR/$computeNode/$vhostName,g" $metadataFile;
     sed -i "s,__SCRIPT_BASE_DIR__,$SCRIPT_BASE_DIR,g" $metadataFile;
-    sed -i "s,__USERNAME__,$userName,g" $metadataFile;
     sed -i "s,__VM_NFS_HOME__,$VM_NFS_HOME,g" $metadataFile; #/home/<username>
     sed -i "s,__VM_NFS_OPT__,$VM_NFS_OPT,g" $metadataFile; #/opt
     sed -i "s,__VM_NFS_WS__,$VM_NFS_WS,g" $metadataFile; #/workspace (scratch-fs)
@@ -943,7 +942,6 @@ _generateDomainXML() {
       if [ "$key" == "IMG" ]; then
         value="$destDir/${number}-$(basename ${VM_PARAMS[$keyOne, $key]})";
       else
-        #FIXME: the vmPrologue.parallel complains that the domainXML contains __HYPERVISOR__ !
         value="${VM_PARAMS[$keyOne, $key]}";
       fi
       logTraceMsg "Replacing: key='__${key}__' with value='$value' in domainXML file '$domainXMLtmpFile'.";
@@ -1020,19 +1018,17 @@ _createCPUpinning() { #TODO move to .parallel and enable user to provide a filen
     # no pinning requested, nothing to do
     logDebugMsg "vCPU pinning is disabled.";
     sed -i -e "s,__VCPU_PINNING__,,g" "$domainXML";
-  elif [[ ${VM_PARAMS[$keyOne, 'VCPU_PINNING']} =~ ^(auto|true)$ ]]; then # auto config requested
+  elif [[ ${VM_PARAMS[$keyOne, 'VCPU_PINNING']} =~ ^(auto|true)$ ]]; then # auto configuration requested
     # auto pinning requested
     logDebugMsg "Auto vCPU pinning is enabled.";
-    # use a tmp file in order to populate the XML fragment
-    pinningFile="$VM_JOB_DIR/$LOCALHOST/numa_pinning";
     # prepare xml fragment and store the result in 'pinningFile'
-    sed "s,__VCPU_PINNING__,${VM_PARAMS[$keyOne, VCPUS]-},g" "$DOMAIN_NUMA_XML_TEMPLATE" > "$pinningFile";
-    # replace placeholder with conent of 'pinningFile'
-    sed -i -e "/__VCPU_PINNING__/e cat '$pinningFile'" -e "s,__VCPU_PINNING__,,g" "$domainXML";
+    pinningConfig=$(sed "s,__VCPU_PINNING__,${VM_PARAMS[$keyOne, VCPUS]-},g" "$DOMAIN_NUMA_XML_TEMPLATE");
+    # replace placeholder with pinning fragment
+    sed -i "{s,__VCPU_PINNING__,$(echo $pinningConfig),g}" "$domainXML";
   else # no, we got a mapping file provided
     pinningFile="${VM_PARAMS[$keyOne, 'VCPU_PINNING']}";
     logDebugMsg "User provided vCPU pinning is enabled, file: '$pinningFile'.";
-    sed -i -e "/__VCPU_PINNING__/e cat '$pinningFile'" -e "s,__VCPU_PINNING__,,g" "$domainXML";
+    sed -i "{s,__VCPU_PINNING__,$(cat $pinningFile),g}" "$domainXML";
   fi
 }
 
@@ -1083,9 +1079,11 @@ bootVMsOnHost() {
   cmd="source /etc/profile; exec $(realpath $(dirname ${BASH_SOURCE[0]}))/vmPrologue.parallel.sh $JOBID;";
   logDebugMsg "Trigger boot of VMs on node '$computeNode', cmd: 'ssh $computeNode \"$cmd\"'";
 
-  # execute via SSH
+  # check if canceled meanwhile
   checkCancelFlag;
-  ssh $SSH_OPTS $computeNode "$cmd";
+
+  # execute via SSH
+  ssh $SSH_OPTS $computeNode "$cmd"; # 1> /dev/null to prevent duplicate log msgs (should not happen due to PRINT_TO_STDOUT=false but does)
   res=$?;
 
   # successful boot init ? (booting still takes place now)
@@ -1240,10 +1238,8 @@ _abort() { # it should not happen that we reach this function, but in case..
 logDebugMsg "***************** BEGIN OF JOB PROLOGUE ********************";
 logInfoMsg "User prologue wrapper script started.";
 
-if [ -f "$CANCEL_FLAG_FILE" ]; then
-  logDebugMsg "Cancel flag file found, ignoring/removing it - assuming debbuging.";
-  rm -f $CANCEL_FLAG_FILE;
-fi
+# check if canceled meanwhile
+checkCancelFlag;
 
 # ensure that we do not loose anything for debug.log
 captureOutputStreams;
@@ -1261,7 +1257,7 @@ preConditionCheck;
 nodes=$(cat $PBS_NODEFILE | uniq); # we need uniq, because for each rank there's an entry of that node
 vnodesPerHost=$VMS_PER_NODE;
 #
-nodeCount=$(echo $nodes | wc -l);
+nodeCount=$(echo $nodes | wc -w);
 amountOfVMs=$(($nodeCount * $vnodesPerHost));
 
 if [ $amountOfVMs -lt 1 ]; then

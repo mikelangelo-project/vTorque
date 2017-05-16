@@ -623,14 +623,15 @@ keepVMsAliveIfRequested() {
       && $KEEP_VM_ALIVE; then
     logDebugMsg "Pausing job wrapper, it is requested to keep the VMs alive.";
     logInfoMsg "To continue execution, run cmd: 'touch $FLAG_FILE_CONTINUE'.";
-    breakLoop=false;
     # wait for flag indicating to continue
     while [ ! -f "$FLAG_FILE_CONTINUE" ]; do
+      logTraceMsg "Flag file '$FLAG_FILE_CONTINUE' not found, waiting ..";
       checkCancelFlag;
       sleep 1;
     done
+    logInfoMsg "Flag file '$FLAG_FILE_CONTINUE' found, continuing execution.";
+    logDebugMsg "Removing flag file '$FLAG_FILE_CONTINUE'";
     rm -f $FLAG_FILE_CONTINUE;
-    logDebugMsg "Continuing execution.";
   fi
   return 0;
 }
@@ -658,6 +659,9 @@ _abort() {
 
 # debugging output
 logDebugMsg "***************** START OF JOB WRAPPER ********************";
+
+# check if canceled meanwhile
+checkCancelFlag;
 
 # capture output streams in vTorque's log
 captureOutputStreams;

@@ -17,32 +17,32 @@
 
 #=============================================================================
 #
-#         FILE: qsub
+#         FILE: vsub
 #
-#        USAGE: qsub <parameters>
+#        USAGE: vsub <parameters>
 #
-#  DESCRIPTION: The purpose of this wrapper is to catch job submits via 'qsub'
-#               containing the '-vm <key=value,..>' parameter extension for
-#               jobs to be run in a defined virtual machine instead of bare
-#               metal.
+#  DESCRIPTION: The purpose of this wrapper is accept job submissions for
+#               virtualized batch system environments.
+#               Jobs are run in virtual machines instead of bare metal.
 #
 #      OPTIONS: ---
-# REQUIREMENTS: Submit-tool 'qsub' is installed and configured.
-#               REAL_QSUB_PATH is properly configured in this script.
-#               const.sh is sourced before this file
+# REQUIREMENTS: Job submission cli 'qsub' is installed and configured.
+#               REAL_QSUB_PATH is properly configured and file const.sh
+#               is sourced before this file.
 #         BUGS: ---
 #        NOTES: ---
 #       AUTHOR: Nico Struckmann, struckmann@hlrs.de
 #      COMPANY: HLRS, University of Stuttgart
-#      VERSION: 0.5
+#      VERSION: 0.6
 #      CREATED: Oct 02nd 2015
-#     REVISION: Dec 04 2016
+#     REVISION: May 12 2017
 #
 #    CHANGELOG
 #         v0.2: Bug fixes
 #         v0.3: Moved metadata generation to the prologue sequence
 #         v0.4: Bug fixes and further refactoring
 #         v0.5: New features added, bug fixes and more refactoring
+#         v0.6: renamed from qsub to vsub
 #
 #=============================================================================
 
@@ -57,7 +57,9 @@
 #
 # Random uid to identify a job's corresponding files
 #
-RUID="$(echo $(date +%N) | sha256sum | cut -d ' ' -f1 | cut -c 1-15)";
+if [ -z ${RUID-} ]; then
+  RUID="$(echo $(date +%N) | sha256sum | cut -d ' ' -f1 | cut -c 1-15)";
+fi
 
 #
 # The job id we receive after we have submitted the job.
@@ -240,16 +242,16 @@ usage() {
 
 #---------------------------------------------------------
 #
-# Prints list of images available in the global IMAGE_POOL_DIR
+# Prints list of images available in the global VM_IMG_DIR
 #
 listImages() {
 
-  imagesOutputStr="\n\t+++ Images availalable for job submission +++\n";
+  imagesOutputStr="\n\t+++ Images available for job submission +++\n";
   imagesOutputStr="$imagesOutputStr================================================================\n";
   imagesOutputStr="$imagesOutputStr Name\t\t\t\t\t\t\t| Size";
   imagesOutputStr="$imagesOutputStr\n----------------------------------------------------------------";
 
-  for imageFile in $(ls $IMAGE_POOL_DIR); do
+  for imageFile in $(ls $VM_IMG_DIR); do
     length=${#imageFile};
     tabs="";
     # determine count of tabs
@@ -258,7 +260,7 @@ listImages() {
       length=$(($length + $TAB_WIDTH));
     done
     # add line for image
-    imagesOutputStr="$imagesOutputStr\n ${imageFile}${tabs}| $(du -h $IMAGE_POOL_DIR/$imageFile | cut -f1)";
+    imagesOutputStr="$imagesOutputStr\n ${imageFile}${tabs}| $(du -h $VM_IMG_DIR/$imageFile | cut -f1)";
   done
 
   imagesOutputStr="$imagesOutputStr\n================================================================\n";
@@ -389,7 +391,27 @@ is expected.\nProvided params are: '$@'" 2;
           # cache it
           VM_PARAMETER[$key]="$mappingFile";
         fi
-      else
+      elif [ $key == "IMG" ]; then
+        # user provided images are allowed ?
+        if ! $ALLOW_USER_IMAGES; then
+          logDebugMsg "User images not allowed, searching for the filename '$value' in global img pool dir '$VM_IMG_DIR'.";
+          value="$VM_IMG_DIR/$(basename $value)";
+        elif [ ! -e "$value" ]; then
+          # assume the filename is provided, only
+          # check pwd first
+          value="$(pwd)/$value";
+        fi
+        if [ ! -e "$value" ]; then
+          # assume the filename is provided, only
+          # check VM_IMG_DIR as next
+          value="$VM_IMG_DIR/$value";
+        fi
+        # found ?
+        if [ ! -e "$value" ]; then
+          # seems not to be an absolute path (assuming file exists), search for it in the VM_IMG_DIR
+          logErrorMsg "There is no image file named '$value' in global image dir '$VM_IMG_DIR'.";
+        fi
+      else # no special argument, just cache it
         # copy as it is
         VM_PARAMETER[$key]=$value;
       fi
@@ -578,19 +600,23 @@ _parseVMparameters() {
       key="$arg";
     # vm key/value params
     elif [ "$next" == "VM_ARG_VALUE" ]; then
-      # check if value starts with '-' that would indicate a key
+      # check if value starts with '-' which would indicate a key instead
       if [[ "$next" =~ ^-\w ]]; then
         logDebugMsg "Previously parsed key indicates next is a VM key/value pair, but we found: '$arg'";
         usage "$key" "$arg" "$next";
       fi
       logTraceMsg "VM resource request detected, 'key=value[,key=value]*' pair(s): '$arg'";
-      # '-vm' arg is expected to be 'key=value'
+      # '-vm' arg is expected to be a 'key=value' pair
       _putParameterInMap "$arg";
       next="";
     elif [ "$arg" == "-gf" ]; then
-      logDebugMsg "Detected flag '-gf' to generate files, only.";
-      # generate files for manual debugging, only
-      DO_NOT_SUBMIT_JOB=true;
+    if ${ENABLE_DEV_MODE-false}; then
+        logDebugMsg "Detected flag '-gf' to generate files, only.";
+        # generate files for manual debugging, only
+        DO_NOT_SUBMIT_JOB=true;
+      else
+        logErrorMsg "Argument '-gf' is allowed in development mode, only!";
+      fi
     elif [ "$arg" == "-listImages" ]; then
       listImages;
     else # neither a defined PBS key[/value], not a vm key
@@ -737,8 +763,10 @@ parseParameter() {
     # job script
   fi
 
-  # are there any '-vm ..' requests on the cmd line provided ?
-  if [[ "${params[@]}" =~ -vm\  ]]; then # yes
+  # are there any '-vm ..' or '-listImages' requests on the cmd line provided ?
+  if [[ "${params[@]}" =~ -listImages ]]; then
+      listImages;
+  elif [[ "${params[@]}" =~ -vm\  ]]; then # yes
     VMJOB_REQUESTED=true;
     logDebugMsg "Found '-vm' parsing cmd line arguments for VM resource requests.";
     _parseVMparameters $params;
@@ -818,7 +846,7 @@ applyVMDefaultParameter() {
   # VM image
   if [ -z ${VM_PARAMETER['IMG']-} ]; then
     logTraceMsg "Applying IMG='$IMG_DEFAULT' as default VM parameter.";
-    VM_PARAMETER['IMG']="$GLOBAL_IMG_DIR/$IMG_DEFAULT";
+    VM_PARAMETER['IMG']="$VM_IMG_DIR/$IMG_DEFAULT";
     logTraceMsg "Applying DISTRO='$DISTRO_DEFAULT' as default VM parameter.";
     VM_PARAMETER['DISTRO']="$DISTRO_DEFAULT";
   fi
@@ -1093,9 +1121,9 @@ generateJobScriptWrapper() {
       # not used in this case, just ensure it doesn't contain anything
       LAST_PARAM="";
     else
-      logErrorMsg "The job requests cannot be identified. \n\
-Last parameter is not a valid file '$LAST_PARAM' and it's neither seems\
-to be an interactive nor piped job ?!";
+      logErrorMsg "The job request cannot be identified. \n\
+Last parameter is not a valid file '$LAST_PARAM' and it neither seems \
+to be an interactive nor a piped job.";
     fi
   else # last parameter is a valid file
     logTraceMsg "Standard batch job detected.";
@@ -1267,7 +1295,7 @@ exportFlags() {
   fi
 
   # write out count of VMs per node
-  echo "${VM_PARAMETER['VMS_PER_NODE']}" > "$VM_JOB_DIR/.vms_per_node";
+  echo "${VM_PARAMETER['VMS_PER_NODE']}" > "$FLAG_FILE_DIR/.vms_per_node";
 }
 
 
@@ -1438,6 +1466,7 @@ if [ ! -e "$FLAG_FILE_DIR" ]; then
     || logErrorMsg "Failed to create flag files dir '$FLAG_FILE_DIR'.";
 fi
 # create indicator flag for VM job
+logDebugMsg "Creating flag file '$FLAG_FILE_DIR/.vmJob'";
 touch "$FLAG_FILE_DIR/.vmJob";
 
 #
@@ -1467,9 +1496,11 @@ Skippping job submission." true;
   logInfoMsg "=====submit_cmd=====\n$REAL_QSUB $PARAMETERS_REAL_QSUB" true;
   logInfoMsg "====================" true;
   logInfoMsg "1) Get an interactive job with cmd 'qsub -I $PARAMETERS_CLEANED'" true;
-  logInfoMsg "2) Re-execute the root-prologue with cmd: sudo /var/spool/torque/mom_priv/prologue $RUID $USER" true;
-  logInfoMsg "3) When on the node, run the prologue script '$SCRIPT_PROLOGUE', only." true;
-  logInfoMsg "4) Run the job script '$JOB_SCRIPT_WRAPPER'." true;
+  logInfoMsg "2) Execute the root-epilogue to reset the environment: 'sudo /var/spool/torque/mom_priv/epilogue $PBS_JOBID $USER" true;
+  logInfoMsg "3) Create missing symlink with cmd: 'mv $VM_JOB_DIR_PREFIX/\$PBS_JOBID $VM_JOB_DIR/idr; ln -s $VM_JOB_DIR $VM_JOB_DIR_PREFIX/\$PBS_JOBID'" true;
+  logInfoMsg "4) Re-execute the root-prologue with cmd: sudo /var/spool/torque/mom_priv/prologue $PBS_JOBID $USER" true;
+  logInfoMsg "5) When on the node, run the prologue script '$SCRIPT_PROLOGUE', only." true;
+  logInfoMsg "6) Run the job script '$JOB_SCRIPT_WRAPPER'." true;
   res=0;
 
 # job script as file or input stream present ?

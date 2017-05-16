@@ -35,18 +35,24 @@ source $ABSOLUTE_PATH/functions.sh;
 #                                                                            #
 #============================================================================#
 
-# log file exists ?
-if [ -z ${LOG_FILE-} ] \
-    || [ ! -f "$LOG_FILE" ]; then # no, not yet
+
+#---------------------------------------------------------
+#
+# Ensures access to the (correct) log file.
+#
+if [ -z ${LOG_FILE-} ]; then
+  logErrorMsg "No log file  \$LOG_FILE='' defined, aborting.";
+elif [ ! -f "$LOG_FILE" ]; then # no access yet, wait for symlink created by vsub
   # get dir
   logFileDir=$(dirname "$LOG_FILE");
+  startDate="$(date +%s)";
   # ensure dir exists
-  [ ! -d $logFileDir ] \
-    && mkdir -p $logFileDir;
-  # create log file
-  touch "$LOG_FILE";
-  # set correct owner
-  chown $USERNAME:$USERNAME -R $(dirname "$LOG_FILE");
+  while [ ! -e $logFileDir ]; do
+    checkCancelFlag;
+    sleep 1;
+    # wait up to 10sec
+    isTimeoutReached 10 $startDate;
+  done;
 fi
 
 
@@ -285,11 +291,19 @@ cleanUpVMs() {
   # log shutdown
   logDebugMsg "Shutting down and destroying all local VMs now.";
 
-  if [ ! -e $(dirname "$DOMAIN_XML_PATH_NODE") ]; then
-    logDebugMsg "Skipping VM cleanup, no domain *.xml files found";
+  if [ -z ${DOMAIN_XML_PATH_NODE-} ] \
+      || [ ! -e $(dirname "$DOMAIN_XML_PATH_NODE") ] \
+      || [ -z ${DOMAIN_XML_PATH_NODE-} ]; then
+    logWarnMsg "Skipping VM cleanup, no domain *.xml files found";
     return 0;
   fi
   declare -a VM_DOMAIN_XML_LIST=($(ls $DOMAIN_XML_PATH_NODE/*.xml));
+
+  # domain XML(s) found ?
+  if [ -z ${VM_DOMAIN_XML_LIST-} ]; then
+      # no, abort
+    logErrorMsg "No domain XML files can be found in dir '$DOMAIN_XML_PATH_NODE' !";
+  fi
 
   # let remote processes know that we started our work
   informRemoteProcesses;
@@ -553,6 +567,10 @@ copyVMlogFile() {
 # but the symlink is not in place, yet
 #
 waitUntilJobDirIsAvailable() {
+
+  # ensure no error occurred so far
+  checkCancelFlag;
+
   # we wait a moment if there is still no dir it's not a VM job
   # and we should run regardless of that dir
   timeout=5;
@@ -577,7 +595,7 @@ function spawnProcess() {
   # spawn
   {
 
-    logDebugMsg "Spawning root process (pid=$!)..";
+    logDebugMsg "Spawning root process (pid=$$)..";
     # cache start date
     startDate="$(date +%s)";
 
@@ -599,7 +617,7 @@ function spawnProcess() {
       # cancelled meanwhile ?
       checkCancelFlag;
     done
-    logTraceMsg "Flag file '$FLAG_FILE_DIR/$LOCALHOST/.userPrologueDone' found."
+    logDebugMsg "Flag file '$FLAG_FILE_DIR/$LOCALHOST/.userPrologueDone' found."
 
     # boot all (localhost) VMs
     bootVMs;
@@ -624,8 +642,16 @@ function spawnProcess() {
 #
 function bootVMs() {
 
+  if [ -z ${DOMAIN_XML_PATH_NODE-} ] \
+      || [ ! -e $(dirname "$DOMAIN_XML_PATH_NODE") ] \
+      || [ -z ${DOMAIN_XML_PATH_NODE-} ]; then
+    logWarnMsg "Skipping VM instantiation, no domain *.xml files found";
+    return 0;
+  fi
+
   declare -a VM_DOMAIN_XML_LIST=($(ls $DOMAIN_XML_PATH_NODE/*.xml));
   totalCount=${#VM_DOMAIN_XML_LIST[@]};
+
   # boot all VMs dedicated to the current node we run on
   i=1;
   for domainXML in ${VM_DOMAIN_XML_LIST[@]}; do

@@ -185,10 +185,10 @@ isTimeoutReached() {
     if $doNotExit; then
      logWarnMsg $msg;
      timeoutFlag=true;
-    else # abort
+    elif [ ! -e $CANCEL_FLAG_FILE ]; then # abort
      touch $CANCEL_FLAG_FILE;
-     logErrorMsg $msg;
    fi
+   logErrorMsg $msg;
   fi
 
   # re-enable verbose logging if it was enabled before
@@ -414,11 +414,11 @@ generateMAC() {
 #
 getVMsPerNode() {
   # check vmsPerNode file exists
-  if [ ! -f "$VM_JOB_DIR/.vms_per_node" ]; then
-    logWarnMsg "Required file '$VM_JOB_DIR/.vms_per_node' not found.";
+  if [ ! -f "$FLAG_FILE_DIR/.vms_per_node" ]; then
+    logWarnMsg "Required file '$FLAG_FILE_DIR/.vms_per_node' not found.";
     return 0;
   fi
-  cat "$VM_JOB_DIR/.vms_per_node";
+  cat "$FLAG_FILE_DIR/.vms_per_node";
   return $?;
 }
 
@@ -485,7 +485,10 @@ abort() {
   # tell all processes to abort,
   # check if dir already exists, if not the cancel took place before
   # first log messages were written and job submimtted
-  if [ -e $(dirname "$CANCEL_FLAG_FILE") ]; then
+  if [ ! -e $(dirname "$CANCEL_FLAG_FILE") ]; then
+    mkdir $(dirname "$CANCEL_FLAG_FILE");
+  fi
+  if [ ! -e $CANCEL_FLAG_FILE ]; then
     touch $CANCEL_FLAG_FILE;
   fi
 
@@ -512,13 +515,16 @@ abort() {
 
 #---------------------------------------------------------
 #
-# dummy in case a script doesn't need to implement it
-# if implemented it is expected to return in an error case a 2 digit integer
-# that is suffied by a '0', example: -90,-80,..,0,10,20,..,90
+# Dummy function in case a script doesn't need to implement it.
+#
+# If implemented it is expected to return in an error case a 2 
+# digit integer that is suffixed by a '0'. 
+# For example: -90,-80,..,0,10,20,..,90
 # '0' for success
+# all other return codes indicate errors/failures
 #
 _abort() {
   echo -n "";
-  logDebugMsg "Dummy function '_abort' is called.";
+  logTraceMsg "Dummy function '_abort' is called.";
   return 0;
 }

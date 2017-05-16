@@ -64,7 +64,7 @@ We tried to simplify the configuration as much as possible. To configure several
 | `DISABLED_HOSTS_LIST`             | Regex for host list that is disabled for VM job execution.|
 | `PARALLEL`                        | Execute boot processes on the remote nodes asynchronously or sequentially. Parallel execution is recommended, since huge jobs may otherwise hit the timeout for the prologue phase. |
 | `ALLOW_USER_IMAGES`               | Indicates whether users are allowed to submit images with their job. |
-| `IMAGE_POOL`                      | Absolute path to directory on a shared file-system that contains images available to users. |
+| `VM_IMG_DIR`                     | Absolute path to directory on a shared file-system that contains images available to users. |
 | `HOST_OS_CORE_COUNT`              | Cores reserved for the physical host. Greater or equals 0. |
 | `HOST_OS_RAM_MB`                  | RAM in MB reserved for the physical host. Greater than 0, should match host os requirements as this is used to calculate RAM available to guests.|
 | `MAX_VMS_PER_NODE`                | Maximum count of VMs per node that cannot be exceeded. |

@@ -42,10 +42,6 @@ bootcmd:
  - groupadd -g __GROUP_ID__ __USER_NAME__
  - useradd -u __USER_ID__ -g __GROUP_ID__ -s /bin/bash -M __USER_NAME__
  #
- # create user's home dir
- #
-  - mkdir /home/__USER_NAME__
- #
  # create the workspace mount point in case it is not present
  #
  - mkdir /workspace
@@ -79,9 +75,9 @@ __SW_PACKAGES__
 # mount the NFS shares
 #
 mounts:
- - [ "__VM_NFS_HOME__", /home/__USER_NAME__, "nfs", "rw,intr,noatime,uid=__USER_ID__,gid=__GROUP_ID__", "0", "0" ]
- - [ "__VM_NFS_OPT__", /opt, "nfs", "rw,intr,noatime,uid=__USER_ID__,gid=__GROUP_ID__", "0", "0" ]
- - [ "__VM_NFS_WS__", /workspace, "nfs", "rw,intr,noatime,uid=__USER_ID__,gid=__GROUP_ID__", "0", "0" ]
+ - [ "__VM_NFS_HOME__/__USER_NAME__", /home/__USER_NAME__, "nfs", "rw,intr,noatime,nouser,auto", "0", "0" ]
+ - [ "__VM_NFS_OPT__", /opt, "nfs", "rw,intr,noatime,nouser,auto", "0", "0" ]
+ - [ "__VM_NFS_WS__", /workspace, "nfs", "rw,intr,noatime,nouser,auto", "0", "0" ]
  # make PBS_NODEFILE available inside VM
  - [ "/var/spool/torque/aux", "/var/spool/torque/aux", "9p", "trans=virtio,version=9p2000.L,ro,chmod=0444,uid=0,guid=0", "0", "0" ]
  # make the pbs env available via profile.d (other part see below and domain.xml)
@@ -181,7 +177,7 @@ write_files:
      #? source /etc/profile.d/pbsVirtualJobEnv.sh;
      JOBID=$PBS_JOBID;
      SCRIPT_BASE_DIR=__SCRIPT_BASE_DIR__;
-     USERNAME=__USERNAME__;
+     USERNAME=__USER_NAME__;
      # load config and constants
      source "$SCRIPT_BASE_DIR/common/const.sh";
      source "$SCRIPT_BASE_DIR/common/config.sh";

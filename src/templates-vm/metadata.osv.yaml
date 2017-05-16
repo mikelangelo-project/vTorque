@@ -28,8 +28,8 @@ bootcmd:
  #
  # create user's home dir
  #
-  - mkdir /home/__USER_NAME__
- 
+ - mkdir /home/__USER_NAME__
+
  #
  # create the workspace mount point in case it is not present
  #
@@ -51,7 +51,7 @@ bootcmd:
 # mount the NFS shares
 #
 mounts:
- - [ "__VM_NFS_HOME__", /home/__USER_NAME__, "nfs", "rw,intr,noatime,uid=__USER_ID__,gid=__GROUP_ID__", "0", "0" ]
+ - [ "__VM_NFS_HOME__/__USER_NAME__", /home/__USER_NAME__, "nfs", "rw,intr,noatime,uid=__USER_ID__,gid=__GROUP_ID__", "0", "0" ]
  - [ "__VM_NFS_OPT__", /opt, "nfs", "rw,intr,noatime,uid=__USER_ID__,gid=__GROUP_ID__", "0", "0" ]
  - [ "__VM_NFS_WS__", /workspace, "nfs", "rw,intr,noatime,uid=__USER_ID__,gid=__GROUP_ID__", "0", "0" ]
 

@@ -19,7 +19,7 @@
 # prints out available targets
 #
 info:
-	echo -e "Choose from:\n  install\n  permissions\n  permissions-dev\n  permissions-git-commit\n setup-nodes\n  revert-nodes\n"; \
+	echo -e "Choose from:\n  install\n  permissions\n  permissions-dev\n  permissions-git-commit\n  setup-nodes\n  revert-nodes\n"; \
 
 
 #
@@ -34,19 +34,20 @@ install:
 #
 permissions:
 	chown -R root:root ./; \
-	chown -R root:mikedev ./module_file; \
-	chmod 555 ./module_file; \
-	chmod 444 ./module_file/*; \
-	chmod 555 ./src/scripts; \
-	chmod 500 ./src/scripts/*; \
-	chmod 555 ./src/templates; \
-	chmod 444 ./src/templates/*; \
-	chmod 555 ./src/common; \
-	chmod 444 ./src/common/*; \
-	chmod 555 ./src/qsub; \
-	chmod -R 555 ./test; \
+	chmod 555 ./contrib; \
 	chmod 444 ./contrib/*; \
-	chmod -R 555 ./components/*; \
+	chmod 555 ./doc; \
+	chmod 444 ./doc/*.md; \
+	chmod -R 555 ./lib; \
+	[ -d ./module_file ] && chmod 555 ./module_file; \
+	[ -d ./module_file ] && chmod 444 ./module_file/*; \
+	chmod -R 555 ./src; \
+	chmod 444 ./src/common/*; \
+	chmod 500 ./src/scripts/*; \
+	chmod 500 ./src/scripts-vm/*; \
+	chmod 444 ./src/templates/*; \
+	chmod 444 ./src/templates-vm/*; \
+	[ -d ./test ] && chmod -R 555 ./test; \
 	echo "Done"; \
 
 
@@ -55,18 +56,15 @@ permissions:
 #
 permissions-dev:
 	chown -R root:mikedev ./; \
-	chmod 775 ./module_file; \
-	chmod 664 ./module_file/*; \
-	chmod 555 ./src/scripts; \
+	chmod -R 777 ./contrib; \
+	chmod -R 777 ./doc; \
+	chmod 666 ./doc/*.md; \
+	chmod -R 777 ./lib; \
+	chmod 777 ./module_file; \
+	chmod 666 ./module_file/*; \
+	chmod -R 777 ./src; \
 	chmod 500 ./src/scripts/*; \
-	chmod 775 ./src/templates; \
-	chmod 664 ./src/templates/*; \
-	chmod 775 ./src/common; \
-	chmod 664 ./src/common/*; \
-	chmod 775 ./src/qsub; \
-	chmod -R 775 ./test/*; \
-	chmod 664 ./contrib/*; \
-	chmod -R 775 ./components/*; \
+	chmod -R 777 ./test; \
 	echo "Done"; \
 
 

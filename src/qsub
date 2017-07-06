@@ -55,7 +55,7 @@ source "$SCRIPT_BASE_DIR/common/config.sh";
 source "$SCRIPT_BASE_DIR/common/functions.sh";
 
 # does the job submission contain a '-vm' resource request ?
-if [ -n "$(echo $@ | grep -iE ' -vm | -listimages')" ]; then
+if [ -n "$(echo $@ | grep -iE '-vm |-listimages')" ]; then
   # yes, forward job submission request to vTorque's vsub
   logDebugMsg "VM job detected,forwarding to vTorque.";
   $SCRIPT_BASE_DIR/vsub $@;

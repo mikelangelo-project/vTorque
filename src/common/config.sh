@@ -120,7 +120,7 @@ ALLOW_USER_IMAGES=false;
 HOST_OS_CORE_COUNT=1;
 
 #
-# Amout of RAM dedicated to the physical host OS
+# Amount of RAM dedicated to the physical host OS
 #
 HOST_OS_RAM_MB=2048;
 

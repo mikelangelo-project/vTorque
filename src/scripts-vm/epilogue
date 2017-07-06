@@ -98,7 +98,7 @@ LOG_FILE=/var/log/pbs_root_epilogue.log;
 #                                                                            #
 #============================================================================#
 
-logDebugMsg "Running VM Epilogue as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
+logTraceMsg "Running VM Epilogue as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
 logInfoMsg "Root VM epilogue script started.";
 
 # capture STDOUT/STDERR outputs to log file

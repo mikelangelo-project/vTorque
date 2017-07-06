@@ -100,7 +100,7 @@ LOG_FILE=/var/log/pbs_root_prologue.log;
 #                                                                            #
 #============================================================================#
 
-logDebugMsg "Running VM Prologue as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
+logTraceMsg "Running VM Prologue as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
 logInfoMsg "Root VM prologue script started";
 
 # capture STDOUT/STDERR outputs to log file

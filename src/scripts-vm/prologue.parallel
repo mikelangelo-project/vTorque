@@ -100,7 +100,7 @@ LOG_FILE=/var/log/pbs_root_prologue.parallel.log;
 #                                                                            #
 #============================================================================#
 
-logDebugMsg "Running Prologue-Parallel as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
+logTraceMsg "Running Prologue-Parallel as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
 logInfoMsg "Root VM prologue.parallel script started.";
 
 # capture STDOUT/STDERR outputs to log file

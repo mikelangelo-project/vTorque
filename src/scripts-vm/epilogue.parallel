@@ -99,7 +99,7 @@ LOG_FILE=/var/log/pbs_root_epilogue.parallel.log;
 #                                                                            #
 #============================================================================#
 
-logDebugMsg "Running VM Epilogue-Parallel as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
+logTraceMsg "Running VM Epilogue-Parallel as '$(id)', file: '$(basename ${BASH_SOURCE[0]})'";
 logInfoMsg "Root VM epilogue.parallel script started.";
 
 # capture STDOUT/STDERR outputs to log file

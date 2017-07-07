@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2016 HLRS, University of Stuttgart
+# Copyright 2016-2017 HLRS, University of Stuttgart
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +13,31 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+#
+
+#=============================================================================
+#
+#         FILE: functions.sh
+#
+#        USAGE: source root-functions.sh
+#
+#  DESCRIPTION: Collection of vTorque helper functions executed as root.
+#               NOTE: file 'functions.sh' must be sourced first. 
+#
+#      OPTIONS: ---
+# REQUIREMENTS: log4bsh must be available
+#         BUGS: ---
+#        NOTES: ---
+#       AUTHOR: Nico Struckmann, struckmann@hlrs.de
+#      COMPANY: HLRS, University of Stuttgart
+#      VERSION: 0.2
+#      CREATED: Oct 02nd 2015
+#     REVISION: Jul 10th 2017
+#
+#    CHANGELOG
+#         v0.2: refactoring and cleanup
+#
+#=============================================================================
 #
 
 #
@@ -64,12 +89,12 @@ fi
 checkSharedFS() {
 
   # shared root dir in place ?
-  if [ ! -d $SHARED_FS_ROOT_DIR ]; then
-    logDebugMsg "The shared fs root dir '$SHARED_FS_ROOT_DIR' does not exist, creating it.";
-    if [ ! $(mkdir -p $SHARED_FS_ROOT_DIR) ]; then
-    logErrorMsg "Shared file-system dir prefix '$SHARED_FS_ROOT_DIR' doesn't exist and cannot be created.";
+  if [ ! -d $WS_DIR ]; then
+    logDebugMsg "The shared fs root dir '$WS_DIR' does not exist, creating it.";
+    if [ ! $(mkdir -p $WS_DIR) ]; then
+    logErrorMsg "Shared workspace dir '$WS_DIR' doesn't exist and cannot be created.";
     fi
-    chmod 777 $SHARED_FS_ROOT_DIR;
+    chmod 777 $WS_DIR;
   fi
 
   # if shared fs dir does not exist yet, create it quitely
@@ -613,7 +638,7 @@ function spawnProcess() {
       sleep 1;
       logTraceMsg "Waiting for flag file '$FLAG_FILE_DIR/$LOCALHOST/.userPrologueDone' to become available..";
       # timeout reached ? (if yes, we abort)
-      isTimeoutReached $ROOT_PROLOGUE_TIMEOUT $startDate;
+      isTimeoutReached $PROLOGUE_TIMEOUT $startDate;
       # cancelled meanwhile ?
       checkCancelFlag;
     done

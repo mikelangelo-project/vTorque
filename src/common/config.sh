@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2016 HLRS, University of Stuttgart
+# Copyright 2016-2017 HLRS, University of Stuttgart
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,75 +15,63 @@
 # limitations under the License.
 #
 #
-##############################################################################
-#                                                                            #
-# IMPORTANT NOTE:                                                            #
-# ===============                                                            #
-#  $RUID or $PBS_JOBID is expected to be set.                                #
-#                                                                            #
-##############################################################################
+
+#=============================================================================
+#
+#         FILE: config.sh
+#
+#        USAGE: source config.sh
+#
+#  DESCRIPTION: vTorque configuration file.
+#
+#      OPTIONS: ---
+# REQUIREMENTS: $RUID or $PBS_JOBID must be set.
+#         BUGS: ---
+#        NOTES: ---
+#       AUTHOR: Nico Struckmann, struckmann@hlrs.de
+#      COMPANY: HLRS, University of Stuttgart
+#      VERSION: 0.3
+#      CREATED: Oct 02nd 2015
+#     REVISION: Jul 10th 2017
+#
+#    CHANGELOG
+#         v0.2: more options added
+#         v0.3: refactoring and cleanup
+#
+#=============================================================================
 #
 set -o nounset;
 
+#
+# determine absolute path to config file
+#
 ABSOLUTE_PATH_CONFIG="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
-source "$ABSOLUTE_PATH_CONFIG/../../lib/log4bsh/src/log4bsh.sh";
-
-#============================================================================#
-#                                                                            #
-#                          GLOBAL DEFAULT CONFIG                             #
-#                    (may be overriden by user env vars)                     #
-#                                                                            #
-#============================================================================#
 
 #
-# en/disable DEBUG globally
+# load log4bsh logging functions
 #
-DEBUG_DEFAULT=false;
-
-#
-# en/disable TRACE globally
-#
-TRACE_DEFAULT=false;
-
-#
-# if debugging is enabled,
-# keep the VMs alive after the user job script has been executed
-#
-KEEP_VM_ALIVE_DEFAULT=true;
-
-#
-# show log for batch jobs immediately after job submission
-#
-SHOW_LOG_DEFAULT=false;
-
-#
-# enables multiple developers to work on the same cluster,
-# DO NOT use it in production
-#
-ENABLE_DEV_MODE=true;
+LIB_LOG4BSH=$(find "$ABSOLUTE_PATH_CONFIG/../.." -type f -name log4bsh.sh);
+[ -z $LIB_LOG4BSH ] && echo "FATAL ERROR: Log4bsh not found!" && exit 1;
+source $LIB_LOG4BSH;
 
 
 #============================================================================#
 #                                                                            #
-#                          GLOBAL CONFIGURATION                              #
+#                          CLUSTER CONFIGURATION                             #
 #                                                                            #
 #============================================================================#
 
 #
-# regex for hostnames of pbs_servers, covers scenario:
-#  front-ends and compute nodes have different OS
+# Regular expression for list of hosts where the VM jobs are disabled for submission
+# for job submission, example:  DISABLED_HOSTS_LIST="frontend[0-9]"
 #
-SERVER_HOSTNAME="vsbase2";
+DISABLED_HOSTS_LIST="";
 
 #
-# path to the real qsub binary on the front-ends
+# regex for hostnames of frontends, covers scenario:
+#  front-ends and compute nodes have different paths to binaries
 #
-REAL_QSUB_ON_SERVER="/opt/torque/current/server/bin/qsub";
-
-#
-# path to the real qsub binary on the compute nodes
-#
-REAL_QSUB_ON_NODES="/opt/torque/current/client/bin/qsub";
+REGEX_FE="*";
 
 #
 # Torque's Home directory
@@ -91,28 +79,54 @@ REAL_QSUB_ON_NODES="/opt/torque/current/client/bin/qsub";
 TORQUE_HOME="/var/spool/torque";
 
 #
+# path to the real qsub binary on the front-ends
+#
+PBS_QSUB_ON_FE="/opt/torque/bin/qsub";
+
+#
+# path to the real qsub binary on the compute nodes
+#
+PBS_QSUB_ON_NODES="/opt/torque/bin/qsub";
+
+#
+# if user images are not allowed, the image must reside in this dir
+#
+VM_IMG_DIR="/opt/vm-images";
+
+#
+# Path to a fast shared file-system (used by jobs for intermediate data)
+#
+WS_DIR="/workspace/.vtorque";
+
+#
+# location for RAMdisks (if no shared fs for images is used)
+#
+RAMDISK_DIR="/ramdisk";
+
+#
+# NFS export for VM's "/home"
+#
+VM_NFS_HOME="nfs-server.my-domain.com:/nfs/homes/mikelangelo";
+
+#
+# NFS export for VM's "/workspace" (fast intermediate workspace, e.g. Lustre)
+#
+VM_NFS_WS="nfs-server.my-domain.com:/storage/mikelangelo/ssd_scratch";
+
+#
+# NFS export for VM's "/opt"
+#
+VM_NFS_OPT="nfs-server.my-domain.com:/nfs/shared-opt/mikelangelo";
+
+#
+# Full path to arp binary on the nodes.
+#
+ARP_BIN="/usr/sbin/arp";
+
+#
 # MAC prefix for VMs.
 #
 MAC_PREFIX="52:54:00"
-
-#
-# Regular expression for list of hosts where the VM jobs are disabled for submission
-# for job submission, only relevant if DISABLE_MIKELANGELO_HPCSTACK is set to true
-#  example value 'frontend[0-9]'
-#
-DISABLED_HOSTS_LIST="*";
-
-# Indicates whether to run vmPro/Epilogues in parallel, default is true.
-# False is useful for debugging, only. Do not use in production.
-#
-PARALLEL=true;
-
-#
-# Allows users to define custom images.
-# NOTE: introduces security implications, may allow users to mount NFS shares
-#       with chosen uids
-#
-ALLOW_USER_IMAGES=false;
 
 #
 # Amount of core reserved for the host OS
@@ -125,56 +139,15 @@ HOST_OS_CORE_COUNT=1;
 HOST_OS_RAM_MB=2048;
 
 #
-# if user images are not allowed, the image must reside in this dir
-#
-VM_IMG_DIR="/images/pool";
-
-#
-# indicates whether we use DNS to resolve VM IPs dynamically
-#  or if we have configured our DNS to use a VM-MAC to Static-IP mapping
-#
-STATIC_IP_MAPPING=true;
-
-#
-# Timeout for remote processes in pro/epilogues
-#
-TIMEOUT=600;
-
-#
-# Timeout for processes that boot VMs and configure iocm
-#
-ROOT_PROLOGUE_TIMEOUT=600;
-
-#
-# Path to a fast shared file-system (used by jobs for intermediate data)
-#
-SHARED_FS_ROOT_DIR="/scratch/.vtorque";
-
-#
-# location/prefix for the RAMdisks
-#
-RAMDISK_DIR_PREFIX="/ramdisk";
-
-#
-# forces debug output also to the job's STDOUT file
-#
-DEBUG_TO_STDOUT=true;
-
-#
-# Indicates whether to submiot the jobs with '-l naccesspolicy=uniqueuser' or not
+# Indicates whether to submit VM jobs with '-l naccesspolicy=uniqueuser'
 #
 PBS_EXCLUSIVE_NODE_ALLOC=true;
-
-#
-# Full path to arp binary on the nodes.
-#
-ARP_BIN="/usr/sbin/arp";
 
 
 #============================================================================#
 #                                                                            #
-#                            PROCESS ENV VARs                                #
-#                             Do Not Edit                                    #
+#                                TIMEOUTS                                    #
+#                                                                            #
 #============================================================================#
 
 #
@@ -182,26 +155,15 @@ ARP_BIN="/usr/sbin/arp";
 #
 SSH_TIMEOUT=5;
 
-#============================================================================#
-#                                                                            #
-#                      METADATA / NFS Shares                                 #
-#                                                                            #
-#============================================================================#
+#
+# Timeout for polling processes during pro/epilogues
+#
+TIMEOUT=120;
 
 #
-# NFS export for VM's "/home"
+# Timeout for processes that boot VMs and configure iocm
 #
-VM_NFS_HOME="172.18.2.6:/nfs/homes/mikelangelo";
-
-#
-# NFS export for VM's "/opt"
-#
-VM_NFS_OPT="172.18.2.6:/nfs/shared-opt/mikelangelo";
-
-#
-# NFS export for VM's "/workspace" (scratch-fs)
-#
-VM_NFS_WS="172.18.2.3:/storage/mikelangelo/ssd_scratch";
+PROLOGUE_TIMEOUT=600;
 
 
 #============================================================================#
@@ -210,20 +172,32 @@ VM_NFS_WS="172.18.2.3:/storage/mikelangelo/ssd_scratch";
 #                                                                            #
 #============================================================================#
 
+
+#
+# indicates whether we use DNS to assign IPs to VMs dynamically
+#  or to use a static MAC-to-IP mapping
+#
+CUSTOM_IP_MAPPING=false;
+
+#
+# Script used to map MAC to IPs
+#
+IP_TO_MAC_SCRIPT="";
+
 #
 # DNS server
 #
-NAME_SERVER="172.18.2.2";
-
-#
-# Search domain
-#
-SEARCH_DOMAIN="rus.uni-stuttgart.de";
+NAME_SERVER="name-server.my-domain.com";
 
 #
 # Domain
 #
-DOMAIN="rus.uni-stuttgart.de";
+DOMAIN="my-domain.com";
+
+#
+# Search domain
+#
+SEARCH_DOMAIN="my-domain.com";
 
 
 #============================================================================#
@@ -235,12 +209,12 @@ DOMAIN="rus.uni-stuttgart.de";
 #
 # NTP server #1
 #
-NTP_SERVER_1="rustime01.rus.uni-stuttgart.de";
+NTP_SERVER_1="ntp-server1.my-domain.com";
 
 #
 # NTP server #2
 #
-NTP_SERVER_2="rustime02.rus.uni-stuttgart.de";
+NTP_SERVER_2="ntp-server2.my-domain.com";
 
 
 #============================================================================#
@@ -250,7 +224,7 @@ NTP_SERVER_2="rustime02.rus.uni-stuttgart.de";
 # NOTE:                                                                      #
 # It is recommended to package the images with all sw required, however if   #
 # a standard cloud image is used we need to install it during boot.          #
-# If the software is already installed in the image, there are no impacts.   #
+# If the software is already installed in the image, setup is skipped.       #
 #============================================================================#
 
 #
@@ -264,25 +238,24 @@ SW_PACKAGES_DEBIAN=('nfs-common' 'libnfs1' 'openmpi-bin' 'libopenmpi-dev' 'libme
 SW_PACKAGES_REDHAT=('nfs-common' 'libnfs1' 'nfs-utils' 'openmpi' 'openmpi-devel' 'metis' 'metis-devel' 'nfs-ganesha-mount-9P');
 
 
-
-
 #============================================================================#
 #                                                                            #
-#                                DEFAULTS                                    #
+#                              VM DEFAULTS                                   #
 #                                                                            #
 #============================================================================#
 
 #
-# default file sys type
-# either ram disk (='ramdisk') or shared fs (='sharedfs')
+# default file system type
+# either ram disk (FILESYSTEM_TYPE_RD='ramdisk') 
+# or shared fs (FILESYSTEM_TYPE_SFS='sharedfs')
 #
-FILESYSTEM_TYPE_DEFAULT="sharedfs";
+FILESYSTEM_TYPE_DEFAULT=$FILESYSTEM_TYPE_SFS;
 
 #
 # default image in case the user does not request one
 # Name is relative to $GLOBAL_IMG_DIR
 #
-IMG_DEFAULT="ubuntu_bones-compressed_cloud-3.img";
+IMG_DEFAULT="ubuntu.x86_64.img";
 
 #
 # default distro, MUST match the IMG_DEFAULT
@@ -295,14 +268,14 @@ DISTRO_DEFAULT="debian";
 ARCH_DEFAULT="x86_64";
 
 #
+# default amount of vCPUs, mind the cores reserved for the host OS
+#
+VCPUS_DEFAULT="7";
+
+#
 # default for VCPU pinning (en/disabled)
 #
 VCPU_PINNING_DEFAULT=true;
-
-#
-# default amount of vCPUs
-#
-VCPUS_DEFAULT="8";
 
 #
 # Default RAM for VMs in MB
@@ -318,11 +291,6 @@ VMS_PER_NODE_DEFAULT="1";
 # Optional default disk mounted on rank0, used if none is given at sumission time
 #
 DISK_DEFAULT="";
-
-#
-# kvm|skvm
-#
-HYPERVISOR_DEFAULT="kvm";
 
 #
 # Default that is used in case there is no user defined value and it's enabled
@@ -351,20 +319,63 @@ IOCM_MAX_CORES_DEFAULT=4;
 
 #============================================================================#
 #                                                                            #
-#                                logging                                     #
+#                                DEBUGGING                                   #
 #                                                                            #
 #============================================================================#
+
+#
+# DO NOT use it in production
+#
+ENABLE_DEV_MODE=false;
+
+# Indicates whether to run vmPro/Epilogues in parallel, default is true.
+# False is useful for debugging, only. Do not use in production.
+#
+PARALLEL=true;
+
+#
+# Allows users to define custom images.
+# NOTE: introduces security implications, may allow users to mount NFS shares
+#       with chosen uids
+#
+ALLOW_USER_IMAGES=false;
+
+
+#============================================================================#
+#                                                                            #
+#                                LOGGING                                     #
+#                                                                            #
+#============================================================================#
+
+#
+# en/disable DEBUG globally
+#
+DEBUG_DEFAULT=false;
+
+#
+# en/disable TRACE globally
+#
+TRACE_DEFAULT=false;
+
+#
+# show log for batch jobs immediately after job submission
+#
+SHOW_LOG_DEFAULT=false;
 
 #
 # print to dedicated log file only
 #
 PRINT_TO_STDOUT=false;
 
+#
 # abort on error
+#
 ABORT_ON_ERROR=true;
 
+#
 # disable log rotate
-LOG_ROTATE=false;
+#
+LOG_ROTATE=true;
 
 #
 # VM job's debug log
@@ -381,7 +392,7 @@ LOG_FILE="$VM_JOB_DIR/debug.log";
 #
 # IOcm enabled
 #
-IOCM_ENABLED=true;
+IOCM_ENABLED=false;
 
 #
 # Min amount of dedicated IO cores to be used
@@ -393,10 +404,12 @@ IOCM_MIN_CORES=0;
 # recommended amount is calculated by
 #  ((allCores [divided by 2 if Hyper-Threading enabled])  minus 1 ForHostOS)
 #
-IOCM_MAX_CORES=7;
+IOCM_MAX_CORES=12;
 
+#
 # list of nodes that have the iocm kernel in place
-IOCM_NODES="omtnode.*";
+#
+IOCM_NODES="*";
 
 
 #============================================================================#
@@ -408,12 +421,12 @@ IOCM_NODES="omtnode.*";
 #
 # Indicates whether RoCE is available/enabled (see MIN_IO_CORE_COUNT/MAX_IO_CORE_COUNT)
 #
-VRDMA_ENABLED=true;
+VRDMA_ENABLED=false;
 
 #
 # list of nodes supporting RoCE feature for Infiniband
 #
-VRDMA_NODES='c3tnode0.*';
+VRDMA_NODES="*";
 
 
 #============================================================================#
@@ -425,7 +438,17 @@ VRDMA_NODES='c3tnode0.*';
 #
 # Indicates whether the snap monitoring is enabled
 #
-SNAP_MONITORING_ENABLED=true;
+SNAP_MONITORING_ENABLED=false;
+
+#
+# snap monitoring compute node bin dir
+#
+SNAP_BIN_DIR="/usr/local/bin/";
+
+#
+# snap task tag format
+#
+SNAP_TAG_FORMAT="snapTask-[username]-[jobid]";
 
 
 ##############################################################################
@@ -433,17 +456,6 @@ SNAP_MONITORING_ENABLED=true;
 #                        DO NOT EDIT BELOW THIS LINE                         #
 #                                                                            #
 ##############################################################################
-
-#
-# flag to disable the VM jobs completely, may be useful for troubleshooting
-# used by the qsub wrapper only
-#
-if [ -z ${DISABLE_MIKELANGELO_HPCSTACK-} ]; then
-  # not set in environment, apply config value
-  DISABLE_MIKELANGELO_HPCSTACK=false;
-# else: allow the user to set it in his environment
-fi
-
 
 #
 # TRACE already set in the environment ?
@@ -469,34 +481,29 @@ fi
 # NOTE: this blocks until the user cancels with 'ctrl+c' or the walltime is hit
 #
 if [ -z ${KEEP_VM_ALIVE-} ]; then
-  KEEP_VM_ALIVE=$KEEP_VM_ALIVE_DEFAULT;
+  KEEP_VM_ALIVE=false;
 fi
-
-
 
 #
 # path to shared workspace dir
 #
-SHARED_FS_JOB_DIR="$SHARED_FS_ROOT_DIR/$JOBID"; #user is not set in all scripts(?)
+SHARED_FS_JOB_DIR="$WS_DIR/$JOBID"; #user is not set in all scripts(?)
 
 #
 # NOTE: $RUID cannot be used for this as it is used in the root pro/epilogue scripts, too
 #
-RAMDISK="$RAMDISK_DIR_PREFIX/$JOBID";
-
+RAMDISK="$RAMDISK_DIR/$JOBID";
 
 #
 # Path to the job submission tool binary 'qsub'.
 #
-if [[ "$LOCALHOST" =~ $SERVER_HOSTNAME ]]; then
+if [[ "$LOCALHOST" =~ $REGEX_FE ]]; then
   # path on server
-  REAL_QSUB=$REAL_QSUB_ON_SERVER;
+  PBS_QSUB=$PBS_QSUB_ON_FE;
 else
   # path on compute nodes (may differ)
-  REAL_QSUB=$REAL_QSUB_ON_NODES;
+  PBS_QSUB=$PBS_QSUB_ON_NODES;
 fi
-
-
 
 # '-n' do not read STDIN
 # '-t[t]' Force pseudo-terminal allocation (multiple -t options force tty allocation, even if ssh has no local tty.)
@@ -513,7 +520,7 @@ if ! $DEBUG; then
 fi
 
 #
-# In case of debugging, enable virsh debugging
+# In case of debugging, enable also virsh debugging
 #
 if $DEBUG; then
   VIRSH_OPTS="--debug 3";
@@ -524,7 +531,7 @@ else
 fi
 
 #
-# allow to override env in dev mode
+# allow users to override environment in dev mode
 #
 if $ENABLE_DEV_MODE; then
   if [ -n "${HOME-}" ]; then

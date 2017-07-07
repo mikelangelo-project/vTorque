@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2016 HLRS, University of Stuttgart
+# Copyright 2016-2017 HLRS, University of Stuttgart
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -36,8 +36,6 @@
 #    CHANGELOG
 #
 #=============================================================================
-
-
 
 #============================================================================#
 #                                                                            #
@@ -78,6 +76,10 @@ PREFIX="";
 #
 DEST_DIR="";
 
+#
+# vTorque's config file
+#
+VTORQUE_CONFIG_FILE="";
 
 
 #============================================================================#
@@ -85,6 +87,58 @@ DEST_DIR="";
 #                               FUNCTIONS                                    #
 #                                                                            #
 #============================================================================#
+
+#---------------------------------------------------------
+#
+# set permissions for production
+#
+_setPermissions() {
+  chown -R root:root $DEST_DIR;
+  chmod -R 555 $DEST_DIR;
+  chmod 444 $DEST_DIR/contrib/*;
+  chmod 444 $DEST_DIR/doc/*.md;
+  chmod 444 $DEST_DIR/src/common/*;
+  chmod 500 $DEST_DIR/src/scripts/*;
+  chmod 500 $DEST_DIR/src/scripts-vm/*;
+  chmod 444 $DEST_DIR/src/templates/*;
+  chmod 444 $DEST_DIR/src/templates-vm/*;
+  echo "Permissions applied to installed files.";
+}
+
+
+#
+# asks user for networking settings that are applied to VMs
+#
+_configureVMnetworking() {
+
+  echo "Please provide network settings, applied to VMs.";
+
+  echo -n "Domain: ";
+  read DOMAIN;
+
+  echo -n "Search-Domain: ";
+  read SEARCH_DOMAIN;
+
+  echo -n "Name server IP: ";
+  read NAME_SERVER;
+
+  echo -n "NFS server IP: ";
+  read NFS_SERVER;
+
+  echo -n "NTP server (1/2) IP: ";
+  read NTP_SERVER_1;
+
+  echo -n "NTP server (2/2) IP: ";
+  read NTP_SERVER_2;
+
+  sed -i -e "s,NAME_SERVER=.*,NAME_SERVER=\"$NAME_SERVER\";,g" $VTORQUE_CONFIG_FILE;
+  sed -i -e "s,DOMAIN=.*,DOMAIN=\"$DOMAIN\";,g" $VTORQUE_CONFIG_FILE;
+  sed -i -e "s,SEARCH_DOMAIN=.*,SEARCH_DOMAIN=\"$SEARCH_DOMAIN\";,g" $VTORQUE_CONFIG_FILE;
+  sed -i -e "s,NTP_SERVER_1=.*,NTP_SERVER_1=\"$NTP_SERVER_1\";,g" $VTORQUE_CONFIG_FILE;
+  sed -i -e "s,NTP_SERVER_2=.*,NTP_SERVER_2=\"$NTP_SERVER_1\";,g" $VTORQUE_CONFIG_FILE;
+
+  echo "VM networking settings applied.";
+}
 
 
 #---------------------------------------------------------
@@ -102,16 +156,33 @@ usage() {
 #
 setupServer() {
   cd $BASE_DIR;
+  # check if destination dir exists, if not create it
+  if [ -e $DEST_DIR ]; then
+    if [ ! -d $DEST_DIR ]; then
+      echo "Destination dir '$DEST_DIR' is not a directory.";
+      exit 1;
+    else
+      mkdir -p $DEST_DIR;
+    fi
+  fi
+  #copy files to destination
   cp -r ./lib $DEST_DIR/;
   cp -r ./src/* $DEST_DIR/;
   cp -r ./doc $DEST_DIR/;
   cp -r ./test $DEST_DIR/;
-  cp ./contrib/97-pbs_server_env.sh /etc/profile.d/;
   cp ./contrib/99-mikelangelo-hpc_stack.sh /etc/profile.d/;
   cp ./LICENSE $DEST_DIR/;
   cp ./NOTICE $DEST_DIR/;
   cp ./README* $DEST_DIR/;
+  # fix relative paths in doc/*
+  sed -i 's,../src/,../,g' $DEST_DIR/doc/*;
+  # set PATH
+  sed -i -e "s,VTORQUE_DIR=.*,VTORQUE_DIR=\"$DEST_DIR\";,g" /etc/profile.d/99-mikelangelo-hpc_stack.sh;
+  # apply network settings
+  _configureVMnetworking;
+  # apply correct and secure permissions
   _setPermissions;
+  echo "Setup server done.";
 }
 
 
@@ -121,25 +192,8 @@ setupServer() {
 #
 cleanupServer() {
   rm -Rf $DEST_DIR;
-  rm -f /etc/profile.d/97-pbs_server_env.sh;
   rm -f /etc/profile.d/99-mikelangelo-hpc_stack.sh;
-}
-
-
-#---------------------------------------------------------
-#
-# set permissions for production
-#
-_setPermissions() {
-  chown -R root:root $DEST_DIR;
-  chmod -R 555 $DEST_DIR;
-  chmod 444 $DEST_DIR/contrib/*;
-  chmod 444 $DEST_DIR/doc/*.md;
-  chmod 444 $DEST_DIR/src/common/*;
-  chmod 500 $DEST_DIR/src/scripts/*;
-  chmod 500 $DEST_DIR/src/scripts-vm/*;
-  chmod 444 $DEST_DIR/src/templates/*;
-  chmod 444 $DEST_DIR/src/templates-vm/*;
+  echo "Server clean up done.";
 }
 
 
@@ -148,12 +202,13 @@ _setPermissions() {
 # rename current/orig scripts in place
 #
 setupMoms() {
-  cd $BASE_DIR;
-  cp ./contrib/98-pbs_mom_env.sh /etc/profile.d/;
-  cp ./contrib/99-mikelangelo-hpc_stack.sh /etc/profile.d/;
-  rename -v 's/(.*)\$$$\/\$$$\1.orig/' /var/spool/torque/mom_priv/{pro,epi}logue{.user,}{.parallel,.precancel,};
-  ln -sf $DEST_DIR/src/scripts/{prologue{,.parallel},epilogue{,.parallel,.precancel}} /var/spool/torque/mom_priv/;
-  echo "Done";
+  pdsh -a "\
+    cd $BASE_DIR;\
+    cp ./contrib/99-mikelangelo-hpc_stack.sh /etc/profile.d/;\
+    sed -i -e \"s,VTORQUE_DIR=.*,VTORQUE_DIR=$DEST_DIR,g\" /etc/profile.d/99-mikelangelo-hpc_stack.sh;\
+    rename -v 's/(.*)\$$$\/\$$$\1.orig/' /var/spool/torque/mom_priv/{pro,epi}logue{.user,}{.parallel,.precancel,};\
+  ln -sf $DEST_DIR/src/scripts/{prologue{,.parallel},epilogue{,.parallel,.precancel}} /var/spool/torque/mom_priv/;";
+  echo "Mom setup done";
 }
 
 
@@ -162,11 +217,11 @@ setupMoms() {
 # put original scripts back in place
 #
 cleanupMoms() {
-  rm -f /etc/profile.d/98-pbs_mom_env.sh;
-  rm -f /etc/profile.d/99-mikelangelo-hpc_stack.sh;
-  rm -f /var/spool/torque/mom_priv/{pro,epi}logue{.user,}{.parallel,.precancel,};
-  rename 's/\.orig\$$$\//' /var/spool/torque/mom_priv/{pro,epi}logue{.user,}{.parallel,.precancel,}.orig;
-  echo "Done";
+  pdsh -a "\
+    rm -f /etc/profile.d/99-mikelangelo-hpc_stack.sh;\
+    rm -f /var/spool/torque/mom_priv/{pro,epi}logue{.user,}{.parallel,.precancel,};\
+    rename 's/\.orig\$$$\//' /var/spool/torque/mom_priv/{pro,epi}logue{.user,}{.parallel,.precancel,}.orig;";
+  echo "Mom clean up done";
 }
 
 
@@ -215,7 +270,8 @@ if [ -z ${PREFIX-} ]; then
   # no, use default
   PREFIX=$DEFAULT_PREFIX;
 fi
-DEST_DIR="$PREFIX/vTorque";
+DEST_DIR="$PREFIX/vtorque";
+VTORQUE_CONFIG_FILE="$DEST_DIR/common/config.sh";
 
 
 #

@@ -1,4 +1,4 @@
-<domain type='__HYPERVISOR__'>
+<domain type='kvm'>
   <name>__NAME__</name>
   <uuid>__UUID__</uuid>
   <memory unit='MiB'>__RAM__</memory>

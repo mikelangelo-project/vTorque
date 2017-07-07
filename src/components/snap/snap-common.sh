@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2016 HLRS, University of Stuttgart
+# Copyright 2016-2017 HLRS, University of Stuttgart
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,14 +15,37 @@
 # limitations under the License.
 #
 
+#=============================================================================
+#
+#         FILE: snap-common.sh
+#
+#        USAGE: source snap-common.sh
+#
+#  DESCRIPTION: Constants, configuration and functions for the snap telemtry
+#               integration.
+#      OPTIONS: ---
+# REQUIREMENTS: Snap Telemetry must be installed.
+#         BUGS: ---
+#        NOTES: ---
+#       AUTHOR: Nico Struckmann, struckmann@hlrs.de
+#      COMPANY: HLRS, University of Stuttgart
+#      VERSION: 0.1
+#      CREATED: 
+#     REVISION: ---
+#
+#    CHANGELOG
+#         v0.2: 
+#
+#=============================================================================
+#
 set -o nounset;
 shopt -s expand_aliases;
 
 # source the config and common functions
 source /etc/profile.d/99-mikelangelo-hpc_stack.sh;
-source "$SCRIPT_BASE_DIR/common/const.sh";
-source "$SCRIPT_BASE_DIR/common/root-config.sh";
-source "$SCRIPT_BASE_DIR/common/root-functions.sh";
+source "$VTORQUE_DIR/common/const.sh";
+source "$VTORQUE_DIR/common/root-config.sh";
+source "$VTORQUE_DIR/common/root-functions.sh";
 
 
 
@@ -32,18 +55,8 @@ source "$SCRIPT_BASE_DIR/common/root-functions.sh";
 #                                                                            #
 #============================================================================#
 
-#
-# snap monitoring compute node bin dir
-#
-SNAP_BIN_DIR="/usr/local/bin/";
-
 # construct the task tag
 SNAP_TASK_TAG="snapTask-$USERNAME-$JOBID";
-
-#
-# snap task tag format
-#
-SNAP_TAG_FORMAT="snapTask-[username]-[jobid]";
 
 #
 # snap task ID file
@@ -53,7 +66,7 @@ SNAP_TASK_ID_FILE="$VM_JOB_DIR/$LOCALHOST/snapID";
 #
 # snap task template file
 #
-SNAP_TASK_TEMPLATE_FILE="$SCRIPT_BASE_DIR/components/snap/snapTask.template.json";
+SNAP_TASK_TEMPLATE_FILE="$VTORQUE_DIR/components/snap/snapTask.template.json";
 
 #
 # snap task template file

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2016 HLRS, University of Stuttgart
+# Copyright 2016-2017 HLRS, University of Stuttgart
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@
 #
 #      OPTIONS: ---
 # REQUIREMENTS: Torque's job submission cli 'qsub' is installed and configured.
-#               REAL_QSUB_PATH is properly configured and file const.sh
+#               PBS_QSUB_PATH is properly configured and file const.sh
 #               is sourced before this file. Further, vsub wrapper can be found
 #               via environment variable '$PATH'.
 #         BUGS: ---

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2016 HLRS, University of Stuttgart
+# Copyright 2016-2017 HLRS, University of Stuttgart
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@
 #
 #      OPTIONS: ---
 # REQUIREMENTS: Job submission cli 'qsub' is installed and configured.
-#               REAL_QSUB_PATH is properly configured and file const.sh
+#               PBS_QSUB_PATH is properly configured and file const.sh
 #               is sourced before this file.
 #         BUGS: ---
 #        NOTES: ---
@@ -99,7 +99,6 @@ declare -A REGEXPR=( \
                      [METADATA]="^(\w|[0-9]|.|_|-)+\.yaml$" \
                      [DISK]="^[0-9]+(K|M|G)$" \
                      [ARCH]="^(x86_64)$" \
-                     [HYPERVISOR]="^(kvm|skvm|KVM|sKVM|SKVM)$" \
                      [VCPU_PINNING]="^(disabled|Disabled|DISABLED|false|False|FALSE|no|No|NO|1|\
 auto|enabled|Enabled|ENABLED|true|True|TRUE|yes|Yes|YES|0)$" \
                      [VM_PROLOGUE]="^(\w|[0-9]|.|_|-)+$" \
@@ -874,12 +873,6 @@ applyVMDefaultParameter() {
     VM_PARAMETER['ARCH']="$ARCH_DEFAULT";
   fi
 
-  # hypervisor to use
-  if [ -z ${VM_PARAMETER['HYPERVISOR']-} ]; then
-    logTraceMsg "Applying HYPERVISOR='$HYPERVISOR_DEFAULT' as default VM parameter.";
-    VM_PARAMETER['HYPERVISOR']="$HYPERVISOR_DEFAULT";
-  fi
-
   # enable ioCM
   if [ -z ${VM_PARAMETER['IOCM']-} ]; then
     logTraceMsg "Applying IOCM='$IOCM_ENABLED_DEFAULT' as default VM parameter.";
@@ -1385,12 +1378,11 @@ _printLogFileName() {
 #============================================================================#
 
 #
-# Mikelangelo HPC-Stack disabled ?
+# host is disabled for vTorque ?
 #
-if $DISABLE_MIKELANGELO_HPCSTACK \
-    && [[ $LOCALHOST =~ $DISABLED_HOSTS_LIST ]]; then
+if [[ $LOCALHOST =~ $DISABLED_HOSTS_LIST ]]; then
   if $DEBUG; then
-    echo "MIKELANGELO HPC-Stack integration is disabled.";
+    echo "vTorque is disabled on this host.";
   fi
   exit 0 & $REAL_QSUB $@;
 fi
@@ -1545,7 +1537,7 @@ cannot be loaded - No such file or directory.";
 
   # pass on to the real qsub
   logDebugMsg "Executing cmd:\n-----\n$submitCmd\n-----";
-  logDebugMsg "------REAL_QSUB_START------";
+  logDebugMsg "------PBS_QSUB_START------";
 
   # execute submission cmd, fetch both stderr and stdout into output
   res="";
@@ -1559,7 +1551,7 @@ cannot be loaded - No such file or directory.";
 
   # print the job ID
   echo $jobID;
-  logDebugMsg "-------REAL_QSUB_END-------";
+  logDebugMsg "-------PBS_QSUB_END-------";
 
   # check if there was any error
   if [ $res -ne 0 ]; then

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2016 HLRS, University of Stuttgart
+# Copyright 2016-2017 HLRS, University of Stuttgart
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,13 +14,31 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+#=============================================================================
 #
-# DESCRIPTION
-#  Root prologue.parallel for VM.
-#  Intended for cluster admins, not users,
-#  like the scripts in /var/spool/torque/mom_priv/
+#         FILE: prologue.parallel
 #
+#        USAGE: prologue <default PBS prologue parameters>
 #
+#  DESCRIPTION: Root prologue.parallel script for standard Linux guests. 
+#               The counterpart to Torque's prologue.parallel executed on 
+#               the host.
+#
+#      OPTIONS: Refer to Torque documentation.
+# REQUIREMENTS: File is owned by root and permissions are set to 500.
+#         BUGS: ---
+#        NOTES: ---
+#       AUTHOR: Nico Struckmann, struckmann@hlrs.de
+#      COMPANY: HLRS, University of Stuttgart
+#      VERSION: 0.2
+#      CREATED: 
+#     REVISION: July 07th 2017
+#
+#    CHANGELOG
+#         v0.2: refactoring and clean up
+#
+#=============================================================================
 
 # bash strict mode
 set -euo pipefail;
@@ -35,7 +53,7 @@ set -euo pipefail;
 #
 # Placeholders
 #
-SCRIPT_BASE_DIR=__SCRIPT_BASE_DIR__;
+VTORQUE_DIR=__VTORQUE_DIR__;
 DEBUG=__DEBUG__;
 TRACE=__TRACE__;
 SHOW_LOG=__SHOW_LOG__;
@@ -43,9 +61,9 @@ SHOW_LOG=__SHOW_LOG__;
 #
 # source config, consts and functions
 #
-source "$SCRIPT_BASE_DIR/common/const.sh";
-source "$SCRIPT_BASE_DIR/common/root-config.sh" $@;
-source "$SCRIPT_BASE_DIR/common/root-functions.sh";
+source "$VTORQUE_DIR/common/const.sh";
+source "$VTORQUE_DIR/common/root-config.sh" $@;
+source "$VTORQUE_DIR/common/root-functions.sh";
 
 
 #============================================================================#
@@ -105,6 +123,10 @@ logInfoMsg "Root VM prologue.parallel script started.";
 
 # capture STDOUT/STDERR outputs to log file
 captureOutputStreams;
+
+#
+# custom logic
+#
 
 # print info
 logInfoMsg "Root VM prologue.parallel script finished.";

@@ -1,6 +1,7 @@
 #!/bin/bash
 #
-# Copyright 2016 HLRS, University of Stuttgart
+# Copyright 2016-2017 HLRS, University of Stuttgart
+#           2016-2017 XLAB
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,24 +16,35 @@
 # limitations under the License.
 #
 
+#=============================================================================
 #
-# FILE:
-#  jobWrapper.sh
+#         FILE: jobWrapper.sh
 #
-# DESCRIPTION:
-#  Torque JobWrapper script that wraps the actual job script to be executed
-#  in a running virtual machine.
-#  It prepares the VM's environment and starts user's job script.
+#        USAGE: n/a
 #
+#  DESCRIPTION: Job wrapper template with various placeholders. Maps the
+#               PBS envrionment into the guest and starts user's job script.
+#               For standard Linux guests SSH, for OSv HTTP will be used.
+#      OPTIONS: ---
+# REQUIREMENTS: ---
+#         BUGS: ---
+#        NOTES: ---
+#       AUTHOR: Nico Struckmann, struckmann@hlrs.de
+#               Uwe Schilling, uwe.schilling@hlrs.de,
+#               Justin Cinkelj, justin.cinkelj@xlab.si
+#      COMPANY: HLRS, University of Stuttgart
+#               XLAB
+#      VERSION: 0.4
+#      CREATED: Oct 2nd 2015
+#     REVISION: Jan 16th 2017
 #
-# Date         Version   Change             Author
-#  20.10.2015    0.1      Skeleton           Nico Struckmann
-#  15.10.2015    0.2      Implementation     Uwe Schilling
-#  01.02.2016    0.3      BugFixes           Nico Struckmann
+#    CHANGELOG
+#         v0.2: [US] implementation added
+#         v0.3: [NS] refactoring and clean up
+#         v0.4: [JC] OSv support
 #
-#
-#
-#
+#=============================================================================
+
 __INLINE_RES_REQUESTS__
 
 #============================================================================#
@@ -82,9 +94,9 @@ fi
 #
 # load config and constants, after initialization of placeholder-vars above
 #
-source "$SCRIPT_BASE_DIR/common/const.sh";
-source "$SCRIPT_BASE_DIR/common/config.sh";
-source "$SCRIPT_BASE_DIR/common/functions.sh";
+source "$VTORQUE_DIR/common/const.sh";
+source "$VTORQUE_DIR/common/config.sh";
+source "$VTORQUE_DIR/common/functions.sh";
 
 
 

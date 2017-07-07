@@ -1,6 +1,8 @@
 #!/bin/bash
 #
-# Copyright 2016 HLRS, University of Stuttgart
+# Copyright 2016-2017 HLRS, University of Stuttgart
+# Copyright 2016 Huawei Technologies Co., Ltd.
+#
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +17,30 @@
 # limitations under the License.
 #
 
+#=============================================================================
+#
+#         FILE: vrdma-stop.sh
+#
+#        USAGE: vrdma-stop.sh
+#
+#  DESCRIPTION: Tear down functionality for the vRDMA integration.
+#      OPTIONS: ---
+# REQUIREMENTS: vRDMA support must be installed, in both host and guest.
+#         BUGS: ---
+#        NOTES: ---
+#       AUTHOR: Nico Struckmann, struckmann@hlrs.de
+#               Shiqing Fan, shiqing.fan@huawei.com
+#      COMPANY: HLRS, University of Stuttgart
+#               Huawei Technologies Co., Ltd.
+#      VERSION: 0.1
+#      CREATED: 
+#     REVISION: ---
+#
+#    CHANGELOG
+#         v0.2: 
+#
+#=============================================================================
+#
 set -o nounset;
 shopt -s expand_aliases;
 

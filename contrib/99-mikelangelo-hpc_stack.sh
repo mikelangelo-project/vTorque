@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2016 HLRS, University of Stuttgart
+# Copyright 2016-2017 HLRS, University of Stuttgart
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,15 +15,38 @@
 # limitations under the License.
 #
 
-MIKELANGELO_BASE_DIR="/opt/dev/vTorque";
+#=============================================================================
+#
+#         FILE: 99-mikelangelo-hpc_stack.sh
+#
+#        USAGE: source 99-mikelangelo-hpc_stack.sh
+#
+#  DESCRIPTION: Provides vTorque's $PATH to the environment, so it can be found.
+#
+#      OPTIONS: ---
+# REQUIREMENTS: ---
+#         BUGS: ---
+#        NOTES: ---
+#       AUTHOR: Nico Struckmann, struckmann@hlrs.de
+#      COMPANY: HLRS, University of Stuttgart
+#      VERSION: 0.1
+#      CREATED: Oct 12 2015
+#     REVISION:
+#
+#    CHANGELOG
+#
+#=============================================================================
+
+#
+# set to vTorque's installation directory
+#
+VTORQUE_DIR="/opt/dev/vTorque/src";
+
 
 ###### DO NOT EDIT BELOW THIS LINE ########
 
 #
-# Base directory for all scripts, templates, etc
-#
-SCRIPT_BASE_DIR="$MIKELANGELO_BASE_DIR/src";
-
 # ensure wrapper is the first match in the PATH
-export PATH="$SCRIPT_BASE_DIR:$PATH";
+#
+export PATH="$VTORQUE_DIR:$PATH";
 

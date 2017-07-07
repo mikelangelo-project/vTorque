@@ -5,7 +5,6 @@ Virtualization support for Torque
 ## Table of contents
 
 * [Introduction](#introduction)
-* [The HPC Integration](#the-hpc-integration)
 * [How It Works](#how-it-works)
 * [Architecture](#architecture)
 * [Further Informations](further-informations)
@@ -14,40 +13,35 @@ Virtualization support for Torque
     * [Development Documentation](doc/devdoc.md)
 * [Acknowledgments](#acknowledgments)
 
+
 ## Introduction
 
-The **MIKELANGELO HPC Infrastructure** has been designed to improve the **I/O
-performance of virtual environments in HPC systems**. The benefits of
-virtualization in HPC include application packaging, deployment, and
-elasticity during the application execution, without losing the high
-performance in computation and communication characteristic of HPC systems.
+The **MIKELANGELO HPC Infrastructure** has been designed to introduce the **benefits of virtualization into the domain of high performance computing (HPC)**. These benefits comprise besides abstraction of the actual execution environment, providing portability and thus enabling application packaging, flexibility and fault-tolerance for the application execution, e.g. live migration away from degrading hardware or suspend and resume capabilities.
+MIKELANGELO also improves the **I/O performance of virtual environments** crucial for the use in HPC infrastructures.
 
-The aim of this project is, to extend the functionality of the [Torque Resource Manager](http://www.adaptivecomputing.com/products/open-source/torque/) to enable cloud like functionality. This includes, the startup, the provisioning and the shutdown of virtual machines inside a torque cluster. Beside a patch for torque itself, this project consists of several wrappers, that take care of the spin up and the tear down of these Vms.
+The aim of vTorque is, to extend [Torque Resource Manager](http://www.adaptivecomputing.com/products/open-source/torque/) with capabilities for the management of virtual guests. vTorque enables Torque to deploy and execute job scripts in virtual machines, transparently to the user.
 
+vTorque consists of a set of bash scripts, several templates and new command line tools. It is independent of a specific version of Torque, thanks to its non-invasive nature.
 
-## The HPC Integration
-
-Torque is being extended by a qsub wrapper, prologue and epilogue scripts, a job script wrapper, as well as a patch for the Torque source code. The qsub wrapper will be provided as a module in terms of the module system (i.e. "module avail", "module load xyz/version1.0") which is a common thing in HPC environments.
 
 ## How It Works
 
-First the wrapper around qsub phrases the [new parameter](doc/userdoc.md). The information will be taken to generate files for vm start-up (prologue, prologue.parallel, vmPrologue, vmPrologue.parallel), vm shutdown (epilogue, epilogue.parallel, epilogue.precancel, vmEpilogue, vmEpilogue.parallel), the domain xml files for libvirt and the jobscript wrapper.
-This wrapper calls then qsub to insert the vm job into the queue. The original qsub parameters are preserved, which makes it possible to submit non vm jobs with the same command, submit to different queues or request specialized nods or ask for features.
-For deeper understanding you can read the ["D2.20 - The intermediate MIKELANGELO architecture"](https://www.mikelangelo-project.eu/wp-content/uploads/2016/07/MIKELANGELO-WP2.2-USTUTT-v2.0.pdf) in the "Technical Details on the HPC-Cloud Infrastructure" section.
+vTorque provides a new submission command line tool called **vsub** deploying user job scripts in virtual environments.
+It accepts all standard PBS/Torque arguments, but also introduces several new arguments related to virtual resources, e.g. the amount of vCPUs.
+vTorque consists of several wrapper scripts used as hooks for the various sequences in Torque's job life-cycles, i.e. root and user prologue, to manage virtual guests.
+
 
 ## Architecture
 
-The **MIKELANGELO Software Stack** consists of the following components:
+The **MIKELANGELO Software Stack** for HPC consists of the following components:
 
 - **vTorque**: A virtualization layer for the Portable Batch System (PBS) open-source fork called [Torque](http://www.adaptivecomputing.com/products/open-source/torque/). Torque is a resource manager and scheduler for HPC environments. Torque manages compute nodes and other IT resources, like GPUs or software licenses. Torque has been extended to allow users to run their HPC workloads in predefined customized virtual environments - independent of the actual software, operating system and hardware in place.
 
-- **sKVM**: KVM (for Kernel-based Virtual Machine) is a full virtualization solution, or hypervisor, for Linux on x86 hardware. Each virtual machine has private virtualized hardware: a network card, disk, graphics adapter, etc. sKVM is the extension of KVM done in [MIKELANGELO](https://www.mikelangelo-project.eu) with 3 main features:
+- **sKVM**: sKVM extends KVM (Kernel-based Virtual Machine) and addresses the high overhead for virtulizued I/O, by the help of
 
-    - **IO core manager**: An optimization for virtio-based virtual I/O devices using multiple dedicated I/O processing cores
+    - **IOcm**: IO core manager, an optimization for virtio-based virtual I/O devices using multiple dedicated I/O processing cores
 
-    - **Virtual RDMA**: A new type of virtio device implementing the RDMA protocol for low overhead communication between virtual machines
-
-    - **SCAM**: A protection mechanism to thwart side-channel attacks (such as cache sniffing) from malicious co-located virtual machines. (Not necessary for HPC virtual environments).
+    - **vRDMA**: Virtual RDMA, a new type of virtio device implementing the RDMA protocol for low overhead communication between virtual machines
 
 - **Snap**: The open-source snap telemetry framework is specifically designed to allow data center owners dynamically instrument cloud-scale data-centers.
 
@@ -55,9 +49,11 @@ The **MIKELANGELO Software Stack** consists of the following components:
 
 The architecture of MIKELANGELO HPC Infrastructure is explained in detail in the document [MIKELANGELO-WP2-D2.20-Architecture](https://www.mikelangelo-project.eu/wp-content/uploads/2016/07/MIKELANGELO-WP2.20-USTUTT-v2.0.pdf).
 
-## Further Informations
+## Further Information
 
-For administrators see the [admin doc](doc/admindoc.md), for users the [user doc](doc/userdoc.md) to learn more about the usage of this project.
+Further documentation for [end-users](doc/userdoc.md) describing the newly introduced arguments for the virtual execution and instructions for [administrators](doc/admindoc.md) describing how to set it up and configure it can be found in directory [doc](doc/).
+For a deeper insight into vTorque's architecture please refer to ["D2.20 - The intermediate MIKELANGELO architecture"](https://www.mikelangelo-project.eu/wp-content/uploads/2016/07/MIKELANGELO-WP2.2-USTUTT-v2.0.pdf) and ["D2.21 - The final MIKELANGELO architecture"](https://www.mikelangelo-project.eu/wp-content/uploads/2017/07/MIKELANGELO-WP2.21-USTUTT-v2.0.pdf).
+
 
 ## Acknowledgments
 

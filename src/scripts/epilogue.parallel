@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2016 HLRS, University of Stuttgart
+# Copyright 2016-2017 HLRS, University of Stuttgart
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,30 @@
 # limitations under the License.
 #
 
+#=============================================================================
+#
+#         FILE: epilogue.parallel
+#
+#        USAGE: epilogue.parallel <default PBS epilogue.parallel parameters>
+#
+#  DESCRIPTION: Ensures that all VMs are stopped and remaining user processes
+#               are killed, IOcm and vRDMA are teared down, also job related 
+#               snap telemetry monitoring task is stopped.
+#
+#      OPTIONS: Refer to Torque documentation.
+# REQUIREMENTS: File is owned by root and permissions are set to 500.
+#         BUGS: ---
+#        NOTES: ---
+#       AUTHOR: Nico Struckmann, struckmann@hlrs.de
+#      COMPANY: HLRS, University of Stuttgart
+#      VERSION: 0.2
+#      CREATED: 
+#     REVISION: May 08th 2017
+#
+#    CHANGELOG
+#         v0.2: refactoring and clean up
+#
+#=============================================================================
 
 #============================================================================#
 #                                                                            #
@@ -29,9 +53,9 @@ source /etc/profile.d/99-mikelangelo-hpc_stack.sh;
 # source the global functions and configuration
 # order below is as required, do not change
 #
-source "$SCRIPT_BASE_DIR/common/const.sh";
-source "$SCRIPT_BASE_DIR/common/root-config.sh" $@;
-source "$SCRIPT_BASE_DIR/common/root-functions.sh";
+source "$VTORQUE_DIR/common/const.sh";
+source "$VTORQUE_DIR/common/root-config.sh" $@;
+source "$VTORQUE_DIR/common/root-functions.sh";
 
 
 #============================================================================#

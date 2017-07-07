@@ -1,3 +1,5 @@
+*.md.html
+/doc/*.html
 /tmp/*
 /local/*
 .project

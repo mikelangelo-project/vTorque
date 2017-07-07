@@ -1,6 +1,6 @@
 #cloud-config
 #
-# Copyright 2016 HLRS, University of Stuttgart
+# Copyright 2016-2017 HLRS, University of Stuttgart
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -177,12 +177,12 @@ write_files:
      RUID=__RUID__;
      #? source /etc/profile.d/pbsVirtualJobEnv.sh;
      JOBID=$PBS_JOBID;
-     SCRIPT_BASE_DIR=__SCRIPT_BASE_DIR__;
+     VTORQUE_DIR=__VTORQUE_DIR__;
      USERNAME=__USER_NAME__;
      # load config and constants
-     source "$SCRIPT_BASE_DIR/common/const.sh";
-     source "$SCRIPT_BASE_DIR/common/config.sh";
-     source "$SCRIPT_BASE_DIR/common/functions.sh";
+     source "$VTORQUE_DIR/common/const.sh";
+     source "$VTORQUE_DIR/common/config.sh";
+     source "$VTORQUE_DIR/common/functions.sh";
      if [ -f "$PBS_NODEFILE" ]; then
        rank0VM="$(head -n1 $PBS_NODEFILE)";
      else
@@ -207,9 +207,9 @@ write_files:
      fi
      if [ -n "$(ip a | grep $rank0VM)" ] \
           || [ -n "$(hostname | grep $rank0VM)" ]; then
-       $SCRIPT_BASE_DIR/vm_scripts/${scriptPrefix}logue;
+       $VTORQUE_DIR/vm_scripts/${scriptPrefix}logue;
      else
-       $SCRIPT_BASE_DIR/vm_scripts/${scriptPrefix}logue.parallel;
+       $VTORQUE_DIR/vm_scripts/${scriptPrefix}logue.parallel;
      fi
      dhclient -r;
  #
@@ -297,7 +297,7 @@ write_files:
  - path: "/etc/profile.d/99-mikelangelo-hpc_stack.sh"
    permissions: "0644"
    content: |
-     export SCRIPT_BASE_DIR=__SCRIPT_BASE_DIR__;
+     export VTORQUE_DIR=__VTORQUE_DIR__;
 
 #
 # Executed once on first boot

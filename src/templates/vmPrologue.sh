@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2016 HLRS, University of Stuttgart
+# Copyright 2016-2017 HLRS, University of Stuttgart
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,24 +21,20 @@
 #
 #        USAGE: vmPrologue [<jobID>]
 #
-#  DESCRIPTION: Starts a VM with the help of qemu/libvirt (virsh).
-#               Image is copied (to a RAM disk if DEBUG is set) to a local
-#               folder.
-#                (BE AWARE THAT FOR LIVE MIGRATION WE NEED IT WITH
-#                 SHARED ACCESS - BUT NOT! BOOTED MULTIPLE TIMES).
+#  DESCRIPTION: Template for user prologue wrapper.
+#               Prepares the guests for instantiation.
 #
 #      OPTIONS: jobID - Will be used for the VM's name as shown by virsh
-#                        Accept only if it is not in the environment.
-#
-#                        This is true in when not executed inside Torque jobs.
+#                        Accept as argument if not defined in the environment, 
+#                        useful for debugging, only.
 # REQUIREMENTS: --
 #         BUGS: ---
 #        NOTES: ---
 #       AUTHOR: Nico Struckmann, struckmann@hlrs.de
 #      COMPANY: HLRS, University of Stuttgart
-#      VERSION: 0.4
+#      VERSION: 0.5
 #      CREATED: Sept 30th 2015
-#     REVISION: Feb 12th 2016
+#     REVISION: May 11th 2017
 #
 #    CHANGELOG
 #         v0.2: Bugfixes
@@ -91,9 +87,9 @@ fi
 #
 # load config and constants
 #
-source "$SCRIPT_BASE_DIR/common/const.sh";
-source "$SCRIPT_BASE_DIR/common/config.sh";
-source "$SCRIPT_BASE_DIR/common/functions.sh";
+source "$VTORQUE_DIR/common/const.sh";
+source "$VTORQUE_DIR/common/config.sh";
+source "$VTORQUE_DIR/common/functions.sh";
 
 
 #============================================================================#
@@ -170,9 +166,6 @@ METADATA=__METADATA__;
 # [optional] VM's cpu architecture, default is x86_64
 ARCH=__ARCH__;
 
-# [optional] VM's cpu architecture, default is kvm
-HYPERVISOR=__HYPERVISOR__;
-
 # [optional] VM's cpu pinning (either a mapping or boolean for auto mapping)
 VCPU_PINNING=__VCPU_PINNING__;
 
@@ -187,7 +180,7 @@ IOCM_MAX_CORES=__IOCM_MAX_CORES__;
 #
 # keys that needs to be replaced in generateDomainXML (note: it's not all KEYS, some are replaces elsewhere)
 #
-KEYS="HYPERVISOR UUID RAM VCPUS MAC ARCH IMG METADATA_DISK DISK CONSOLE_LOG";
+KEYS="UUID RAM VCPUS MAC ARCH IMG METADATA_DISK DISK CONSOLE_LOG";
 
 #
 # 2D map for the vm paramers (used to replace the place holders in the template)
@@ -313,11 +306,6 @@ validateParameter() {
     logErrorMsg "Parameter ARCH for VM is undefined.";
   fi
   logTraceMsg "VM parameter ARCH is '$ARCH'";
-
-  if [ -z ${HYPERVISOR-} ] || [ "${HYPERVISOR-}" == "__HYPERVISOR__" ]; then
-    logErrorMsg "Parameter HYPERVISOR for VM is undefined.";
-  fi
-  logTraceMsg "VM parameter HYPERVISOR is '$HYPERVISOR'";
 
   if [ -z ${VCPU_PINNING-} ] || [ "${VCPU_PINNING-}" == "__VCPU_PINNING__" ]; then
     logErrorMsg "Parameter VCPU_PINNING for VM is undefined.";
@@ -456,7 +444,6 @@ generateVMParameterSets() {
       # needs to be created first
       VM_PARAMS[$keyOne, "METADATA_DISK"]="";
       VM_PARAMS[$keyOne, "ARCH"]="$ARCH";
-      VM_PARAMS[$keyOne, "HYPERVISOR"]="$HYPERVISOR";
       VM_PARAMS[$keyOne, "VCPU_PINNING"]="$VCPU_PINNING";
       VM_PARAMS[$keyOne, "CONSOLE_LOG"]="$VM_JOB_DIR/$computeNode/$number-console.log";
 
@@ -658,7 +645,7 @@ _generateMetaDataFiles() {
     # sed -i "s,__VM_NODE_FILE__,$VM_NODE_FILE,g" $metadataFile; // not used in any template, and VM_NODE_FILE in not set
     sed -i "s,__VM_NODE_FILE_DIR__,$VM_NODE_FILE_DIR,g" $metadataFile;
     sed -i "s,__VM_ENV_FILE_DIR__,$VM_ENV_FILE_DIR/$computeNode/$vhostName,g" $metadataFile;
-    sed -i "s,__SCRIPT_BASE_DIR__,$SCRIPT_BASE_DIR,g" $metadataFile;
+    sed -i "s,__VTORQUE_DIR__,$VTORQUE_DIR,g" $metadataFile;
     sed -i "s,__VM_NFS_HOME__,$VM_NFS_HOME,g" $metadataFile; #/home/<username>
     sed -i "s,__VM_NFS_OPT__,$VM_NFS_OPT,g" $metadataFile; #/opt
     sed -i "s,__VM_NFS_WS__,$VM_NFS_WS,g" $metadataFile; #/workspace (scratch-fs)
@@ -705,7 +692,8 @@ _generateMetaDataFiles() {
     if [ ${VM_PARAMS[$keyOne, 'DISTRO']} == "osv" ]; then
       logTraceMsg "Creating OSv metaDataDisk.";
       mkdir -p $metamataDiskDir;
-      $SCRIPT_BASE_DIR/../lib/osv/file2img $metadataFile > $metaDataDisk;
+      file2img=$(find "$VTORQUE_DIR/.." -type f -name file2img);
+      $file2img $metadataFile > $metaDataDisk;
       res=$?;
     elif [[ ${VM_PARAMS[$keyOne, 'DISTRO']} =~ $SUPPORTED_STANDARD_LINUX_GUESTS ]]; then
       logTraceMsg "Creating standard linux guest metaDataDisk.";

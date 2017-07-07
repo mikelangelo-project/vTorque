@@ -17,8 +17,29 @@
 # specific language governing permissions and limitations
 # under the License.
 #
-#
 
+#=============================================================================
+#
+#         FILE: iocm-stop.sh
+#
+#        USAGE: iocm-stop.sh
+#
+#  DESCRIPTION: Tear down logic for Snap Telemetry, needs to be executed as root.
+#      OPTIONS: ---
+# REQUIREMENTS: IOcm must be installed.
+#         BUGS: ---
+#        NOTES: ---
+#       AUTHOR: Nico Struckmann, struckmann@hlrs.de
+#      COMPANY: HLRS, University of Stuttgart
+#      VERSION: 0.1
+#      CREATED: 
+#     REVISION: ---
+#
+#    CHANGELOG
+#         v0.2: 
+#
+#=============================================================================
+#
 set -o nounset;
 shopt -s expand_aliases;
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2016 HLRS, University of Stuttgart
+# Copyright 2016-2017 HLRS, University of Stuttgart
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,14 +14,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+#=============================================================================
 #
-##############################################################################
-#                                                                            #
-# IMPORTANT NOTE:                                                            #
-# ===============                                                            #
-#  $RUID or $PBS_JOBID is expected to be set.                               #
-#                                                                            #
-##############################################################################
+#         FILE: const.sh
+#
+#        USAGE: Will be sourced by config.sh and others.
+#
+#  DESCRIPTION: vTorque constants.
+#
+#      OPTIONS: See doc/admin.md
+# REQUIREMENTS: $RUID or $PBS_JOBID must be set.
+#         BUGS: ---
+#        NOTES: ---
+#       AUTHOR: Nico Struckmann, struckmann@hlrs.de
+#      COMPANY: HLRS, University of Stuttgart
+#      VERSION: 0.2
+#      CREATED: Oct 02nd 2015
+#     REVISION: Jul 10th 2017
+#
+#    CHANGELOG
+#         v0.2: more options added, refactoring and cleanup
+#
+#=============================================================================
 #
 set -o nounset;
 ABSOLUTE_PATH_CONFIG="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
@@ -56,14 +71,14 @@ if [ -z ${RUID-} ]; then
 fi
 
 #
-# SCRIPT_BASE_DIR is already set in most cases, just in case it is not..
+# VTORQUE_DIR is already set in most cases, just in case it is not..
 # it is defined in the profile.d/ file
 #
-if [ -z ${SCRIPT_BASE_DIR-} ] \
-    || [ ! -n "${SCRIPT_BASE_DIR-}" ] \
-    || [ ! -d "${SCRIPT_BASE_DIR-}" ]; then
-  logWarnMsg "Environment variable '\$SCRIPT_BASE_DIR' is not set.";
-  SCRIPT_BASE_DIR="$(realpath $(dirname ${BASH_SOURCE[0]}))/..";
+if [ -z ${VTORQUE_DIR-} ] \
+    || [ ! -n "${VTORQUE_DIR-}" ] \
+    || [ ! -d "${VTORQUE_DIR-}" ]; then
+  logWarnMsg "Environment variable '\$VTORQUE_DIR' is not set.";
+  VTORQUE_DIR="$(realpath $(dirname ${BASH_SOURCE[0]}))/..";
 fi
 
 
@@ -182,12 +197,12 @@ LOCALHOST=$(hostname -s);
 #
 # Directory that contain all wrapper template files
 #
-TEMPLATE_DIR="$SCRIPT_BASE_DIR/templates";
+TEMPLATE_DIR="$VTORQUE_DIR/templates";
 
 #
 # Directory that contain all VM template files (domain.xml, metadata)
 #
-VM_TEMPLATE_DIR="$SCRIPT_BASE_DIR/templates-vm";
+VM_TEMPLATE_DIR="$VTORQUE_DIR/templates-vm";
 
 #
 # Template (fragment), used to generate the cpu pinning file
@@ -413,7 +428,7 @@ PBS_ENV_FILE_PREFIX="$VM_ENV_FILE_DIR"; #used this way => PBS_ENV_FILE=$PBS_ENV_
 #
 # Path to directory where all component ctrl script reside
 #
-COMPONENTS_DIR="$SCRIPT_BASE_DIR/components";
+COMPONENTS_DIR="$VTORQUE_DIR/components";
 
 
 

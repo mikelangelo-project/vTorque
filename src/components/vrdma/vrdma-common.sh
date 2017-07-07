@@ -1,7 +1,7 @@
 #!/bin/bash
 #
+# Copyright 2016-2017 HLRS, University of Stuttgart
 # Copyright 2016 Huawei Technologies Co., Ltd.
-# Copyright 2016 HLRS, University of Stuttgart
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,14 +16,39 @@
 # limitations under the License.
 #
 
+#=============================================================================
+#
+#         FILE: vrdma-common.sh
+#
+#        USAGE: source vrdma-common.sh
+#
+#  DESCRIPTION: Constants, configuration and functions for the vRDMA
+#               integration.
+#      OPTIONS: ---
+# REQUIREMENTS: vRDMA support must be installed, in both host and guest.
+#         BUGS: ---
+#        NOTES: ---
+#       AUTHOR: Nico Struckmann, struckmann@hlrs.de
+#               Shiqing Fan, shiqing.fan@huawei.com
+#      COMPANY: HLRS, University of Stuttgart
+#               Huawei Technologies Co., Ltd.
+#      VERSION: 0.1
+#      CREATED: 
+#     REVISION: ---
+#
+#    CHANGELOG
+#         v0.2: 
+#
+#=============================================================================
+#
 set -o nounset;
 shopt -s expand_aliases;
 
 # source the config and common functions
 source /etc/profile.d/99-mikelangelo-hpc_stack.sh;
-source "$SCRIPT_BASE_DIR/common/const.sh";
-source "$SCRIPT_BASE_DIR/common/root-config.sh";
-source "$SCRIPT_BASE_DIR/common/root-functions.sh";
+source "$VTORQUE_DIR/common/const.sh";
+source "$VTORQUE_DIR/common/root-config.sh";
+source "$VTORQUE_DIR/common/root-functions.sh";
 
 
 #

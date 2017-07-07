@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2016 HLRS, University of Stuttgart
+# Copyright 2016-2017 HLRS, University of Stuttgart
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,18 +14,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+#=============================================================================
 #
+#         FILE: functions.sh
 #
-# Contains all common functions for the HPC integration of VMs.
+#        USAGE: source functions.sh
 #
-##############################################################################
-#                                                                            #
-# IMPORTANT NOTE:                                                            #
-# ===============                                                            #
-#  Import the config.sh and const.sh before you import this file!            #
-#                                                                            #
-##############################################################################
+#  DESCRIPTION: Collection of vTorque helper functions.
 #
+#      OPTIONS: ---
+# REQUIREMENTS: log4bsh must be available
+#         BUGS: ---
+#        NOTES: ---
+#       AUTHOR: Nico Struckmann, struckmann@hlrs.de
+#      COMPANY: HLRS, University of Stuttgart
+#      VERSION: 0.2
+#      CREATED: Oct 02nd 2015
+#     REVISION: Jul 10th 2017
+#
+#    CHANGELOG
+#         v0.2: refactoring and cleanup
+#
+#=============================================================================
 #
 set -o nounset;
 
@@ -394,11 +405,14 @@ Errors:\n$(cd $LOCKFILES_DIR/ && for file in $(ls -l | tr -s ' ' | cut -d ' ' -f
 # Generates a MAC address with prefix '$MAC_PREFIX' and prints it to STDOUT.
 #
 generateMAC() {
-  if $STATIC_IP_MAPPING; then
+  if $CUSTOM_IP_MAPPING; then
     vmsPerHost=$1;
     number=$2;
-    mac="$(getStaticMAC $LOCALHOST $vmsPerHost $(expr $number % $vmsPerHost))";
-  else
+    # determine IP by the help of an external custom script
+    [ ! -x $IP_TO_MAC_SCRIPT ] \
+      && logErrorMsg "MAC-to-IP mapping script '$IP_TO_MAC_SCRIPT' is not executable!";
+    mac="$($IP_TO_MAC_SCRIPT $LOCALHOST $vmsPerHost $(expr $number % $vmsPerHost))";
+  else #generate random MAC
     # http://superuser.com/questions/218340/how-to-generate-a-valid-random-mac-address-with-bash-shell
     hexchars="0123456789ABCDEF"
     end=$( for i in {1..6} ; do echo -n ${hexchars:$(( $RANDOM % 16 )):1} ; done | sed -e 's/\(..\)/:\1/g' );

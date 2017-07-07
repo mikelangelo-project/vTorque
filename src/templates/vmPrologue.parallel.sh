@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2016 HLRS, University of Stuttgart
+# Copyright 2016-2017 HLRS, University of Stuttgart
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,14 +14,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-#
-# DESCRIPTION
-#  This file is called by the vmPrologue on all nodes.
-#  It creates a lock file based on the VM's MAC address, boots it and then
-#  waits for all to become available.
-#  As soon as the VMs responds via SSH, the locks are removed and processes exited.
-#
 
+#=============================================================================
+#
+#         FILE: vmPrologue.parallel.sh
+#
+#        USAGE: n/a
+#
+#  DESCRIPTION: Template for user prologue.parallel script.
+#               Executed by the vmPrologue on all nodes, including rank 0.
+#               Prepares VM instantiation and waits for all guests to become 
+#               available.
+#               As soon as the VMs are ready, locks are removed and polling 
+#               is stopped.
+#      OPTIONS: ---
+# REQUIREMENTS: ---
+#         BUGS: ---
+#        NOTES: ---
+#       AUTHOR: Nico Struckmann, struckmann@hlrs.de
+#      COMPANY: HLRS, University of Stuttgart
+#      VERSION: 0.3
+#      CREATED: Oct 2nd 2015
+#     REVISION: Jul 10th 2017
+#
+#    CHANGELOG
+#         v0.2: bug fixes and refactoring
+#         v0.3: refactoring and clean up
+#
+#=============================================================================
 
 #============================================================================#
 #                                                                            #
@@ -71,9 +91,9 @@ fi
 #
 # load config and constants
 #
-source "$SCRIPT_BASE_DIR/common/const.sh";
-source "$SCRIPT_BASE_DIR/common/config.sh";
-source "$SCRIPT_BASE_DIR/common/functions.sh";
+source "$VTORQUE_DIR/common/const.sh";
+source "$VTORQUE_DIR/common/config.sh";
+source "$VTORQUE_DIR/common/functions.sh";
 
 
 

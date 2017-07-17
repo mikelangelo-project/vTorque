@@ -23,9 +23,9 @@
 #
 #  DESCRIPTION: Template for user prologue.parallel script.
 #               Executed by the vmPrologue on all nodes, including rank 0.
-#               Prepares VM instantiation and waits for all guests to become 
+#               Prepares VM instantiation and waits for all guests to become
 #               available.
-#               As soon as the VMs are ready, locks are removed and polling 
+#               As soon as the VMs are ready, locks are removed and polling
 #               is stopped.
 #      OPTIONS: ---
 # REQUIREMENTS: ---
@@ -49,7 +49,7 @@
 #                                                                            #
 #============================================================================#
 
-# source the global profile, for getting DEBUG and TRACE flags if set
+# source the global profile
 source /etc/profile.d/99-mikelangelo-hpc_stack.sh;
 
 #
@@ -59,15 +59,7 @@ source /etc/profile.d/99-mikelangelo-hpc_stack.sh;
 RUID=__RUID__;
 
 #
-# Indicates debug mode.
-#
-DEBUG=__DEBUG__;
-
-#
-# Indicates trace mode.
-#
-TRACE=__TRACE__;
-
+# Guest image distro (redhat, debian, osv)
 #
 DISTRO=__DISTRO__;
 
@@ -80,18 +72,16 @@ VCPUS=__VCPUS__;
 # PBS_JOBID set in environment ?
 # relevant if not executed by Torque, but manually
 #
-if [ $# -lt 1 ] \
-    && [ -z ${PBS_JOBID-} ] ; then
-  logErrorMsg "PBS_JOBID is not set! usage: $(basename ${BASH_SOURCE[0]}) <jobID>";
-elif [ $# -ge 1 ]; then
-  #workaround until SendEnv is used for SSH
-  export PBS_JOBID=$1;
+if [ $# -lt 2 ] \
+    && [ -z ${PBS_JOBID-} ] \
+    && [ -z ${USER-} ]; then
+  logErrorMsg "\$PBS_JOBID is not set! usage: $(basename ${BASH_SOURCE[0]}) <jobID> <user>";
 fi
 
 #
 # load config and constants
 #
-source "$VTORQUE_DIR/common/const.sh";
+source "$VTORQUE_DIR/common/const.sh" $@;
 source "$VTORQUE_DIR/common/config.sh";
 source "$VTORQUE_DIR/common/functions.sh";
 
@@ -165,7 +155,9 @@ _waitForFiles() {
   done
 
   # initialize list of domain XMLs
-  VM_DOMAIN_XML_LIST=($(ls $DOMAIN_XML_PATH_NODE/*.xml));
+  if [ -d "$DOMAIN_XML_PATH_NODE" ]; then
+    VM_DOMAIN_XML_LIST=($(ls $DOMAIN_XML_PATH_NODE/*.xml));
+  fi
 
   # check if the domain XML file exists
   if [ -z ${VM_DOMAIN_XML_LIST-} ]; then
@@ -232,13 +224,7 @@ function waitForVMs() {
 
   logDebugMsg "Waiting for boot of local VMs..";
 
-  startDate="$(date +%s)";
-  while [ ! -f "$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone" ]; do
-    sleep 1;
-    logDebugMsg "Waiting for flag file '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone' to become available..";
-    # timeout reached ? (if yes, we abort)
-    isTimeoutReached $TIMEOUT $startDate;
-  done
+  waitForRootPrologue $TIMEOUT;
 
   logDebugMsg "Local VMs are booting, waiting until they are ready..";
 
@@ -252,7 +238,7 @@ function waitForVMs() {
       logErrorMsg "No MAC found for VM '$vmName' in domain XML file: '$domainXML' !";
     fi
 
-    # wait until SSH server becomes available
+    # wait until VM becomes available
     if $PARALLEL; then
       # async
       _waitForVMtoBecomeAvailable "v$LOCALHOST-$i" "$mac" & : ;
@@ -267,10 +253,10 @@ function waitForVMs() {
     # check if job has been cancled meanwhile
     checkCancelFlag;
 
-  done
+    # dump core pinning info
+    logTraceMsg "CPU pinning info for local VM '$vmName':\n-----\n$(virsh vcpuinfo $vmName)\n-----";
 
-  # dump core pinning info
-  logTraceMsg "CPU pinning info for local VMs:\n-----\n$(virsh vcpuinfo $vmName)\n-----";
+  done
 
   # print debug info
   totalCount=${#VM_DOMAIN_XML_LIST[@]};
@@ -296,24 +282,27 @@ _waitForVMtoBecomeAvailable() {
 arguments, '2' are expected.\nProvided params are: '$@'" 2;
   fi
 
-  #
-  vhostName=$1;
+  # cache VM's hostname
+  local vhostName=$1;
   # ensure mac is lower case
-  mac=$(echo $2 | tr '[:upper:]' '[:lower:]');
+  local mac=$(echo $2 | tr '[:upper:]' '[:lower:]');
 
   # cancelled meanwhile ?
   checkCancelFlag;
 
   # create lock file
   logDebugMsg "Waiting for VM '$vhostName' with MAC='$mac', using lock dir: '$LOCKFILES_DIR'";
-  lockFile="$LOCKFILES_DIR/$mac";
+  local lockFile="$LOCKFILES_DIR/$mac";
   touch $lockFile;
 
   # wait until it the VM has requested an IP
-  arpOut=$($ARP_BIN -an | grep -i "$mac"); #FIX for 'since a few days this binary can no longer be found'
-  startDate=$(date +%s);
-  vmIP=$(echo $arpOut | cut -d' ' -f2 | sed 's,(,,g' | sed 's,),,g');
-  msg="";
+  local arpOut=$($ARP_BIN -an | grep -i "$mac"); #FIX for 'since a few days this binary can no longer be found'
+  local startDate=$(date +%s);
+  local vmIP=$(echo $arpOut | cut -d' ' -f2 | sed 's,(,,g' | sed 's,),,g');
+  local msg="";
+  local res;
+  local tmp;
+  local foundMac;
 
   # watch out for VM's MAC in arp's output (that appears together with its IP)
   while [ ! -n "$arpOut" ]; do
@@ -403,30 +392,34 @@ and VM '$vhostName' with MAC='$mac' is still not available.";
 
   # write VM's IP into localhost's vmIPs file
   logDebugMsg "VM with MAC='$mac' is now online, IP: '$vmIP'";
-  count=0;
+  local count=0;
   while [ $count -lt $VCPUS ]; do
-    # when we request i.e. 16 cores we get 16 ranks
+    # when we request i.e. 16 vcpus we get 16 ranks
     # so use VCPUS for amount of ranks
     echo "$vmIP" >> $LOCAL_VM_IP_FILE;
     count=$((count + 1));
   done
   logTraceMsg "VM IPs cached in file '$LOCAL_VM_IP_FILE':\n-----\n$(cat $LOCAL_VM_IP_FILE)\n-----";
 
-  # now wait until the VM becomes available via SSH
+  local vmIsAvailCmd;
+  local successCode;
+  local protocol;
+
+  # protocol and code for availability check depends on guest distro
   if [[ $DISTRO =~ $REGEX_OSV ]]; then
-    logDebugMsg "DISTRO '$DISTRO' is OSv, using HTTP check";
-    CONN_TEST_CMD="curl --connect-timeout 2 http://$vmIP:8000";
-    ERR_CODE_TIMEOUT=28;
+    vmIsAvailCmd="curl --connect-timeout 2 http://$vmIP:8000";
+    successCode=200;
     protocol="HTTP";
   else
-    logDebugMsg "DISTRO '$DISTRO' is linux, using SSH check";
-    CONN_TEST_CMD="ssh -n -o BatchMode=yes -o ConnectTimeout=2 $vmIP 'exit 0;'";
-    ERR_CODE_TIMEOUT=255;
+    vmIsAvailCmd="ssh -n -o BatchMode=yes -o ConnectTimeout=2 $vmIP exit";
+    successCode=0;
     protocol="SSH";
   fi
 
   # wait for VM to become ready
-  while [ $($CONN_TEST_CMD &>/dev/null; echo $?) -eq $ERR_CODE_TIMEOUT  ]; do
+  logDebugMsg "Distro is '$DISTRO', using protocoll '$protocol' to check if guest is available.";
+  logTraceMsg "Command to check VM availability via '$protocol':\n $vmIsAvailCmd";
+  while [ $($vmIsAvailCmd &>/dev/null; echo $?) -ne $successCode ]; do
 
     # cancelled meanwhile ?
     checkCancelFlag;
@@ -435,7 +428,7 @@ and VM '$vhostName' with MAC='$mac' is still not available.";
     checkRemoteNodes;
 
     # wait a moment before checking again
-    logDebugMsg "Waiting for VM's ($mac / $vmIP) to become available via $protocol ..";
+    logDebugMsg "Waiting for VM ($mac / $vmIP) to become available via $protocol ..";
     sleep 1;
 
     # timeout reached ?
@@ -471,12 +464,15 @@ and VM '$vhostName' with MAC='$mac' is still not available via $protocol.";
         logErrorMsg "Unknown distro '$DISTRO'!";
       fi
 
-      #requires root rights, chmod applied via metadata in cloud-init
+      # requires root rights usually,
+      # but chmod is applied via metadata by cloud-init
       logDebugMsg "Fetching syslog from '$vmIP'".
       scp $SCP_OPTS $vmIP:$sysLogFile $VM_JOB_DIR/$LOCALHOST/syslog_$vhostName.log;
+
+    # else:
+    #   OSv doesn't have a dedicated cloud-init log.
+    #   Relevant info is written to console
     fi
-  # else: OSv doesn't have a dedicated cloud-init log.
-    # Relevant info is written to console
   fi
 
   # remove lock file

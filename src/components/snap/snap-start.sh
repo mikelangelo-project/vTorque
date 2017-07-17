@@ -32,11 +32,11 @@
 #       AUTHOR: Nico Struckmann, struckmann@hlrs.de
 #      COMPANY: HLRS, University of Stuttgart
 #      VERSION: 0.1
-#      CREATED: 
+#      CREATED:
 #     REVISION: ---
 #
 #    CHANGELOG
-#         v0.2: 
+#         v0.2:
 #
 #=============================================================================
 #
@@ -45,7 +45,7 @@ shopt -s expand_aliases;
 
 # source the config and common functions
 SNAP_ABSOLUTE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
-source $SNAP_ABSOLUTE_PATH/snap-common.sh;
+source "$SNAP_ABSOLUTE_PATH/snap-common.sh" $@;
 
 
 
@@ -72,8 +72,7 @@ tagTask() {
   destDir=$(dirname $SNAP_TASK_JSON_FILE);
   if [ ! -d $destDir ] ;then
     logDebugMsg "Creating destination dir '$destDir' for snap task template file.";
-    mkdir -p $destDir || logErrorMsg "Failed to create destination dir for snap task template file '$SNAP_TASK_JSON_FILE'.";
-    chown $USERNAME:$USERNAME $destDir;
+    su - $USER_NAME -c "mkdir -p $destDir || logErrorMsg \"Failed to create destination dir for snap task template file '$SNAP_TASK_JSON_FILE'.\"";
   fi
 
   # move template
@@ -98,17 +97,20 @@ $(cat $SNAP_TASK_TEMPLATE_FILE | python -m json.tool)\
   if [ $res -ne 0 ]; then
     logWarnMsg "Snap task creation failed:\n\t$snapCtlOutput\nreturn code is '$res'";
   else
-    logDebugMsg "Snap task successfully created: $snapCtlOutput";
 
-    # determine task ID
-    logDebugMsg "Snap task '$snapCtlOutput' created and started";
-    snapTaskID="$(echo ${snapCtlOutput} | awk -F'Name: Task-' '{print $2}' | cut -d' ' -f1)";
-    logDebugMsg "Snap task 'snapTaskName' has ID '$snapTaskID'";
+    # determine task ID and task name
+    logDebugMsg "Snap task successfully created.\n$snapCtlOutput";
+    snapTaskID="$(echo ${snapCtlOutput} | awk -F'ID: ' '{print $2}' | cut -d' ' -f1)";
+    snapTaskName="$(echo ${snapCtlOutput} | awk -F'Name: ' '{print $2}' | cut -d' ' -f1)";
+    logDebugMsg "Snap task '$snapTaskName' has ID '$snapTaskID'";
 
     # cache task ID
     echo $snapTaskID > $SNAP_TASK_ID_FILE;
     logTraceMsg "Caching Snap ID '$snapTaskID' in file '$SNAP_TASK_ID_FILE'";
-    logTraceMsg "~~~~~~~~~~SNAP_TASK_ID_FILE_Start~~~~~~~~~~\n$(cat $SNAP_TASK_ID_FILE)\n~~~~~~~~~~~SNAP_TASK_ID_FILE_End~~~~~~~~~~~";
+    logTraceMsg "\
+\n~~~~~~~~~~SNAP_TASK_ID_FILE_Start~~~~~~~~~~\n\
+$(cat $SNAP_TASK_ID_FILE)\n\
+~~~~~~~~~~~SNAP_TASK_ID_FILE_End~~~~~~~~~~~";
   fi
   # pass on return code
   return $res;

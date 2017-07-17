@@ -29,11 +29,11 @@
 #       AUTHOR: Nico Struckmann, struckmann@hlrs.de
 #      COMPANY: HLRS, University of Stuttgart
 #      VERSION: 0.1
-#      CREATED: 
+#      CREATED:
 #     REVISION: ---
 #
 #    CHANGELOG
-#         v0.2: 
+#         v0.2:
 #
 #=============================================================================
 #
@@ -42,7 +42,7 @@ shopt -s expand_aliases;
 
 # source the config and common functions
 IOCM_ABSOLUTE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
-source "$IOCM_ABSOLUTE_PATH/iocm-common.sh";
+source "$IOCM_ABSOLUTE_PATH/iocm-common.sh" $@;
 
 
 
@@ -61,8 +61,8 @@ generateConfig() {
   logDebugMsg "Generating IOCM config for node '$LOCALHOST'..";
 
   # determine min/max core count
-  minCores=$(sed -n '1{p;q;}' "$FLAG_FILE_DIR/.iocm"); #grep first line
-  maxCores=$(sed -n '2{p;q;}' "$FLAG_FILE_DIR/.iocm"); # grep second line
+  minCores=$(sed -n '1{p;q;}' "$FLAG_FILE_IOCM"); #grep first line
+  maxCores=$(sed -n '2{p;q;}' "$FLAG_FILE_IOCM"); # grep second line
   logTraceMsg "IOCM minCores='$minCores' maxCores='$maxCores'";
 
   # determine total CPU count
@@ -75,7 +75,7 @@ generateConfig() {
     $totalCores $IOCM_INTERFACE_NAME;
 
   # allow user to read it (for debugging purposes)
-  chown $USERNAME:$USERNAME "$IOCM_JSON_CONFIG";
+  chown $USER_NAME:$USER_NAME "$IOCM_JSON_CONFIG";
 
   # log resulting file
   if [ $? -eq 0 ]; then
@@ -92,24 +92,25 @@ generateConfig() {
 # Configures the min/max amount of IOcm cores
 #
 setCores() {
-  if [ ! -f "$FLAG_FILE_DIR/.iocm" ]; then
+
+  if [ ! -f "$FLAG_FILE_IOCM" ]; then
     logErrorMsg "No flag file found for IOCM, cannot setup IOCM!";
   fi
 
   logInfoMsg "IOCM starting..";
-  logDebugMsg "IOCM log file: '$IOCM_LOG_FILE'.";
-  touch "$IOCM_LOG_FILE";
-  chown $USERNAME:$USERNAME "$IOCM_LOG_FILE";
 
-  # debugging ?
+  # debugging mode ?
   if $DEBUG; then
+    logDebugMsg "IOCM log file: '$IOCM_LOG_FILE'.";
+    su - $USER_NAME -c "touch '$IOCM_LOG_FILE'";
     {
-      # call in debug mode as process (blocking + all stdout/err printed)
+      # call in debug mode as process (forground and all stdout/err printed)
       $IOCM_ABSOLUTE_PATH/dynamic-io-manager/src/start_io_manager.py \
         --process \
         --config $IOCM_JSON_CONFIG \
           &>> $IOCM_LOG_FILE;
     } & : ;
+    logDebugMsg "IOCM started as process.";
     return 0;
   fi
 

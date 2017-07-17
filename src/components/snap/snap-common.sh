@@ -30,11 +30,11 @@
 #       AUTHOR: Nico Struckmann, struckmann@hlrs.de
 #      COMPANY: HLRS, University of Stuttgart
 #      VERSION: 0.1
-#      CREATED: 
+#      CREATED:
 #     REVISION: ---
 #
 #    CHANGELOG
-#         v0.2: 
+#         v0.2:
 #
 #=============================================================================
 #
@@ -43,10 +43,21 @@ shopt -s expand_aliases;
 
 # source the config and common functions
 source /etc/profile.d/99-mikelangelo-hpc_stack.sh;
-source "$VTORQUE_DIR/common/const.sh";
-source "$VTORQUE_DIR/common/root-config.sh";
+source "$VTORQUE_DIR/common/const.sh" $@;
+source "$VTORQUE_DIR/common/config.sh";
 source "$VTORQUE_DIR/common/root-functions.sh";
 
+#
+# happens in case of manual debugging
+#
+if [ ! -f $LOG_FILE ]; then
+  # prevents dir to be created as root
+  LOG_FILE=/dev/null;
+fi
+if [ ! -d $VM_JOB_DIR ]; then
+  # prevents snap to fail, the task template needs to be written
+  VM_JOB_DIR=/tmp/;
+fi
 
 
 #============================================================================#
@@ -56,7 +67,7 @@ source "$VTORQUE_DIR/common/root-functions.sh";
 #============================================================================#
 
 # construct the task tag
-SNAP_TASK_TAG="snapTask-$USERNAME-$JOBID";
+SNAP_TASK_TAG="snapTask-$USER_NAME-$JOBID";
 
 #
 # snap task ID file
@@ -77,7 +88,6 @@ SNAP_TASK_JSON_FILE="$VM_JOB_DIR/$LOCALHOST/snapTask.json";
 # define bin paths
 export SNAPCTL="$SNAP_BIN_DIR/snaptel";
 export PATH="$PATH:$SNAP_BIN_DIR";
-
 
 
 #============================================================================#

@@ -63,20 +63,9 @@ source /etc/profile.d/99-mikelangelo-hpc_stack.sh;
 RUID=__RUID__;
 
 #
-# Indicates debug mode.
-#
-DEBUG=__DEBUG__;
-
-#
-# Indicates trace mode.
-#
-TRACE=__TRACE__;
-
-#
 # Indicates to keep the VM alive after the job has ran.
 #
 KEEP_VM_ALIVE=__KEEP_VM_ALIVE__;
-
 
 # PBS_JOBID set in environment ?
 if [ -z ${PBS_JOBID-} ] \
@@ -89,7 +78,6 @@ if [ -z ${PBS_JOBID-} ] \
     export PBS_JOBID=$1;
   fi
 fi
-
 
 #
 # load config and constants, after initialization of placeholder-vars above
@@ -114,7 +102,7 @@ source "$VTORQUE_DIR/common/functions.sh";
 JOB_SCRIPT=__JOB_SCRIPT__;
 
 #
-# Job type to wrap. Will be set by the qsub wrapper when the job specific script
+# Job type to wrap. Will be set by vsub when the job specific script
 # is generated based on this template.
 # Valid job types are: @BATCH_JOB@, @STDIN_JOB@, @INTERACTIVE_JOB@
 #
@@ -219,7 +207,7 @@ setRank0VM() {
   # ensure the rank0 VM is known (implies that the merged vNodesFile could be read)
   if [ -z ${FIRST_VM-} ]; then
     logErrorMsg "Rank0 VM is not set! PBS_VM_NODESFILE is '$PBS_VM_NODEFILE'";
-      exit 1;
+    exit 1;
   fi
 }
 
@@ -233,6 +221,11 @@ setRank0VM() {
 createJobEnvironmentFiles() {
 
   logDebugMsg "Generating job's VM environment files";
+
+  local pbsVMsEnvFile;
+  local number;
+  local vNodeName;
+  local destDir;
 
   # create for each VM an individual PBS environment file
   for computeNode in $(cat $PBS_NODEFILE | uniq); do
@@ -326,7 +319,7 @@ runBatchJobOnSLG() {
   ensureFileIsAvailableOnHost $JOB_SCRIPT $FIRST_VM;
 
   # construct the command to execute via ssh
-  cmd="source /etc/profile; exec $JOB_SCRIPT;";
+  local cmd="source /etc/profile; exec $JOB_SCRIPT;";
 
   # execute command
   logDebugMsg "Command to execute: 'ssh $SSH_OPTS $FIRST_VM \"$cmd\"'";
@@ -338,7 +331,7 @@ runBatchJobOnSLG() {
   fi
   # store the return code (ssh returns the return value of the command in
   # question, or 255 if an error occurred in ssh itself.)
-  result=$?
+  local result=$?
   logDebugMsg "================JOB_OUTPUT_END=====================";
 
   return $result;
@@ -350,6 +343,10 @@ runBatchJobOnSLG() {
 # Executes user's batch job script in first/rank0 OSv VM.
 #
 runJobOnOSv() {
+
+  local jobType;
+  local curlCmd;
+  local result;
 
   if [ "$JOB_TYPE" == "@STDIN_JOB@" ]; then
     jobType="BATCH";
@@ -365,15 +362,15 @@ runJobOnOSv() {
   # "mpirun -np NP -hostfile /pbs_vm_nodefile mpi_app.so"
   # curl -v -X POST http://192.168.122.90:8000/file/%2Ftmp%2Faa --form file=@aa
   echo "----------------------------"
-  CURL_CMD="curl --connect-timeout 2 \
+  curlCmd="curl --connect-timeout 2 \
             -X POST http://$FIRST_VM:8000/file//pbs_vm_nodefile \
             --form file=@\"$PBS_VM_NODEFILE\" \
             -v";
-  logDebugMsg "Upload PBS_VM_NODEFILE '$PBS_VM_NODEFILE' to /pbs_vm_nodefile, cmd:\n$CURL_CMD";
+  logDebugMsg "Upload PBS_VM_NODEFILE '$PBS_VM_NODEFILE' to /pbs_vm_nodefile, cmd:\n$curlCmd";
   if $DEBUG; then
-    $CURL_CMD |& tee -a "$LOG_FILE";
+    $curlCmd |& tee -a "$LOG_FILE";
   else
-    $CURL_CMD &>> "$LOG_FILE";
+    $curlCmd &>> "$LOG_FILE";
   fi
   result=$?;
   if [ $result -ne 0 ]; then
@@ -387,34 +384,36 @@ $(curl --connect-timeout 2 -X GET http://$FIRST_VM:8000/file//pbs_vm_nodefile?op
   # PBS_VM_NODEFILE is actually available at /pbs_vm_nodefile, so take that into account.
   # And similar for PBS_NP - see createJobEnvironmentFiles() above:
   #   export PBS_NP='$VCPUS'; #'$PBS_NP';
-  MY_ENV_VARS=$(set | grep "^PBS_")
+  local myEnvVars=$(set | grep "^PBS_");
+  local key;
+  local value;
   for key_val in $MY_ENV_VARS; do
     # allow '=' in value
     key=$(echo "$key_val" | sed 's/=.*$//')
-    val=$(echo "$key_val" | sed 's/^[^=]*=//')
+    value=$(echo "$key_val" | sed 's/^[^=]*=//')
     if [ "$key" == "PBS_VM_NODEFILE" ]; then
-      val="/pbs_vm_nodefile"
+      value="/pbs_vm_nodefile"
     fi
     if [ "$key" == "PBS_NP" ]; then
-      val="$VCPUS"
+      value="$VCPUS"
     fi
-    logDebugMsg "Setting in OSv environ: key=$key val=$val"
-    CURL_CMD="curl --connect-timeout 2 \
-              -X POST http://$FIRST_VM:8000/env/$key?val=$val"
+    logDebugMsg "Setting in OSv environ: key=$key value=$value"
+    curlCmd="curl --connect-timeout 2 \
+              -X POST http://$FIRST_VM:8000/env/$key?val=$value"
     if $DEBUG; then
-      $CURL_CMD |& tee -a "$LOG_FILE";
+      $curlCmd |& tee -a "$LOG_FILE";
     else
-      $CURL_CMD &>> "$LOG_FILE";
+      $curlCmd &>> "$LOG_FILE";
     fi
   done
 
   #
   # run job script
   #
-  cmd=$(cat "$JOB_SCRIPT");
+  local cmd=$(cat "$JOB_SCRIPT");
   # execute command
   logDebugMsg "Command to execute: 'PUT http://$FIRST_VM:8000/app \"$cmd\"'";
-  tid=$(curl -X PUT http://$FIRST_VM:8000/app/ --data-urlencode command="$cmd")
+  local tid=$(curl -X PUT http://$FIRST_VM:8000/app/ --data-urlencode command="$cmd")
   result=$?;
   if [ $result -ne 0 ]; then
     logErrorMsg "Failed to start application!\nError code '$result', cmd:\n$cmd";
@@ -427,12 +426,12 @@ $(curl --connect-timeout 2 -X GET http://$FIRST_VM:8000/file//pbs_vm_nodefile?op
   fi
 
   logDebugMsg "===============JOB_OUTPUT_BEGIN====================";
-  console_log="$VM_JOB_DIR/`hostname`/1-console.log"
+  local console_log="$VM_JOB_DIR/`hostname`/1-console.log"
   exec {CON_FD}<$console_log
-  con_eof=0
-  con_part_line=''
+  local con_eof=0
+  local con_part_line=''
   # wait on executed app to finish
-  app_finished=0;
+  local app_finished=0;
   logDebugMsg "Command tid=$tid wait to finish...";
   while [ $app_finished -ne 1 ]; do
     if $DEBUG; then
@@ -489,7 +488,7 @@ runSTDINJobOnSLG() {
   ensureFileIsAvailableOnHost $JOB_SCRIPT $FIRST_VM;
 
   # construct the command to execute via ssh
-  cmd="source /etc/profile; $(cat $JOB_SCRIPT)";
+  local cmd="source /etc/profile; $(cat $JOB_SCRIPT)";
 
   # execute command
   logDebugMsg "Command to execute: 'ssh $SSH_OPTS $FIRST_VM \"$cmd\"'";
@@ -501,7 +500,7 @@ runSTDINJobOnSLG() {
   fi
   # store the return code (ssh returns the return value of the command in
   # question, or 255 if an error occurred in ssh itself.)
-  result=$?;
+  local result=$?;
 
   logDebugMsg "================JOB_OUTPUT_END=====================";
   return $result;
@@ -518,14 +517,14 @@ runInteractiveJobOnSLG(){
   logDebugMsg "Executing INTERACTIVE job on first vNode '$FIRST_VM'.";
 
   # construct the command to execute via ssh
-  cmd='/bin/bash -i';
+  local cmd="/bin/bash -i";
 
   # execute command
   logDebugMsg "Command to execute: 'ssh $FIRST_VM \"$cmd\"'";
   logDebugMsg "============INTERACTIVE_JOB_BEGIN==================";
 
   # check if we are running with 'qsub -I -X [...]'
-  sshOpts="";
+  local sshOpts="";
   if [ -f "$FLAG_FILES_DIR/.xIsRequested" ]; then
     sshOpts="-X";
   fi
@@ -538,7 +537,7 @@ runInteractiveJobOnSLG(){
   fi
   # store the return code (ssh returns the return value of the command in
   # question, or 255 if an error occurred in ssh itself.)
-  result=$?;
+  local result=$?;
 
   logDebugMsg "=============INTERACTIVE_JOB_END===================";
   return $result;
@@ -599,6 +598,8 @@ runJobInVM() {
   logInfoMsg "Starting user job script in VM.";
   logDebugMsg "Job-Type to execute: $JOB_TYPE";
 
+  local res;
+
   # what kind of job is it ? (interactive, STDIN, batch-script)
   if [ "$JOB_TYPE" == "@BATCH_JOB@" ]; then
     # batch
@@ -654,7 +655,7 @@ keepVMsAliveIfRequested() {
 # Abort function that is called by the (global) signal trap.
 #
 _abort() {
-  exitCode=0;
+  local exitCode=0;
   # VM clean up happens in the vmEpilogue.sh
   logWarnMsg "Canceling job execution.";
   return $exitCode;

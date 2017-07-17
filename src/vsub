@@ -26,9 +26,8 @@
 #               Jobs are run in virtual machines instead of bare metal.
 #
 #      OPTIONS: ---
-# REQUIREMENTS: Job submission cli 'qsub' is installed and configured.
-#               PBS_QSUB_PATH is properly configured and file const.sh
-#               is sourced before this file.
+# REQUIREMENTS: Torque's job submission cli 'qsub' is installed and configured.
+#               File const.sh is sourced before this file.
 #         BUGS: ---
 #        NOTES: ---
 #       AUTHOR: Nico Struckmann, struckmann@hlrs.de
@@ -62,20 +61,12 @@ if [ -z ${RUID-} ]; then
 fi
 
 #
-# The job id we receive after we have submitted the job.
-# Used in the abort function for the signal trap.
-#
-# needs to be defined before we can include the config
-#JOBID="NONE_YET";
-JOBID="$RUID";
-
-#
 # load environment variables, config and common functions
 #
 source /etc/profile.d/99-mikelangelo-hpc_stack.sh;
-source "$SCRIPT_BASE_DIR/common/const.sh";
-source "$SCRIPT_BASE_DIR/common/config.sh";
-source "$SCRIPT_BASE_DIR/common/functions.sh";
+source "$VTORQUE_DIR/common/const.sh" "$RUID" "$USER";
+source "$VTORQUE_DIR/common/config.sh";
+source "$VTORQUE_DIR/common/functions.sh";
 
 
 #============================================================================#
@@ -122,9 +113,9 @@ declare -A VM_PARAMETER=();
 PARAMETERS_CLEANED="";
 
 #
-# Parameters that are passed on to the real qsub cmd
+# Cached parameters that are passed on to Torque's qsub cmd
 #
-PARAMETERS_REAL_QSUB="";
+PARAMETERS_PBS_QSUB="";
 
 #
 # Last parameter in the resource request, if it is not a STDIN or
@@ -183,7 +174,7 @@ USER_VM_EPILOGUE_SCRIPT="";
 #
 # Flag that indicates whether user want's not to submit job,
 # but to generate files only, for manual execution
-# corresponding qsub param is '-gf'
+# corresponding vsub argument is '-gf'
 #
 DO_NOT_SUBMIT_JOB=false;
 
@@ -226,7 +217,7 @@ usage() {
   # we need a fake job file for the following
   touch /tmp/qsubfaketmpjob;
   # force qsub to print out its usage by using an invalid '-Ä' parameter
-  $REAL_QSUB -Ä /tmp/qsubfaketmpjob 2>&1 | \
+  $PBS_QSUB -Ä /tmp/qsubfaketmpjob 2>&1 | \
     grep -v 'invalid option' | \
     grep -v '\[exiting\]' | \
     sed 's,\[script\],\n    [ -listImages | [[-gf] -vm <vm_parameters> [script]],';
@@ -244,6 +235,10 @@ usage() {
 # Prints list of images available in the global VM_IMG_DIR
 #
 listImages() {
+
+  local imagesOutputStr;
+  local length;
+  local tabs;
 
   imagesOutputStr="\n\t+++ Images available for job submission +++\n";
   imagesOutputStr="$imagesOutputStr================================================================\n";
@@ -304,7 +299,12 @@ checkPreconditions() {
     exit 7;
   fi
 
-  templates="$SCRIPT_PROLOGUE_TEMPLATE \
+  # is PBS qsub there and executable ?
+  if [ ! -x $PBS_QSUB ]; then
+    logErrorMsg "PBS qsub '$PBS_QSUB' does not exist or is not executable.";
+  fi
+
+  local templates="$SCRIPT_PROLOGUE_TEMPLATE \
 $SCRIPT_PROLOGUE_PARALLEL_TEMPLATE \
 $JOB_SCRIPT_WRAPPER_TEMPLATE";
 
@@ -334,7 +334,9 @@ _putParameterInMap() {
     logErrorMsg "Function '_putParameterInMap' called with '$#' arguments, '1' \
 is expected.\nProvided params are: '$@'" 2;
   fi
-  parameterString=$1;
+  local parameterString=$1;
+  local key;
+  local value;
   # process key/value-pairs one-by-one
   for param in ${parameterString//,/ }; do
 
@@ -398,12 +400,12 @@ is expected.\nProvided params are: '$@'" 2;
         elif [ ! -e "$value" ]; then
           # assume the filename is provided, only
           # check pwd first
-          value="$(pwd)/$value";
+          value="$(pwd)/$(basename $value)";
         fi
         if [ ! -e "$value" ]; then
           # assume the filename is provided, only
           # check VM_IMG_DIR as next
-          value="$VM_IMG_DIR/$value";
+          value="$VM_IMG_DIR/$(basename $value)";
         fi
         # found ?
         if [ ! -e "$value" ]; then
@@ -432,6 +434,8 @@ is expected.\nProvided params are: '$@'" 2;
 # for the job's VM that strongly depends on the guest OS
 #
 setMetadataTemplate() {
+
+  local noDistroFlag;
 
   # distro given ?
   if [ -n "${VM_PARAMETER['DISTRO']}" ]; then
@@ -483,12 +487,11 @@ parseUserMetadata() {
 
   # debug log
   logDebugMsg "Parse user metadata, key: 'METADATA' ";
-  # TODO implement user meta-data parsing and white list in config.sh
-  return 0;
 
   # is there any metadata provided ?
-  if [ -z ${VM_PARAMETER["METADATA"]} ]; then # no
+  if [ -z ${VM_PARAMETER["METADATA"]-} ]; then # no
     logDebugMsg "No User metadata provided".
+    VM_PARAMETER["METADATA"]="";
     return 0;
   fi
 
@@ -499,8 +502,12 @@ parseUserMetadata() {
     logErrorMsg "Metadata file '${VM_PARAMETER[METADATA]}' cannot be read !";
   fi
 
-  # the file we generate
-  userMetadataFile="$VM_JOB_DIR/metadata-user.yaml";
+  # file we are going to built
+  local userMetadataFile="$VM_JOB_DIR/metadata-user.yaml";
+
+  # TODO parse and validate
+  VM_PARAMETER["METADATA"]="";
+  return 0;
 
   # replace the file cached
   VM_PARAMETER["METADATA"]=$userMetadataFile;
@@ -512,7 +519,7 @@ parseUserMetadata() {
 # Appends arg to cached cleaned PBS parameters list.
 #
 _appendCleanedPBSparams() {
-  arg=$1;
+  local arg=$1;
   if [ $# -eq 1 ] && [ -n "$arg" ]; then
     if [ -n "$PARAMETERS_CLEANED" ]; then
       PARAMETERS_CLEANED="$PARAMETERS_CLEANED $arg";
@@ -535,13 +542,18 @@ _appendCleanedPBSparams() {
 _parseVMparameters() {
 
   # cache parameters
-  params=$@;
+  local params=$@;
 
+  local key;
+  local value;
+  local arg;
+  local tmpResReq;
+  
+  # init loop var
+  local next="";
+  
   # clear global cache var
   PARAMETERS_CLEANED="";
-
-  # init loop var
-  next="";
 
   #
   # parse command line (vm) parameters
@@ -648,6 +660,10 @@ _parseInlineResRequests() {
     usage;
   fi
 
+  local line;
+  local tmpParamStr;
+  local keyValuePair;
+
   #
   # check if '-vm <key=value,key=value,...>' is being requested in the file
   #
@@ -699,6 +715,10 @@ until there's an 'EOF'.\nPress 'ctrl+c' if this is not what you want";
   logDebugMsg "Creating tmp job script file '$TMP_JOB_SCRIPT'";
   mkdir -p $(dirname $TMP_JOB_SCRIPT);
 
+  local line;
+  local tmpParamStr;
+  local keyValuePair;
+
   # input stream contains '#PBS -vm <key=value>' ??
   while read line; do
     if [[ "$line" =~ ^\#PBS\ +-vm\ + ]] ; then #yes
@@ -735,6 +755,7 @@ parseParameter() {
 
   # cache parameters
   declare -a params=$@;
+  local aliasStr;
 
   if [ ${#params[@]} -gt 0 ]; then
     # check if there is an alias included
@@ -891,7 +912,7 @@ applyVMDefaultParameter() {
     VM_PARAMETER['IOCM_MAX_CORES']="$IOCM_MAX_CORES_DEFAULT";
   fi
 
-  # use VRDAM
+  # use vRDMA
   if [ -z ${VM_PARAMETER['VRDMA']-} ]; then
     logDebugMsg "Applying VRDMA='$VRDMA_ENABLED_DEFAULT' as default VM parameter.";
     VM_PARAMETER['VRDMA']=$VRDMA_ENABLED_DEFAULT;
@@ -916,15 +937,16 @@ applyVMDefaultParameter() {
 # resource requirements.
 #
 calculatePPN() {
+
   #
   # calculate whether we can satisfy it
   #
-  vcpus=${VM_PARAMETER['VCPUS']};
-  ioCoreMaxCount=${VM_PARAMETER['IOCM_MAX_CORES']};
-  vmsPerNode=${VM_PARAMETER['VMS_PER_NODE']};
+  local vcpus=${VM_PARAMETER['VCPUS']};
+  local ioCoreMaxCount=${VM_PARAMETER['IOCM_MAX_CORES']};
+  local vmsPerNode=${VM_PARAMETER['VMS_PER_NODE']};
 
   # calculate total amount of cores required per node
-  totalCoresPerNode=$(($HOST_OS_CORE_COUNT + ($vcpus * $vmsPerNode)));
+  local totalCoresPerNode=$(($HOST_OS_CORE_COUNT + ($vcpus * $vmsPerNode)));
 
   # ioCM enabled ?
   if ${VM_PARAMETER['IOCM']}; then
@@ -961,12 +983,12 @@ Job needs:\n for host OS '$HOST_OS_CORE_COUNT' and\n\
 calculateRAM() {
 
   # RAM per VM
-  vRAM=${VM_PARAMETER['RAM']};
+  local vRAM=${VM_PARAMETER['RAM']};
   # VMs per node
-  vmsPerNode=${VM_PARAMETER['VMS_PER_NODE']};
+  local vmsPerNode=${VM_PARAMETER['VMS_PER_NODE']};
 
   # calculate total RAM required per node
-  totalRAMPerNode=$(($HOST_OS_RAM_MB + ($vRAM * $vmsPerNode)));
+  local totalRAMPerNode=$(($HOST_OS_RAM_MB + ($vRAM * $vmsPerNode)));
 
   # is there a ppn res request ?
   if [[ $PBS_RES_REQ_RAM =~ [0-9]+ ]]; then
@@ -993,12 +1015,10 @@ generateWrapperScripts() {
   # generate Prologue (VM boot script)
   # and Epilogue (VM tear down script)
   #
-  logDebugMsg "Generating user prologue[.parallel] wrappers (vm boot scripts).";
-  logDebugMsg "and user epilogue[.parallel] warppers (vm destroy scripts).";
-
+  logDebugMsg "Generating user vmPrologue[.parallel] wrappers (vm boot scripts).";
 
   #
-  # copy templates (vm boot scripts) to their destination
+  # copy templates (VM preparation scripts) to their destination
   #
 
   # ensure destination dirs are in place for the resulting scripts
@@ -1019,9 +1039,14 @@ generateWrapperScripts() {
   fi
 
   # substitute place-holders in the prologue and epilogue scripts
-  logDebugMsg "Replacing place-holders in prologue[.parallel] scripts:";
+  logDebugMsg "Replacing place-holders in vmPrologue[.parallel] scripts:";
   logDebugMsg " 1) '$SCRIPT_PROLOGUE'";
   logDebugMsg " 2) '$SCRIPT_PROLOGUE_PARALLEL'";
+
+  # add RUID to list of values to replace
+  VM_PARAMETER["RUID"]="$RUID";
+
+  local value;
 
   # replace all VM parameters
   # (contains parsed args and default values for missing ones)
@@ -1036,21 +1061,6 @@ generateWrapperScripts() {
 that matches key='$key' with value: '$value'";
     sed -i "0,/$placeHolder/{s,$placeHolder,$value,}" $SCRIPT_PROLOGUE;
     sed -i "0,/$placeHolder/{s,$placeHolder,$value,}" $SCRIPT_PROLOGUE_PARALLEL;
-  done
-
-  # put all keys into a map so we can iterate them
-  declare -A map=();
-  map["SCRIPT_BASE_DIR"]="$SCRIPT_BASE_DIR";
-  map["RUID"]="$RUID";
-  map["DEBUG"]="$DEBUG";
-  map["TRACE"]="$TRACE";
-  map["VCPUS"]="${VM_PARAMETER['VCPUS']}";
-  map["VMS_PER_NODE"]="${VM_PARAMETER['VMS_PER_NODE']}";
-  for key in "SCRIPT_BASE_DIR" "RUID" "DEBUG" "TRACE"; do
-    value=${map["$key"]};
-    logTraceMsg "Replacing: all place-holders '__${key}__' with '$value'.";
-    sed -i "0,/__RUID__/{s,__${key}__,$value,}" $SCRIPT_PROLOGUE;
-    sed -i "0,/__RUID__/{s,__${key}__,$value,}" $SCRIPT_PROLOGUE_PARALLEL;
   done
 
   # set user pro/epilogue scripts
@@ -1156,12 +1166,9 @@ script wrapper '$JOB_SCRIPT_WRAPPER'.";
 
   # replace (first match of) RUID, vmPro/Epilogues and job-script place holders in the job wrapper
   logTraceMsg "Replacing place-holders in job script wrapper file '$JOB_SCRIPT_WRAPPER'.";
-  sed -i "0,/__SCRIPT_BASE_DIR__/{s,__SCRIPT_BASE_DIR__,$SCRIPT_BASE_DIR,}" $JOB_SCRIPT_WRAPPER;
   sed -i "0,/__RUID__/{s,__RUID__,$RUID,}" $JOB_SCRIPT_WRAPPER;
   sed -i "0,/__JOB_SCRIPT__/{s,__JOB_SCRIPT__,$JOB_SCRIPT,}" $JOB_SCRIPT_WRAPPER;
   sed -i "0,/__JOB_TYPE__/{s,__JOB_TYPE__,$JOB_TYPE,}" $JOB_SCRIPT_WRAPPER;
-  sed -i "0,/__DEBUG__/{s,__DEBUG__,${VM_PARAMETER['DEBUG']},}" $JOB_SCRIPT_WRAPPER;
-  sed -i "0,/__TRACE__/{s,__TRACE__,${VM_PARAMETER['TRACE']},}" $JOB_SCRIPT_WRAPPER;
   sed -i "0,/__KEEP_VM_ALIVE__/{s,__KEEP_VM_ALIVE__,${KEEP_VM_ALIVE},}" $JOB_SCRIPT_WRAPPER;
   sed -i "0,/__VCPUS__/{s,__VCPUS__,${VM_PARAMETER['VCPUS']},}" $JOB_SCRIPT_WRAPPER;
   sed -i "0,/__VMS_PER_NODE__/{s,__VMS_PER_NODE__,${VM_PARAMETER['VMS_PER_NODE']},}" $JOB_SCRIPT_WRAPPER;
@@ -1220,10 +1227,10 @@ generateFiles() {
   #
   if [ $JOB_TYPE == "@BATCH_JOB@" ]; then
     # replace the job-script torque knows about with the generated wrapper and add prologue/epilogue
-    PARAMETERS_REAL_QSUB="$PARAMETERS_CLEANED -l ${CLEANED_PBS_RES_REQ}prologue=$SCRIPT_PROLOGUE $JOB_SCRIPT_WRAPPER";
+    PARAMETERS_PBS_QSUB="$PARAMETERS_CLEANED -l ${CLEANED_PBS_RES_REQ}prologue=$SCRIPT_PROLOGUE $JOB_SCRIPT_WRAPPER";
   elif [ $JOB_TYPE == "@STDIN_JOB@" ]; then
     # replace the job-script torque knows about with the generated wrapper and add prologue/epilogue
-    PARAMETERS_REAL_QSUB="$PARAMETERS_CLEANED -l ${CLEANED_PBS_RES_REQ}prologue=$SCRIPT_PROLOGUE $JOB_SCRIPT_WRAPPER";
+    PARAMETERS_PBS_QSUB="$PARAMETERS_CLEANED -l ${CLEANED_PBS_RES_REQ}prologue=$SCRIPT_PROLOGUE $JOB_SCRIPT_WRAPPER";
   elif [ $JOB_TYPE == "@INTERACTIVE_JOB@" ]; then # interactive job
     # future work
     logErrorMsg "\n*** !!! ***\
@@ -1232,32 +1239,32 @@ Please note, this is future work.\n\
 Torque requires a patch for this feature.\n\
 *** !!! ***\n";
     # replace the job-script torque knows about with the generated wrapper and add prologue/epilogue
-    PARAMETERS_REAL_QSUB="$PARAMETERS_CLEANED -l ${CLEANED_PBS_RES_REQ}prologue=$SCRIPT_PROLOGUE";
+    PARAMETERS_PBS_QSUB="$PARAMETERS_CLEANED -l ${CLEANED_PBS_RES_REQ}prologue=$SCRIPT_PROLOGUE";
   else
     logErrorMsg "Unknown type of job: '$JOB_TYPE'";
   fi
 
   # replace the PPN to match the min/max IO core count, plus host OS cores, plus vpus * amount of VMs per node
-  PARAMETERS_REAL_QSUB=$(echo $PARAMETERS_REAL_QSUB | sed "s,PLACEHOLDER_PPN,$PBS_RES_REQ_PPN,g");
-  PARAMETERS_REAL_QSUB=$(echo $PARAMETERS_REAL_QSUB | sed "s,PLACEHOLDER_RAM,$PBS_RES_REQ_RAM,g");
+  PARAMETERS_PBS_QSUB=$(echo $PARAMETERS_PBS_QSUB | sed "s,PLACEHOLDER_PPN,$PBS_RES_REQ_PPN,g");
+  PARAMETERS_PBS_QSUB=$(echo $PARAMETERS_PBS_QSUB | sed "s,PLACEHOLDER_RAM,$PBS_RES_REQ_RAM,g");
   # remove double '-l'
-  PARAMETERS_REAL_QSUB=$(echo $PARAMETERS_REAL_QSUB | sed "s,-l -l,-l,g");
+  PARAMETERS_PBS_QSUB=$(echo $PARAMETERS_PBS_QSUB | sed "s,-l -l,-l,g");
 
   # exclusive node allocation (and not already set) ?
   if $PBS_EXCLUSIVE_NODE_ALLOC \
-      && [ ! -n "$(echo $PARAMETERS_REAL_QSUB | grep naccesspolicy)" ]; then
-    PARAMETERS_REAL_QSUB="$PARAMETERS_REAL_QSUB -l naccesspolicy=uniqueuser";
+      && [ ! -n "$(echo $PARAMETERS_PBS_QSUB | grep naccesspolicy)" ]; then
+    PARAMETERS_PBS_QSUB="-l naccesspolicy=uniqueuser $PARAMETERS_PBS_QSUB";
   fi
 
   # done
-  logDebugMsg "Resulting qsub arguments: '$PARAMETERS_REAL_QSUB'";
+  logDebugMsg "Resulting PBS qsub arguments: '$PARAMETERS_PBS_QSUB'";
 }
 
 
 #---------------------------------------------------------
 #
-# Creates flag files in order to export settings from user
-# space to the root scripts.
+# Creates flag files in order to export settings from
+# user space to the root scripts.
 #
 exportFlags() {
 
@@ -1266,25 +1273,25 @@ exportFlags() {
   # that do not have user space env vars available
   #
   if ${VM_PARAMETER['DEBUG']}; then # create flag file
-    touch "$FLAG_FILE_DIR/.debug";
+    touch "$FLAG_FILE_DEBUG";
   fi
   if ${VM_PARAMETER['TRACE']}; then # create flag file
-    touch "$FLAG_FILE_DIR/.trace";
+    touch "$FLAG_FILE_TRACE";
   fi
 
   #
   # vRDMA enabled/requested ?
   #
   if ${VM_PARAMETER['VRDMA']}; then
-    touch "$FLAG_FILE_DIR/.vrdma";
+    touch "$FLAG_FILE_VRDMA";
   fi
 
   #
   # iocm enabled/requested ?
   #
   if ${VM_PARAMETER['IOCM']}; then
-    echo ${VM_PARAMETER['IOCM_MIN_CORES']} > "$FLAG_FILE_DIR/.iocm"; #min cores
-    echo ${VM_PARAMETER['IOCM_MAX_CORES']} >> "$FLAG_FILE_DIR/.iocm"; #max cores
+    echo ${VM_PARAMETER['IOCM_MIN_CORES']} > "$FLAG_FILE_IOCM"; #min cores
+    echo ${VM_PARAMETER['IOCM_MAX_CORES']} >> "$FLAG_FILE_IOCM"; #max cores
   fi
 
   # write out count of VMs per node
@@ -1302,13 +1309,14 @@ createRUID2JOBIDmapping() {
     logWarnMsg "No job ID known ?!";
     return 0;
   fi
-  jobID=$1;
+  local jobID=$1;
 
   logDebugMsg "Creating sym-link for RUID-2-JOBID mapping: linking dir '$VM_JOB_DIR' \
 to '$VM_JOB_DIR_PREFIX/$jobID'";
 
   #
-  # RUID-2-JOBID mapping (the other part of the logic resides in root-config.sh)
+  # RUID-2-JOBID mapping 
+  # (the other part of the logic resides in const.sh where JOBID is used)
   #
   # Job submission was successful, so create a symlink based on the jobID to the RUID dir.
   # This way, the root scripts can write debug msgs to the job's debug log.
@@ -1380,16 +1388,15 @@ _printLogFileName() {
 #
 # host is disabled for vTorque ?
 #
-if [[ $LOCALHOST =~ $DISABLED_HOSTS_LIST ]]; then
-  if $DEBUG; then
-    echo "vTorque is disabled on this host.";
-  fi
-  exit 0 & $REAL_QSUB $@;
+if [ -n "${DISABLED_HOSTS_LIST-}" ] \
+    && [[ $LOCALHOST =~ $DISABLED_HOSTS_LIST ]]; then
+  echo "vTorque is disabled on this host.";
+  exit 1;
 fi
 
 
 # debug log
-logDebugMsg "***************** BEGIN OF QSUB WRAPPER ********************";
+logDebugMsg "********************* BEGIN OF VSUB ************************";
 
 # log the call
 logCmdLine "TRACE";
@@ -1424,7 +1431,7 @@ if ! $VMJOB_REQ_DETECTED; then
   logDebugMsg "No vm job.";
 
   # construct submit cmd
-  submitCmd="$REAL_QSUB $PARAMETERS";
+  submitCmd="$PBS_QSUB $PARAMETERS";
   logDebugMsg "Submission cmd: '$submitCmd'";
 
   res="";
@@ -1438,7 +1445,7 @@ if ! $VMJOB_REQ_DETECTED; then
     res=$?;
   fi
 
-  logTraceMsg "Real qsub return code: '$res'";
+  logTraceMsg "PBS qsub return code: '$res'";
 
   # create ruid-2-jobId mapping
   if [ $res -ne 0 ] && [ ! -z ${jobID-} ] && [[ $jobID =~ ^[0-9]+$ ]]; then
@@ -1458,7 +1465,7 @@ if [ ! -e "$FLAG_FILE_DIR" ]; then
     || logErrorMsg "Failed to create flag files dir '$FLAG_FILE_DIR'.";
 fi
 # create indicator flag for VM job
-logDebugMsg "Creating flag file '$FLAG_FILE_DIR/.vmJob'";
+#logDebugMsg "Creating flag file '$FLAG_FILE_DIR/.vmJob'";
 touch "$FLAG_FILE_DIR/.vmJob";
 
 #
@@ -1480,19 +1487,26 @@ generateFiles;
 exportFlags;
 
 # generate files, only ?
-if $DO_NOT_SUBMIT_JOB; then 
+if $DO_NOT_SUBMIT_JOB; then
+
+  local interactiveResReq;
+  if $PBS_EXCLUSIVE_NODE_ALLOC \
+      && [ ! -n "$(echo $PARAMETERS_PBS_QSUB | grep naccesspolicy)" ]; then
+    interactiveResReq="-l naccesspolicy=uniqueuser $PARAMETERS_PBS_QSUB";
+  else
+    interactiveResReq=$PARAMETERS_CLEANED
+  fi
 
   #yes
   logInfoMsg "User requested to generate files for VM-based execution, only.\
 Skippping job submission." true;
-  logInfoMsg "=====submit_cmd=====\n$REAL_QSUB $PARAMETERS_REAL_QSUB" true;
+  logInfoMsg "=====submit_cmd=====\nqsub $PARAMETERS_PBS_QSUB" true;
   logInfoMsg "====================" true;
-  logInfoMsg "1) Get an interactive job with cmd 'qsub -I $PARAMETERS_CLEANED'" true;
-  logInfoMsg "2) Execute the root-epilogue to reset the environment: 'sudo /var/spool/torque/mom_priv/epilogue $PBS_JOBID $USER" true;
-  logInfoMsg "3) Create missing symlink with cmd: 'mv $VM_JOB_DIR_PREFIX/\$PBS_JOBID $VM_JOB_DIR/idr; ln -s $VM_JOB_DIR $VM_JOB_DIR_PREFIX/\$PBS_JOBID'" true;
-  logInfoMsg "4) Re-execute the root-prologue with cmd: sudo /var/spool/torque/mom_priv/prologue $PBS_JOBID $USER" true;
-  logInfoMsg "5) When on the node, run the prologue script '$SCRIPT_PROLOGUE', only." true;
-  logInfoMsg "6) Run the job script '$JOB_SCRIPT_WRAPPER'." true;
+  logInfoMsg "1) Get an interactive job with cmd '$PBS_QSUB -I $interactiveResReq'" true;
+  logInfoMsg "2) Create missing symlink with cmd: 'ln -s $VM_JOB_DIR $VM_JOB_DIR_PREFIX/\$PBS_JOBID'" true;
+  logInfoMsg "3) Re-execute the root-prologue with cmd: sudo /var/spool/torque/mom_priv/prologue \$PBS_JOBID $USER" true;
+  logInfoMsg "4) Then run the prologue script '$SCRIPT_PROLOGUE', only." true;
+  logInfoMsg "5) And as last run the job script '$JOB_SCRIPT_WRAPPER'." true;
   res=0;
 
 # job script as file or input stream present ?
@@ -1510,12 +1524,12 @@ else
 
     # construct submit cmd
     # note, the '-' makes qsub read the input-stream (needed if you wrap 'qsub -I' due to STDIN rading)
-    submitCmd="echo 'exec $JOB_SCRIPT_WRAPPER' | $REAL_QSUB $PARAMETERS_REAL_QSUB -;";
+    submitCmd="echo 'exec $JOB_SCRIPT_WRAPPER' | $PBS_QSUB $PARAMETERS_PBS_QSUB -;";
 
   elif $IS_READLINE_JOB; then
 
     # construct submit cmd
-    submitCmd="$REAL_QSUB $PARAMETERS_REAL_QSUB";
+    submitCmd="$PBS_QSUB $PARAMETERS_PBS_QSUB";
 
   else
 
@@ -1532,10 +1546,10 @@ cannot be loaded - No such file or directory.";
     fi
 
     # construct submit cmd
-    submitCmd="$REAL_QSUB $PARAMETERS_REAL_QSUB";
+    submitCmd="$PBS_QSUB $PARAMETERS_PBS_QSUB";
   fi
 
-  # pass on to the real qsub
+  # pass on to PBS qsub
   logDebugMsg "Executing cmd:\n-----\n$submitCmd\n-----";
   logDebugMsg "------PBS_QSUB_START------";
 
@@ -1557,20 +1571,23 @@ cannot be loaded - No such file or directory.";
   if [ $res -ne 0 ]; then
     logErrorMsg "Job Submit failed with return code '$res'.";
   fi
-  logTraceMsg "Real qsub return code: '$res'";
+  logTraceMsg "PBS qsub return code: '$res'";
 fi
 
 # successful job submission ?
-if [ $res -eq 0 ] \
-    && [ -n "${jobID-}" ]; then
+if [ $res -ne 0 ] \
+    || [ -z ${jobID-} ] \
+    || [[ "$jobID" =~ failed ]]; then
+  # no, skip it
+  jobID="";
+  logDebugMsg "No jobID or job submission failed, cannot create RUID-2-JOBID linking.";
+else
   # yes, create RUID-2-JOBID mapping (for root pro/epilogue scripts)
   createRUID2JOBIDmapping "$jobID";
-else
-  logDebugMsg "No jobID or job submission failed, cannot create RUID-2-JOBID linking.";
 fi
 
 # debug log
-logDebugMsg "***************** END OF QSUB WRAPPER ********************";
+logDebugMsg "********************* END OF VSUB ************************";
 
 # print the consumed time in debug mode
 runTimeStats;

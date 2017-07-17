@@ -33,11 +33,11 @@
 #      COMPANY: HLRS, University of Stuttgart
 #               Huawei Technologies Co., Ltd.
 #      VERSION: 0.1
-#      CREATED: 
+#      CREATED:
 #     REVISION: ---
 #
 #    CHANGELOG
-#         v0.2: 
+#         v0.2:
 #
 #=============================================================================
 #
@@ -46,7 +46,7 @@ shopt -s expand_aliases;
 
 # source the config and common functions
 VRDMA_ABSOLUTE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
-source $VRDMA_ABSOLUTE_PATH/vrdma-common.sh;
+source "$VRDMA_ABSOLUTE_PATH/vrdma-common.sh" $@;
 
 
 

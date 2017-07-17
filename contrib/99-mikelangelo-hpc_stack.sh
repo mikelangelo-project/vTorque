@@ -40,7 +40,7 @@
 #
 # set to vTorque's installation directory
 #
-VTORQUE_DIR="/opt/dev/vTorque/src";
+VTORQUE_DIR="/opt/vtorque";
 
 
 ###### DO NOT EDIT BELOW THIS LINE ########

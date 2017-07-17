@@ -21,7 +21,7 @@
 #
 #        USAGE: prologue <default PBS prologue.parallel parameters>
 #
-#  DESCRIPTION: Sets up IOcm and vRDMA, also job related snap telemetry 
+#  DESCRIPTION: Sets up IOcm and vRDMA, also job related snap telemetry
 #               monitoring task is started. Further, a process is forked that
 #               waits for the user prologue wrapper to indicate availability
 #               of job related guests to be instantiated.
@@ -33,7 +33,7 @@
 #       AUTHOR: Nico Struckmann, struckmann@hlrs.de
 #      COMPANY: HLRS, University of Stuttgart
 #      VERSION: 0.2
-#      CREATED: 
+#      CREATED:
 #     REVISION: May 09th 2017
 #
 #    CHANGELOG
@@ -54,8 +54,8 @@ source /etc/profile.d/99-mikelangelo-hpc_stack.sh;
 # source the global functions and configuration
 # order below is as required, do not change
 #
-source "$VTORQUE_DIR/common/const.sh";
-source "$VTORQUE_DIR/common/root-config.sh" $@;
+source "$VTORQUE_DIR/common/const.sh" $@;
+source "$VTORQUE_DIR/common/config.sh";
 source "$VTORQUE_DIR/common/root-functions.sh";
 
 
@@ -81,9 +81,12 @@ source "$VTORQUE_DIR/common/root-functions.sh";
 
 #
 # we need to wait for the job dir, otherwise it is created by the first log msg
-# and that causes a race-condition in qsub where the symlink is created for VM jobs
+# and that causes a race-condition in vsub where the symlink is created for VM jobs
 #
 waitUntilJobDirIsAvailable;
+
+# if we do not run a VM job, some env vars need to be changed
+ensureProperSettings;
 
 # logging
 logInfoMsg "Root prologue script started";
@@ -95,7 +98,7 @@ captureOutputStreams;
 
 # in case there was a script for this in the $TORQUE_HOME/mom_priv
 # that has been renamed (by the Makefile) to *.orig, call it now
-runScriptPreviouslyInPlace "$(basename ${BASH_SOURCE[0]})";
+runScriptPreviouslyInPlace "$(basename ${BASH_SOURCE[0]})" $@;
 
 # start snap job task
 startSnapTask;
@@ -113,7 +116,7 @@ if isVMJob; then
     checkSharedFS;
   fi
 
-  # spawn process for booting VMs and configuring iocm
+  # spawn process for booting VMs and configuring IOcm, vRDMA
   spawnProcess;
 fi
 

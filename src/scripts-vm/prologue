@@ -21,7 +21,7 @@
 #
 #        USAGE: prologue <default PBS prologue parameters>
 #
-#  DESCRIPTION: Root prologue script for standard Linux guests. 
+#  DESCRIPTION: Root prologue script for standard Linux guests.
 #               The counterpart to Torque's prologue executed on the host.
 #
 #      OPTIONS: Refer to Torque documentation.
@@ -31,7 +31,7 @@
 #       AUTHOR: Nico Struckmann, struckmann@hlrs.de
 #      COMPANY: HLRS, University of Stuttgart
 #      VERSION: 0.2
-#      CREATED: 
+#      CREATED:
 #     REVISION: July 07th 2017
 #
 #    CHANGELOG
@@ -57,13 +57,6 @@ DEBUG=__DEBUG__;
 TRACE=__TRACE__;
 SHOW_LOG=__SHOW_LOG__;
 
-#
-# source config, consts and functions
-#
-source "$VTORQUE_DIR/common/const.sh";
-source "$VTORQUE_DIR/common/root-config.sh" $@;
-source "$VTORQUE_DIR/common/root-functions.sh";
-
 
 #============================================================================#
 #                                                                            #
@@ -73,7 +66,7 @@ source "$VTORQUE_DIR/common/root-functions.sh";
 
 #
 if [ $# -lt 1 ] \
-    && [ -z $PBS_JOBID ] ; then
+  && [ -z ${PBS_JOBID-} ] ; then
   echo "usage: $(basename ${BASH_SOURCE[0]}) <jobID> <userName>"; # relevant if not executed by Torque, but manually
   exit 1;
 fi
@@ -81,23 +74,30 @@ fi
 #
 # set job id
 #
-if [ -n "$PBS_JOBID" ]; then
-  JOBID=$PBS_JOBID;
-else
+if [ -z ${PBS_JOBID-} ]; then
   JOBID=$1;
+else
+  JOBID=$PBS_JOBID;
 fi
 
 #
 # set user name
 #
-if [ ! -n "$USERNAME" ]; then
+if [ -z ${USER_NAME-} ]; then
   if [ $# -gt 1 ]; then
-    USERNAME=$2;
+    USER_NAME=$2;
   else
     logErrorMsg "No User known!";
     exit 1;
   fi
 fi
+
+#
+# source config, consts and functions
+#
+source "$VTORQUE_DIR/common/const.sh" $@;
+source "$VTORQUE_DIR/common/config.sh";
+source "$VTORQUE_DIR/common/root-functions.sh";
 
 #
 LOG_FILE=/var/log/pbs_root_prologue.log;

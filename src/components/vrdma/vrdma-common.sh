@@ -33,11 +33,11 @@
 #      COMPANY: HLRS, University of Stuttgart
 #               Huawei Technologies Co., Ltd.
 #      VERSION: 0.1
-#      CREATED: 
+#      CREATED:
 #     REVISION: ---
 #
 #    CHANGELOG
-#         v0.2: 
+#         v0.2:
 #
 #=============================================================================
 #
@@ -46,9 +46,17 @@ shopt -s expand_aliases;
 
 # source the config and common functions
 source /etc/profile.d/99-mikelangelo-hpc_stack.sh;
-source "$VTORQUE_DIR/common/const.sh";
-source "$VTORQUE_DIR/common/root-config.sh";
+source "$VRDMA_ABSOLUTE_PATH/vrdma-common.sh" $@;
+source "$VTORQUE_DIR/common/config.sh";
 source "$VTORQUE_DIR/common/root-functions.sh";
+
+#
+# happens in case of manual debugging
+#
+if [ ! -f $LOG_FILE ]; then
+  # prevents dir to be created as root
+  LOG_FILE=/dev/null;
+fi
 
 
 #

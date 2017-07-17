@@ -29,11 +29,11 @@
 #       AUTHOR: Nico Struckmann, struckmann@hlrs.de
 #      COMPANY: HLRS, University of Stuttgart
 #      VERSION: 0.1
-#      CREATED: 
+#      CREATED:
 #     REVISION: ---
 #
 #    CHANGELOG
-#         v0.2: 
+#         v0.2:
 #
 #=============================================================================
 #
@@ -42,7 +42,7 @@ shopt -s expand_aliases;
 
 # source the config and common functions
 IOCM_ABSOLUTE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
-source "$IOCM_ABSOLUTE_PATH/iocm-common.sh";
+source "$IOCM_ABSOLUTE_PATH/iocm-common.sh" $@;
 
 
 
@@ -93,6 +93,14 @@ res=$?;
 if [ $res -eq 0 ]; then
   # clean up config file
   cleanupIOCM;
+fi
+
+# in verbose mode print the file that is created if DEBUG is enabled
+if $TRACE; then
+  logTraceMsg "\
+~~~~~~~~~~~~~~~~~IOcm log file start~~~~~~~~~~~~~~~\n\
+$(cat $IOCM_LOG_FILE)\
+\n~~~~~~~~~~~~~~~~~IOcm log file end~~~~~~~~~~~~~~~";
 fi
 
 # pass on return code

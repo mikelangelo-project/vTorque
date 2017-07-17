@@ -25,7 +25,7 @@
 #  DESCRIPTION: vTorque configuration file.
 #
 #      OPTIONS: ---
-# REQUIREMENTS: $RUID or $PBS_JOBID must be set.
+# REQUIREMENTS: $RUID or $PBS_JOBID must be set and const.sh sourced.
 #         BUGS: ---
 #        NOTES: ---
 #       AUTHOR: Nico Struckmann, struckmann@hlrs.de
@@ -46,13 +46,6 @@ set -o nounset;
 # determine absolute path to config file
 #
 ABSOLUTE_PATH_CONFIG="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
-
-#
-# load log4bsh logging functions
-#
-LIB_LOG4BSH=$(find "$ABSOLUTE_PATH_CONFIG/../.." -type f -name log4bsh.sh);
-[ -z $LIB_LOG4BSH ] && echo "FATAL ERROR: Log4bsh not found!" && exit 1;
-source $LIB_LOG4BSH;
 
 
 #============================================================================#
@@ -81,12 +74,12 @@ TORQUE_HOME="/var/spool/torque";
 #
 # path to the real qsub binary on the front-ends
 #
-PBS_QSUB_ON_FE="/opt/torque/bin/qsub";
+PBS_QSUB_ON_FE="/usr/bin/qsub";
 
 #
 # path to the real qsub binary on the compute nodes
 #
-PBS_QSUB_ON_NODES="/opt/torque/bin/qsub";
+PBS_QSUB_ON_NODES="/usr/bin/qsub";
 
 #
 # if user images are not allowed, the image must reside in this dir
@@ -139,9 +132,17 @@ HOST_OS_CORE_COUNT=1;
 HOST_OS_RAM_MB=2048;
 
 #
-# Indicates whether to submit VM jobs with '-l naccesspolicy=uniqueuser'
+# Indicates whether to submit VM jobs with '-l naccesspolicy=uniqueuser'.
+# Not needed if there is a meta-scheduler on top ensuring it (i.e. MOAB)
 #
 PBS_EXCLUSIVE_NODE_ALLOC=true;
+
+#
+# Kills all user processes during the epilogue{.parallel}.
+# Do not use if your nodes are NOT allocated exclusively or you are
+# making use of NUMA domains for the scheduling in Torque
+#
+KILL_USER_PROCESSES_AFTER_JOB=true;
 
 
 #============================================================================#
@@ -164,6 +165,11 @@ TIMEOUT=120;
 # Timeout for processes that boot VMs and configure iocm
 #
 PROLOGUE_TIMEOUT=600;
+
+#
+# Timeout for files to appear on NFS
+#
+NFS_TIMEOUT=3;
 
 
 #============================================================================#
@@ -246,10 +252,10 @@ SW_PACKAGES_REDHAT=('nfs-common' 'libnfs1' 'nfs-utils' 'openmpi' 'openmpi-devel'
 
 #
 # default file system type
-# either ram disk (FILESYSTEM_TYPE_RD='ramdisk') 
+# either ram disk (FILESYSTEM_TYPE_RD='ramdisk')
 # or shared fs (FILESYSTEM_TYPE_SFS='sharedfs')
 #
-FILESYSTEM_TYPE_DEFAULT=$FILESYSTEM_TYPE_SFS;
+FILESYSTEM_TYPE_DEFAULT="$FILESYSTEM_TYPE_SFS";
 
 #
 # default image in case the user does not request one
@@ -468,7 +474,7 @@ fi
 # TRACE set in the environment ?
 # if so enable debugging
 #
-if [ -z ${TRACE-} ] && $TRACE; then
+if ${TRACE-false}; then
   # if TRACE is enabled, debug is set to true
   DEBUG=true;
 elif [ -z ${DEBUG-} ] || [ "$DEBUG" == "__DEBUG__" ]; then
@@ -485,24 +491,24 @@ if [ -z ${KEEP_VM_ALIVE-} ]; then
 fi
 
 #
-# path to shared workspace dir
+# Path to shared workspace dir
 #
 SHARED_FS_JOB_DIR="$WS_DIR/$JOBID"; #user is not set in all scripts(?)
 
 #
-# NOTE: $RUID cannot be used for this as it is used in the root pro/epilogue scripts, too
+# Path for job's (optional) RAM disk.
 #
 RAMDISK="$RAMDISK_DIR/$JOBID";
 
 #
 # Path to the job submission tool binary 'qsub'.
 #
-if [[ "$LOCALHOST" =~ $REGEX_FE ]]; then
+if [[ "$LOCALHOST" =~ "$REGEX_FE" ]]; then
   # path on server
-  PBS_QSUB=$PBS_QSUB_ON_FE;
+  PBS_QSUB="$PBS_QSUB_ON_FE";
 else
   # path on compute nodes (may differ)
-  PBS_QSUB=$PBS_QSUB_ON_NODES;
+  PBS_QSUB="$PBS_QSUB_ON_NODES";
 fi
 
 # '-n' do not read STDIN
@@ -531,7 +537,7 @@ else
 fi
 
 #
-# allow users to override environment in dev mode
+# Allow users to override environment in dev mode ?
 #
 if $ENABLE_DEV_MODE; then
   if [ -n "${HOME-}" ]; then
@@ -539,7 +545,7 @@ if $ENABLE_DEV_MODE; then
     homeDir="$HOME";
   elif [ $(id -u) -eq 0 ]; then
     # root pro/epilogue scripts (uid = 0)
-    homeDir="$(grep $USERNAME /etc/passwd | cut -d':' -f6)";
+    homeDir="$(grep $USER_NAME /etc/passwd | cut -d':' -f6)";
   else
     # user pro/epilouge scripts (uid != 0)
     homeDir="$(grep $(id -u -n) /etc/passwd | cut -d':' -f6)";
@@ -548,5 +554,25 @@ if $ENABLE_DEV_MODE; then
   if [ -f "$homeDir/99-mikelangelo-hpc_stack.sh" ]; then
     source "$homeDir/99-mikelangelo-hpc_stack.sh";
   fi
+else # security: enforce correct VTORQUE_DIR
+  expectedDir="$(realpath $ABSOLUTE_PATH_CONFIG/..)";
+  if [ "$expectedDir" != "$VTORQUE_DIR" ]; then # enforce correct path
+    echo "ERROR: Using another vTorque installation than '\$VTORQUE_DIR' is not allowed.";
+    VTORQUE_DIR=$expectedDir;
+  fi
 fi
+
+#
+# set debug mode, use export to make it in component script available
+#
+export DEBUG=$(\
+  if ${DEBUG-false} || [ -e "$FLAG_FILE_DEBUG" ]; then \
+    echo 'true'; else echo 'false'; fi);
+
+#
+# set trace mode, use export to make it in component script available
+#
+export TRACE=$(\
+  if ${TRACE-false} || [ -e "$FLAG_FILE_TRACE" ]; then \
+    echo 'true'; else echo 'false'; fi);
 

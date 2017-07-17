@@ -29,11 +29,11 @@
 #       AUTHOR: Nico Struckmann, struckmann@hlrs.de
 #      COMPANY: HLRS, University of Stuttgart
 #      VERSION: 0.1
-#      CREATED: 
+#      CREATED:
 #     REVISION: ---
 #
 #    CHANGELOG
-#         v0.2: 
+#         v0.2:
 #
 #=============================================================================
 #
@@ -42,10 +42,21 @@ shopt -s expand_aliases;
 
 # source the config and common functions
 source /etc/profile.d/99-mikelangelo-hpc_stack.sh;
-source "$VTORQUE_DIR/common/const.sh";
-source "$VTORQUE_DIR/common/root-config.sh";
+source "$VTORQUE_DIR/common/const.sh" $@;
+source "$VTORQUE_DIR/common/config.sh";
 source "$VTORQUE_DIR/common/root-functions.sh";
 
+#
+# happens in case of manual debugging
+#
+if [ ! -f $LOG_FILE ]; then
+  # prevents dir to be created as root
+  LOG_FILE=/dev/null;
+fi
+if [ ! -d $VM_JOB_DIR ]; then
+  # prevents IOcm to fail, the task template needs to be written
+  VM_JOB_DIR=/tmp/;
+fi
 
 
 #============================================================================#

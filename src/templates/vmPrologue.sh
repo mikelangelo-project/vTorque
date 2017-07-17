@@ -25,7 +25,7 @@
 #               Prepares the guests for instantiation.
 #
 #      OPTIONS: jobID - Will be used for the VM's name as shown by virsh
-#                        Accept as argument if not defined in the environment, 
+#                        Accept as argument if not defined in the environment,
 #                        useful for debugging, only.
 # REQUIREMENTS: --
 #         BUGS: ---
@@ -51,7 +51,7 @@
 #                                                                            #
 #============================================================================#
 
-# source the global profile, for getting DEBUG and TRACE flags if set
+# source the global profile
 source /etc/profile.d/99-mikelangelo-hpc_stack.sh;
 
 #
@@ -59,16 +59,6 @@ source /etc/profile.d/99-mikelangelo-hpc_stack.sh;
 # (when we need to generate scripts there's no jobID, yet)
 #
 RUID=__RUID__;
-
-#
-# Indicates debug mode.
-#
-DEBUG=__DEBUG__;
-
-#
-# Indicates trace mode.
-#
-TRACE=__TRACE__;
 
 #
 # PBS_JOBID set in environment ?
@@ -169,13 +159,15 @@ ARCH=__ARCH__;
 # [optional] VM's cpu pinning (either a mapping or boolean for auto mapping)
 VCPU_PINNING=__VCPU_PINNING__;
 
+#
+# VMs per node
+#
 VMS_PER_NODE=__VMS_PER_NODE__;
 
-VRDMA=__VRDMA__;
-
-IOCM=__IOCM__;
-IOCM_MIN_CORES=__IOCM_MIN_CORES__;
-IOCM_MAX_CORES=__IOCM_MAX_CORES__;
+#
+# vRDMA requested by user ?
+#
+VRDMA_REQUESTED=$(if [ -e "$FLAG_FILE_VRDMA" ]; then echo 'true'; else echo 'false'; fi);
 
 #
 # keys that needs to be replaced in generateDomainXML (note: it's not all KEYS, some are replaces elsewhere)
@@ -214,12 +206,6 @@ preConditionCheck() {
       || [ ! -r $PBS_NODEFILE ] \
       || [ ! -n "$(cat $PBS_NODEFILE)" ]; then
     logErrorMsg "File PBS_NODEFILE '$PBS_NODEFILE' does not exist, is not readable or empty!";
-  fi
-  # check RUID-2-JobID link (not in place when using parameter '-gf')
-  if [ ! -e "$VM_JOB_DIR_PREFIX/$JOBID" ]; then
-    logDebugMsg "Creating sym-link for RUID-2-JOBID mapping: linking dir '$VM_JOB_DIR' \
-#to '$VM_JOB_DIR_PREFIX/$JOBID'";
-    ln -s "$VM_JOB_DIR" "$VM_JOB_DIR_PREFIX/$JOBID";
   fi
 }
 
@@ -263,9 +249,9 @@ validateParameter() {
     logErrorMsg "Function 'validateParameter' called with '$#' arguments, '2' are expected.\nProvided params are: '$@'" 2;
   fi
 
-  amountOfNodes=$1;
-  vmsPerHost=$2;
-  amount=$(($amountOfNodes * $vmsPerHost));
+  local amountOfNodes=$1;
+  local vmsPerHost=$2;
+  local amount=$(($amountOfNodes * $vmsPerHost));
 
   #
   # check parameters and generate missing optional ones
@@ -317,26 +303,6 @@ validateParameter() {
   fi
   logTraceMsg "VM parameter VMS_PER_NODE is '$VMS_PER_NODE'";
 
-  if [ -z ${VRDMA-} ] || [ "${VRDMA-}" == "__VRDMA__" ]; then
-    logErrorMsg "Parameter VRDMA for VM is undefined.";
-  fi
-  logTraceMsg "VM parameter VRDMA is '$VRDMA'";
-
-  if [ -z ${IOCM-} ] || [ "${IOCM-}" == "__IOCM__" ]; then
-    logErrorMsg "Parameter IOCM for VM is undefined.";
-  fi
-  logTraceMsg "VM parameter IOCM is '$IOCM'";
-
-  if [ -z ${IOCM_MIN_CORES-} ] || [ "${IOCM_MIN_CORES-}" == "__IOCM_MIN_CORES__" ]; then
-    logErrorMsg "Parameter IOCM_MIN_CORES for VM is undefined.";
-  fi
-  logTraceMsg "VM parameter IOCM_MIN_CORES is '$IOCM_MIN_CORES'";
-
-  if [ -z ${IOCM_MAX_CORES-} ] || [ "${IOCM_MAX_CORES-}" == "__IOCM_MAX_CORES__" ]; then
-    logErrorMsg "Parameter IOCM_MAX_CORES for VM is undefined.";
-  fi
-  logTraceMsg "VM parameter IOCM_MAX_CORES is '$IOCM_MAX_CORES'";
-
   if [ -z ${DISK-} ] || [ "${DISK-}" == "__DISK__" ]; then
     logDebugMsg "Optional parameter DISK for VM is undefined.";
     DISK="";
@@ -369,25 +335,30 @@ validateParameter() {
 #
 # Generates the paramter sets for all VMs.
 #
-generateVMParameterSets() {
+_generateVMParameterSets() {
 
 
   if [ $# -ne 2 ]; then
-    logErrorMsg "Function 'generateVMParameterSets' called with '$#' arguments,\
+    logErrorMsg "Function '_generateVMParameterSets' called with '$#' arguments,\
  '2' are expected.\nProvided params are: '$@'" 2;
   fi
 
-  nodes=$1;
-  vnodesPerHost=$2;
+  local nodes=$1;
+  local vmsPerHost=$2;
 
-  amountOfNodes=$(echo $nodes | wc -l);
-  amountOfVMs=$(($amountOfNodes * $vmsPerHost));
+  local amountOfNodes=$(echo $nodes | wc -l);
+  local amountOfVMs=$(($amountOfNodes * $vmsPerHost));
 
+  local number;
+  local keyOne;
+  local uuid;
+  local mac;
+  local destDirName;
 
   #
   #
   #
-  total=0;
+  local total=0;
   logDebugMsg "Creating boot parameters for '$amountOfVMs' VM(s) in total.";
   for computeNode in $(echo $nodes); do
 
@@ -407,12 +378,12 @@ generateVMParameterSets() {
       #
 
       # VM's UUID
-      UUID="$(uuidgen)"; # generate
-      logTraceMsg "Generated UUID='$UUID' for VM '$number/$vmsPerHost' on node '$computeNode' '$total/$amountOfVMs'.";
+      uuid="$(uuidgen)"; # generate
+      logTraceMsg "Generated UUID='$uuid' for VM '$number/$vmsPerHost' on node '$computeNode' '$total/$amountOfVMs'.";
 
       # VM's MAC
-      MAC=$(generateMAC $vmsPerHost $number);
-      logTraceMsg "Generated MAC='$MAC' for VM '$number/$vmsPerHost' on node '$computeNode' '$total/$amountOfVMs'.";
+      mac=$(generateMAC $vmsPerHost $number);
+      logTraceMsg "Generated MAC='$mac' for VM '$number/$vmsPerHost' on node '$computeNode' '$total/$amountOfVMs'.";
 
       #
       # apply
@@ -428,8 +399,8 @@ generateVMParameterSets() {
       VM_PARAMS[$keyOne, "IMG"]="$IMG";
       VM_PARAMS[$keyOne, "DISTRO"]="$DISTRO";
       # generated
-      VM_PARAMS[$keyOne, "MAC"]="$MAC";
-      VM_PARAMS[$keyOne, "UUID"]="$UUID";
+      VM_PARAMS[$keyOne, "MAC"]="$mac";
+      VM_PARAMS[$keyOne, "UUID"]="$uuid";
       # optional
       VM_PARAMS[$keyOne, "RAM"]="$RAM";
       VM_PARAMS[$keyOne, "VCPUS"]="$VCPUS";
@@ -446,12 +417,6 @@ generateVMParameterSets() {
       VM_PARAMS[$keyOne, "ARCH"]="$ARCH";
       VM_PARAMS[$keyOne, "VCPU_PINNING"]="$VCPU_PINNING";
       VM_PARAMS[$keyOne, "CONSOLE_LOG"]="$VM_JOB_DIR/$computeNode/$number-console.log";
-
-      VM_PARAMS[$keyOne, "VRDMA"]="$VRDMA";
-
-      VM_PARAMS[$keyOne, "IOCM"]="$IOCM";
-      VM_PARAMS[$keyOne, "IOCM_MIN_CORES"]="$IOCM_MIN_CORES";
-      VM_PARAMS[$keyOne, "IOCM_MAX_CORES"]="$IOCM_MAX_CORES";
 
       # increase
       number=$(($number + 1));
@@ -471,15 +436,15 @@ generateVMParameterSets() {
 #
 # Generates the files for all VMs.
 #
-generateVMFiles() {
+_generateVMFiles() {
 
   if [ $# -ne 3 ]; then
     logErrorMsg "Function 'generateVMFiles' called with '$#' arguments, '3' are expected.\nProvided params are: '$@'" 2;
   fi
 
-  node=$1;
-  vnodesPerHost=$2;
-  amountOfVMs=$3;
+  local node=$1;
+  local vnodesPerHost=$2;
+  local amountOfVMs=$3;
 
   # generate the required meta data
   _generateMetaDataFiles $node $vnodesPerHost $amountOfVMs;
@@ -495,20 +460,22 @@ generateVMFiles() {
 #
 # Prepares the node for the job's VMs (copies disk).
 #
-prepareNode() {
+_prepareNode() {
 
-  if [ $# -ne 3 ]; then
-    logErrorMsg "Function 'prepareNode' called with '$#' arguments, '3' are expected.\nProvided params are: '$@'" 2;
+  if [ $# -ne 4 ]; then
+    logErrorMsg "Function '_prepareNode' called with '$#' arguments, '4' are expected.\nProvided params are: '$@'" 2;
   fi
 
   #
   # params: $node $vnodesPerHost $amountOfVMs
   #
-  computeNode=$1; #hostname of physical node
-  vnodesPerHost=$2; #number_of_vms_per_host
-  amountOfVMs=$3; #total count of vms: number_of_hosts*number_of_vms_per_host
+  local computeNode=$1; #hostname of physical node
+  local number=$2;
+  local vnodesPerHost=$3; #number_of_vms_per_host
+  local amountOfVMs=$4; #total count of vms: number_of_hosts*number_of_vms_per_host
 
   logTraceMsg "Preparing files for '$vnodesPerHost' VM(s) on node '$computeNode' of '$amountOfVMs' total.";
+  _generateVMFiles "$computeNode" "$vnodesPerHost" "$amountOfVMs";
 
   # create the dir that will be shared with VMs
   logDebugMsg "Creating dir '$VM_NODE_FILE_DIR' for VM's nodefile.";
@@ -526,7 +493,7 @@ prepareNode() {
   else
     _copyImageFile $computeNode $vnodesPerHost;
     # create flag file to indicate parallel remote processes that we are done
-    logDebugMsg "Created/transfered files for all '$vnodesPerHost' VM(s) on host '$node' of '$amountOfVMs' VMs in total.";
+    logDebugMsg "Created/transfered files for all '$vnodesPerHost' VM(s) on host '$computeNode' of '$amountOfVMs' VMs in total.";
   fi
 
   # canceled meanwhile ?
@@ -551,10 +518,15 @@ _generateMetaDataFiles() {
   # params: $node $vnodesPerHost $amountOfVMs
   #
   # the host we generate the metadata for
-  computeNode=$1; #hostname of physical node
-  vNodesPerHost=$2; #countPerHost=$2; #number_of_vms_per_host
-  amountOfVMs=$3; #total count of vms: number_of_hosts*number_of_vms_per_host
-  number=1;
+  local computeNode=$1; #hostname of physical node
+  local vNodesPerHost=$2; #countPerHost=$2; #number_of_vms_per_host
+  local amountOfVMs=$3; #total count of vms: number_of_hosts*number_of_vms_per_host
+  local number=1;
+  local keyOne;
+  local res;
+  local metadataFile;
+  local metamataDiskDir;
+  local swList;
 
   logDebugMsg "Generating metadata files for '$vNodesPerHost' VM(s) on host '$computeNode'.";
 
@@ -597,13 +569,13 @@ _generateMetaDataFiles() {
     else
       metamataDiskDir="$SHARED_FS_JOB_DIR/$computeNode";
     fi
-    metaDataDisk="$metamataDiskDir/$number-seed.img";
+    local metaDataDisk="$metamataDiskDir/$number-seed.img";
 
     # get user's group id
     if [ ! -n "$JOB_OWNER" ]; then
       logErrorMsg "\$USER='$JOB_OWNER' is not defined !";
     fi
-    groudID=$(getent group $JOB_OWNER | grep -o "[0-9]*");
+    local groudID=$(getent group $JOB_OWNER | grep -o "[0-9]*");
 
     # copy template
     logDebugMsg "Copying metadata template '$METADATA_TEMPLATE' to '$metadataFile' .";
@@ -616,22 +588,22 @@ _generateMetaDataFiles() {
     cp $METADATA_TEMPLATE $metadataFile;
 
     # construct the VM's hostname
-    vhostName="v${computeNode}-${number}";
+    local vhostName="v${computeNode}-${number}";
 
     #
     # in case of DEBUG, set a pw for user+root and allow root-login
     #
     if $DEBUG; then
-        # DEBUG
-        sed -i 's,__DEBUG_OR_PROD__,#\n# security\n#\ndisable_root: false\nssh_pwauth: true\n\n#DEBUGGING ONLY\n#\n# add pw for user and root\n#\nchpasswd:\n  list: |\n    __USER_NAME__:mikedev\n    root:mikedev\n  expire: false\n,g' $metadataFile;
+      # DEBUG
+      sed -i 's,__DEBUG_OR_PROD__,#\n# security\n#\ndisable_root: false\nssh_pwauth: true\n\n#DEBUGGING ONLY\n#\n# add pw for user and root\n#\nchpasswd:\n  list: |\n    __USER_NAME__:mikedev\n    root:mikedev\n  expire: false\n,g' $metadataFile;
     else
-        # PRODUCTION
-        sed -i 's,__DEBUG_OR_PROD__,#\n# security\n#\ndisable_root: true\nssh_pwauth: false\n,g' $metadataFile;
+      # PRODUCTION
+      sed -i 's,__DEBUG_OR_PROD__,#\n# security\n#\ndisable_root: true\nssh_pwauth: false\n,g' $metadataFile;
     fi
 
     # substitute username placeholder in NFS's $HOME path
-    userID=$(id -u);
-    userName=$(id -u -n);
+    local userID=$(id -u);
+    local userName=$(id -u -n);
     VM_NFS_HOME=$(echo ${VM_NFS_HOME-} | sed "s,__USER_NAME__,$userName,g");
 
     # substitute values
@@ -671,8 +643,8 @@ _generateMetaDataFiles() {
 
     # add list of default packages to be installed during boot
     swList="";
-    for i in ${SW_PACKAGES[@]}; do
-      swList="$swList - $i\n";
+    for swPackage in ${SW_PACKAGES[@]}; do
+      swList="$swList - $swPackage\n";
     done
     sed -i "s,__SW_PACKAGES__,packages:\n$swList,g" $metadataFile;
 
@@ -692,7 +664,7 @@ _generateMetaDataFiles() {
     if [ ${VM_PARAMS[$keyOne, 'DISTRO']} == "osv" ]; then
       logTraceMsg "Creating OSv metaDataDisk.";
       mkdir -p $metamataDiskDir;
-      file2img=$(find "$VTORQUE_DIR/.." -type f -name file2img);
+      local file2img=$(find "$VTORQUE_DIR/.." -type f -name file2img);
       $file2img $metadataFile > $metaDataDisk;
       res=$?;
     elif [[ ${VM_PARAMS[$keyOne, 'DISTRO']} =~ $SUPPORTED_STANDARD_LINUX_GUESTS ]]; then
@@ -724,7 +696,7 @@ _generateMetaDataFiles() {
 
 #---------------------------------------------------------
 #
-# Copies the VM image file to its destination (RAM idks or shared fs)
+# Copies the VM image file to its destination (RAM-disk or shared-fs)
 #
 _copyImageFile() {
 
@@ -735,16 +707,17 @@ _copyImageFile() {
   #
   # params: $computeNode $number $vmNo $totalCount;
   #
-  computeNode=$1;
-  vmsPerHost=$2;
+  local computeNode=$1;
+  local vmsPerHost=$2;
 
   # get src file
-  srcFileName="${IMG-}";
+  local srcFileName="${IMG-}";
   if [ ! -f "$srcFileName" ]; then
     logErrorMsg "Source file '$srcFileName' to stage doesn't exist ?!";
   fi
 
   # get dest dir: ramdisk or shared fs to be used ?
+  local destDir;
   if $USE_RAM_DISK; then
     destDir="$RAMDISK/$computeNode";
   else
@@ -752,6 +725,7 @@ _copyImageFile() {
   fi
 
   # silent or verbose transfer ?
+  local cp_cmd_tmplate;
   if $TRACE; then
     cp_cmd_tmplate="rsync --perms --progress";
   else
@@ -760,8 +734,9 @@ _copyImageFile() {
   cp_cmd_tmplate="$cp_cmd_tmplate --chmod=ug+rw,o-rw --chown=$JOB_OWNER:$JOB_OWNER -L $srcFileName";
 
   # build copy cmd(s)
-  counter=1;
-  cp_cmd="mkdir -p $destDir";
+  local counter=1;
+  local cp_cmd="mkdir -p $destDir";
+  local destFileName;
   while [ $counter -le $vmsPerHost ]; do
     # construct filename for dest file
     destFileName="$destDir/${counter}-$(basename $IMG)";
@@ -777,11 +752,11 @@ _copyImageFile() {
   done
 
   # construct file names of flags
-  filesCopiedFlag="$VM_JOB_DIR/$computeNode/.imgCopied";
-  filesCreatedFlag="$DOMAIN_XML_PATH_PREFIX/$computeNode/.done";
+  local filesCopiedFlag="$VM_JOB_DIR/$computeNode/.imgCopied";
+  local filesCreatedFlag="$DOMAIN_XML_PATH_PREFIX/$computeNode/.done";
 
   # finalize cmd
-  cmd="$cp_cmd; res=\$?; echo \$res > $filesCopiedFlag; ls -al $destDir";
+  local cmd="$cp_cmd; res=\$?; echo \$res > $filesCopiedFlag; ls -al $destDir";
 
   # canceled meanwhile ?
   checkCancelFlag;
@@ -790,6 +765,8 @@ _copyImageFile() {
 
   # transfer files on remote node to avoid local io-bottleneck in parallel exec)
   logTraceMsg "Executing cmd on '$computeNode':\n\t$cmd";
+  local output;
+  local res;
   if $TRACE; then
     ssh $computeNode -v "$cmd";
     res=$?;
@@ -815,7 +792,7 @@ _copyImageFile() {
   logDebugMsg "Image file '$srcFileName' for '$vmsPerHost' VM(s) on host '$computeNode' transferred to '$destDir'.";
 
   # create flag file to indicate node is ready
-  logDebugMsg "Creating flag file '$filesCreatedFlag' to indicate host '$node's files are ready.";
+  logDebugMsg "Creating flag file '$filesCreatedFlag' to indicate files on compute node '$computeNode' are ready.";
   touch "$filesCreatedFlag";
 }
 
@@ -838,11 +815,12 @@ _generateDomainXML() {
   #
   # params
   #
-  computeNode=$1; #hostname of physical node
-  countPerHost=$2; #number_of_vms_per_host
-  totalCount=$3; #total count of vms: number_of_hosts*number_of_vms_per_host
+  local computeNode=$1; #hostname of physical node
+  local countPerHost=$2; #number_of_vms_per_host
+  local totalCount=$3; #total count of vms: number_of_hosts*number_of_vms_per_host
 
   # get dest dir: ramdisk or shared fs to be used ?
+  local desDir;
   if $USE_RAM_DISK; then
     destDir="$RAMDISK/$computeNode/";
   else
@@ -850,7 +828,12 @@ _generateDomainXML() {
   fi
 
   #
-  number=1;
+  local number=1;
+  local keyOne;
+  local domainXMLfile;
+  local domainXMLtmpFile;
+  local domainTemplateXML;
+  local value;
 
   # generate all domain XML for local VMs
   logDebugMsg "Generating domainXML files for all local VMs.";
@@ -913,9 +896,9 @@ _generateDomainXML() {
       sed -i "s,__VCPU_PINNING__,,g" $domainXMLtmpFile;
     fi
 
-    # is vRDMA enabled and is it a vRDMA capable node ?
-    if [ -n "${VM_PARAMS[$keyOne, 'VRDMA']}" ] \
-        && ${VM_PARAMS[$keyOne, 'VRDMA']} \
+    # is vRDMA enabled, requested and is it a vRDMA capable node ?
+    if $VRDMA_ENABLED \
+        && $VRDMA_REQUESTED \
         && [[ "$LOCALHOST" =~ ^$VRDMA_NODES$ ]]; then
       logDebugMsg "VRDMA requested, merging into domain XML";
       sed -i -e "/__VRDMA_XML__/e cat $DOMAIN_VRDMA_XML_TEMPLATE" -e "s,__VRDMA_XML__,,g" $domainXMLtmpFile;
@@ -974,7 +957,7 @@ for VM '$number/$countPerHost' on node '$computeNode' of '$totalCount' VMs total
 #
 # Creates a cpu pinning for the VM's domainXML
 #
-_createCPUpinning() { #TODO move to .parallel and enable user to provide a filename
+_createCPUpinning() {
 
   # check amount of params
   if [ $# -ne 3 ]; then
@@ -982,16 +965,17 @@ _createCPUpinning() { #TODO move to .parallel and enable user to provide a filen
   fi
 
   # domain XML file, we are merging the pinning into it
-  domainXML=$1;
-  number=$2;
-  computeNode=$3;
-  keyOne="${number}-${computeNode}";
+  local domainXML=$1;
+  local number=$2;
+  local computeNode=$3;
+  local keyOne="${number}-${computeNode}";
 
   if [ ! -f "$domainXML" ]; then
     logWarnMsg "Parameter '$1' is not a valid (domain XML) file.\n Skipping the CPU pinning feature.";
     return 1;
   fi
 
+  local pinningConfig;
   local pinningFile;
 
   # VCPU pinning param available ?
@@ -1013,7 +997,7 @@ _createCPUpinning() { #TODO move to .parallel and enable user to provide a filen
     pinningConfig=$(sed "s,__VCPU_PINNING__,${VM_PARAMS[$keyOne, VCPUS]-},g" "$DOMAIN_NUMA_XML_TEMPLATE");
     # replace placeholder with pinning fragment
     sed -i "{s,__VCPU_PINNING__,$(echo $pinningConfig),g}" "$domainXML";
-  else # no, we got a mapping file provided
+  else # no, we got a mapping file provided ?
     pinningFile="${VM_PARAMS[$keyOne, 'VCPU_PINNING']}";
     logDebugMsg "User provided vCPU pinning is enabled, file: '$pinningFile'.";
     sed -i "{s,__VCPU_PINNING__,$(cat $pinningFile),g}" "$domainXML";
@@ -1025,13 +1009,13 @@ _createCPUpinning() { #TODO move to .parallel and enable user to provide a filen
 #
 # Boots all VMs on local host.
 #
-bootVMsOnHost() {
+_bootVMsOnHost() {
 
   # check amount of params
   if [ $# -ne 1 ]; then
-    logErrorMsg "Function 'bootVMsOnHost' called with '$#' arguments, '1' is expected.\nProvided params are: '$@'" 2;
+    logErrorMsg "Function '_bootVMsOnHost' called with '$#' arguments, '1' is expected.\nProvided params are: '$@'" 2;
   fi
-  computeNode=$1;
+  local computeNode=$1;
 
   # canceled meanwhile ?
   checkCancelFlag;
@@ -1039,18 +1023,18 @@ bootVMsOnHost() {
   # debug log
   logDebugMsg "Booting VMs on node '$computeNode'.";
 
-  # flag file we need
-  filesCreatedFlag="$DOMAIN_XML_PATH_PREFIX/$computeNode/.done";
-  filesCopiedFlag="$VM_JOB_DIR/$computeNode/.imgCopied";
+  # flag files we need
+  local filesCreatedFlag="$DOMAIN_XML_PATH_PREFIX/$computeNode/.done";
+  local filesCopiedFlag="$VM_JOB_DIR/$computeNode/.imgCopied";
 
   # in case we run parallel, the files are not in place yet
   logDebugMsg "Waiting for VM related files to be created, copied, etc..";
   logDebugMsg "Lock files to check: '$filesCreatedFlag', '$filesCopiedFlag'.";
-  startDate="$(date +%s)";
+  local startDate="$(date +%s)";
 
   # wait until prepare nodes is ready (PARALLEL=true)
   while [ ! -f "$filesCreatedFlag" ] \
-      || [ ! -f "$filesCopiedFlag" ]; do
+      && [ ! -f "$filesCopiedFlag" ]; do
     logTraceMsg "Waiting for VM related files to be created, copied, etc..";
     logTraceMsg "Lock files to check: '$filesCreatedFlag', '$filesCopiedFlag'.";
     sleep 1;
@@ -1060,30 +1044,98 @@ bootVMsOnHost() {
   logDebugMsg "Flag files '$filesCreatedFlag' and '$filesCopiedFlag' found, continuing.";
 
   #
-  # start the VM by the help of the vmPrologue.parallel.sh script
+  # start the VMs by the help of the vmPrologue.parallel.sh script
   #
-
-  # construct cmd
-  cmd="source /etc/profile; exec $(realpath $(dirname ${BASH_SOURCE[0]}))/vmPrologue.parallel.sh $JOBID;";
-  logDebugMsg "Trigger boot of VMs on node '$computeNode', cmd: 'ssh $computeNode \"$cmd\"'";
 
   # check if canceled meanwhile
   checkCancelFlag;
+  # check if there was an error on remote nodes
+  checkRemoteNodes;
+
+  # construct cmd
+  local cmd="source /etc/profile; exec $(realpath $(dirname ${BASH_SOURCE[0]}))/vmPrologue.parallel.sh $JOBID $USER_NAME;";
+  logDebugMsg "Trigger boot of VMs on node '$computeNode', cmd: 'ssh $SSH_OPTS $computeNode \"$cmd\"'";
 
   # execute via SSH
   ssh $SSH_OPTS $computeNode "$cmd"; # 1> /dev/null to prevent duplicate log msgs (should not happen due to PRINT_TO_STDOUT=false but does)
-  res=$?;
+  local res=$?;
 
   # successful boot init ? (booting still takes place now)
   if [ $res -eq 0 ]; then
     logDebugMsg "Triggering boot of VMs on node '$computeNode' success.";
   else
     # abort with returned exit code
+    touch "$ERROR_FLAG_FILE";
     logErrorMsg "Triggering boot of VMs on node '$computeNode' failed, aborting. Exit code: '$res'." $res;
-    touch $ERROR_FLAG_FILE;
   fi
 
   return $res;
+}
+
+
+#---------------------------------------------------------
+#
+# Comprises the whole VM initialization from generation of files,
+# copying images and booting VMs on all nodes.
+#
+initializeVMs(){
+
+  local nodes=$(cat $PBS_NODEFILE | uniq); # we need uniq, because for each rank there's an entry of that node
+  local vnodesPerHost=$VMS_PER_NODE;
+  local nodeCount=$(echo $nodes | wc -w);
+  local amountOfVMs=$(($nodeCount * $vnodesPerHost));
+
+  # make sure number of VMs make sense
+  if [ $amountOfVMs -lt 1 ]; then
+    logErrorMsg "Less than '1' VM requested.";
+  elif [ $nodeCount -lt 1 ]; then
+    logErrorMsg "No compute nodes found, '\$PBS_NODEFILE' not set or empty.";
+  fi
+
+  # logging
+  logDebugMsg "Starting '$vnodesPerHost' VM(s) per node on '$nodeCount' compute nodes, in total '$amountOfVMs' VM(s)";
+  logTraceMsg "Physical compute nodes ($nodeCount):\n-------\n$nodes\n-----";
+
+  # check the place holders and ensure valid values
+  validateParameter "$nodeCount" "$vnodesPerHost";
+
+  # create VM related parameter sets
+  _generateVMParameterSets "$nodes" "$vnodesPerHost";
+
+  ## for each node
+  local number=1;
+  for computeNode in $nodes; do
+
+    # generate the VM files based on the parameter sets
+    logDebugMsg "------------ Preparing node '$computeNode' (domain XML, copy images, etc) ------------";
+
+    # cancelled meanwhile ?
+    checkCancelFlag;
+
+    # stage file + boot VMs in parallel ?
+    if $PARALLEL; then
+      # non-blocking
+      _prepareNode "$computeNode" "$number" "$vnodesPerHost" "$amountOfVMs" \
+        & _bootVMsOnHost "$computeNode" \
+        & continue;
+    else
+      # blocking
+      _prepareNode "$computeNode" "$number" "$vnodesPerHost" "$amountOfVMs";
+      _bootVMsOnHost "$computeNode";
+    fi
+
+    # increase counter
+    number=$(($number+1));
+
+  ## end of for each node
+  done
+
+  # logging
+  if $PARALLEL; then
+    logDebugMsg "VMs in total being prepared and booted: '$amountOfVMs'";
+  else
+    logDebugMsg "VMs booted in total: '$amountOfVMs'";
+  fi
 }
 
 
@@ -1108,6 +1160,10 @@ createVNodeFile() {
   # check if file exists
   [ ! -f $PBS_NODEFILE ] && logErrorMsg "File PBS_NODEFILE '$PBS_NODEFILE' does not exist ?!";
 
+  local vmIPsFile;
+  local vmIPs;
+  local startDate="$(date +%s)";
+
   # merge all node vmIPs files into a single one
   for nodeName in $(cat $PBS_NODEFILE | uniq); do
 
@@ -1115,10 +1171,15 @@ createVNodeFile() {
     # previously to this function, takes place after the boot and wait phase
     vmIPsFile=$VM_IP_FILE_PREFIX/$nodeName/$VM_IP_FILE_NAME;
 
-    # ensure it exists
-    if [ ! -f "$vmIPsFile" ]; then
-      logErrorMsg "Node's '$nodeName' vmIPs file '$vmIPsFile' cannot be found!";
-    fi
+   # wait for file to appear
+    while [ ! -f "$vmIPsFile" ]; do
+      sleep 1;
+      logDebugMsg "Waiting for flag file '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone' to become available..";
+      # timeout reached ? (if yes, we abort)
+      isTimeoutReached $NFS_TIMEOUT $startDate true \
+        && logErrorMsg "Node's '$nodeName' vmIPs file '$vmIPsFile' cannot be found!";
+    done
+
     # logging
     logTraceMsg "Processing node's '$nodeName' vmIPs file '$vmIPsFile'.\
 \n-----start_vm_ip_file------\n$(cat $vmIPsFile)\n------end_vm_ip_file-------";
@@ -1133,7 +1194,7 @@ createVNodeFile() {
 
   done
 
-  # set rank0 VM
+  # set global var for rank0 VM
   FIRST_VM="$(head -n1 $PBS_VM_NODEFILE)";
 
   # make the VM nodes file available to VMs
@@ -1149,7 +1210,7 @@ createVNodeFile() {
 #
 # Executes user prologue script that can optionally be
 # defined by the user via PBS resource requests
-#  i.e. 'qsub -l prologue=..,'
+#  i.e. 'vsub -l prologue=..,'
 #
 #
 runUserPrologueScript() {
@@ -1162,7 +1223,7 @@ runUserPrologueScript() {
     else
       $PROLOGUE_SCRIPT;
     fi
-    exitCode=$?
+    local exitCode=$?
     logDebugMsg "================PROLOGUE_OUTPUT_END=====================";
     logDebugMsg "Exit Code: '$exitCode'";
     if ! $exitCode; then
@@ -1179,7 +1240,7 @@ runUserPrologueScript() {
 #
 # Executes user VM prologue script that can optionally be
 # defined by the user via PBS resource requests
-#  i.e. 'qsub -vm prologue=..,'
+#  i.e. 'vsub -vm prologue=..,'
 #
 runUserVMPrologueScript() {
   # user VM prologue script present ?
@@ -1188,16 +1249,17 @@ runUserVMPrologueScript() {
     ensureFileIsAvailableOnHost "$VM_PROLOGUE_SCRIPT" "$FIRST_VM";
     # execute
     logDebugMsg "Running now user's VM prologue '$VM_PROLOGUE_SCRIPT' ..";
+    logTraceMsg "Command:\n ssh $SSH_OPTS $FIRST_VM \"exec $VM_PROLOGUE_SCRIPT\"";
     logDebugMsg "==============VM_PROLOGUE_OUTPUT_BEGIN===================";
     if $DEBUG; then
       ssh $SSH_OPTS $FIRST_VM "exec $VM_PROLOGUE_SCRIPT" |& tee -a $LOG_FILE;
     else
       ssh $SSH_OPTS $FIRST_VM "exec $VM_PROLOGUE_SCRIPT";
     fi
-    exitCode=$?;
+    local exitCode=$?;
     logDebugMsg "===============VM_PROLOGUE_OUTPUT_END====================";
     logDebugMsg "Exit Code: '$exitCode'";
-    if [ ! $RES ]; then
+    if [ ! $exitCode ]; then
       # abort with error code 2
       logErrorMsg "Execution of user's VM prologue failed." 2;
     fi
@@ -1229,6 +1291,9 @@ logInfoMsg "User prologue wrapper script started.";
 # check if canceled meanwhile
 checkCancelFlag;
 
+# check if everything is in place
+preConditionCheck;
+
 # ensure that we do not loose anything for debug.log
 captureOutputStreams;
 
@@ -1238,71 +1303,17 @@ parseParameter $@;
 # debug log
 logDebugMsg "********************* JOB PROLOGUE :: Creating VM files and Booting VMs **************************";
 
-# check if everything is in place
-preConditionCheck;
-
-# init variables
-nodes=$(cat $PBS_NODEFILE | uniq); # we need uniq, because for each rank there's an entry of that node
-vnodesPerHost=$VMS_PER_NODE;
-#
-nodeCount=$(echo $nodes | wc -w);
-amountOfVMs=$(($nodeCount * $vnodesPerHost));
-
-if [ $amountOfVMs -lt 1 ]; then
-  logErrorMsg "Less than '1' VM requested.";
-fi
-logDebugMsg "Physical Nodes ($nodeCount):\n-------\n$nodes\n-----";
-
-# check the place holders and ensure valid values
-validateParameter "$nodeCount" "$vnodesPerHost";
-
-# create VM related parameter sets
-generateVMParameterSets "$nodes" "$vnodesPerHost";
+# init guests
+initializeVMs;
 
 # debug log
-logDebugMsg "++++++++++++++++++ JOB PROLOGUE :: Creating / Staging VM related files for all hosts ++++++++++++++++++";
-
-## for each node
-for computeNode in $nodes; do
-
-  # cancelled meanwhile ?
-  checkCancelFlag;
-
-  # generate the VM files based on the parameter sets
-  logDebugMsg "------------ Preparing node '$computeNode' (domain XML, copy images, etc) ------------";
-  generateVMFiles "$computeNode" "$vnodesPerHost" "$amountOfVMs";
-
-  # stage file + boot VMs in parallel ?
-  logDebugMsg "Staging files and booting VM(s) on node '$computeNode'.";
-  if $PARALLEL; then
-    # non-blocking
-    prepareNode "$computeNode" "$vnodesPerHost" "$amountOfVMs" \
-      & bootVMsOnHost "$computeNode" \
-      & continue;
-  else
-    # blocking
-    prepareNode "$computeNode" "$vnodesPerHost" "$amountOfVMs";
-    bootVMsOnHost "$computeNode";
-  fi
-
-## end of for each node
-done
-
-# logging
-if $PARALLEL; then
-  logDebugMsg "VMs in total being prepared and booted: '$amountOfVMs'";
-else
-  logDebugMsg "VMs booted in total: '$amountOfVMs'";
-fi
-
-# debug log
-logDebugMsg "+++++++++++++++++ JOB PROLOGUE :: waiting for all VMs to become available ++++++++++++++++++++";
+logDebugMsg "+++++++++++++++++ JOB PROLOGUE :: Waiting for all VMs to become available ++++++++++++++++++++";
 
 # wait for (all job related) VMs to become available
 waitUntilAllReady;
 
 # debug log
-logDebugMsg "+++++++++++++++++++++++ JOB PROLOGUE :: All VMs to became available ++++++++++++++++++++++++++";
+logDebugMsg "++++++++++++++++++++++++ JOB PROLOGUE :: All VMs became available ++++++++++++++++++++++++++++";
 
 # create job's VM node-file (now all vmIPs are known)
 createVNodeFile;
@@ -1310,19 +1321,19 @@ createVNodeFile;
 # execute user prologue if there is one
 logDebugMsg "Executing user prologue script, if present.";
 runUserPrologueScript;
-RES=$?;
+res=$?;
 
 # execute user VM prologue if there is one
 logDebugMsg "Executing user VM prologue script, if present.";
 runUserVMPrologueScript;
 tmp=$?;
-RES=$(($RES + $tmp));
+res=$(($res + $tmp));
 
 # print debugging output ?
 if $DEBUG; then
-  # for each node
+  # for each node (thus uniq to not get each host for each rank/vcpu)
+  nodes=$(cat $PBS_NODEFILE | uniq);
   for computeNode in $nodes; do
-
     # debug log
     logDebugMsg "\nRunning VMs on compute node '$computeNode' :\
 \n-----------\n\
@@ -1338,4 +1349,4 @@ logInfoMsg "User prologue wrapper script finished.";
 runTimeStats;
 
 # done, pass back return code, run the job
-exit $RES;
+exit $res;

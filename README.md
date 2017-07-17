@@ -7,10 +7,10 @@ Virtualization support for Torque
 * [Introduction](#introduction)
 * [How It Works](#how-it-works)
 * [Architecture](#architecture)
-* [Further Informations](further-informations)
-    * [User Documentation](doc/userdoc.md)
-    * [Administrator Documentation](doc/admindoc.md)
-    * [Development Documentation](doc/devdoc.md)
+* [Further Informations](#further-information)
+    * [Administrator Documentation](doc/admin.md)
+    * [User Documentation](doc/user.md)
+    * [Guest Images](doc/guest-images.md)
 * [Acknowledgments](#acknowledgments)
 
 
@@ -43,7 +43,7 @@ The **MIKELANGELO Software Stack** for HPC consists of the following components:
 
     - **vRDMA**: Virtual RDMA, a new type of virtio device implementing the RDMA protocol for low overhead communication between virtual machines
 
-- **Snap**: The open-source snap telemetry framework is specifically designed to allow data center owners dynamically instrument cloud-scale data-centers.
+- **Snap**: The open-source framework [Snap-Telemetry](http://snap-telemetry.io) designed to provide deep insights in application's workload patterns as well as live monitoring.
 
 - **Guest OS**: The guest operating system (or “guest OS”) is the operating system running inside each individual VM (virtual machine). In the MIKELANGELO architecture standard **Linux** OS is already supported as guest OS and the support for **OSv** is currently in progress.
 

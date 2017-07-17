@@ -255,7 +255,10 @@ In the tables below is the complete list of configuration options described, inc
 | `HOST_OS_CORE_COUNT`        | `1`                         | Amount of cores reserved for the host OS. |
 | `HOST_OS_RAM_MB`            | `2048`                      | Amount of RAM in MB reserved for the host OS. |
 | `PBS_EXCLUSIVE_NODE_ALLOC` | `true`                      | Allocate nodes exclusively for an user, needed if Torque runs without meta-scheduler like Moab. |
+| `KILL_USER_PROCESSES_AFTER_JOB` | `true`                 | Kills all user processes during the epilogue{.parallel}. |
 
+Hint:  
+Do not enable `KILL_USER_PROCESSES_AFTER_JOB` if your nodes are NOT allocated exclusively or you are making use of NUMA domains.
 
 ### Timeouts
 

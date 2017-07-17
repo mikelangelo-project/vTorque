@@ -32,11 +32,11 @@
 #       AUTHOR: Nico Struckmann, struckmann@hlrs.de
 #      COMPANY: HLRS, University of Stuttgart
 #      VERSION: 0.1
-#      CREATED: 
+#      CREATED:
 #     REVISION: ---
 #
 #    CHANGELOG
-#         v0.2: 
+#         v0.2:
 #
 #=============================================================================
 #
@@ -44,8 +44,8 @@ set -o nounset;
 shopt -s expand_aliases;
 
 # source the config and common functions
-ABSOLUTE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
-source $ABSOLUTE_PATH/snap-common.sh;
+SNAP_ABSOLUTE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
+source "$SNAP_ABSOLUTE_PATH/snap-common.sh" $@;
 
 
 

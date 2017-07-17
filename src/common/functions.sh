@@ -40,6 +40,14 @@
 #
 set -o nounset;
 
+
+#
+# load log4bsh logging functions
+#
+LIB_LOG4BSH=$(find "$ABSOLUTE_PATH_CONFIG/../.." -type f -name log4bsh.sh | head -n1);
+[ -z $LIB_LOG4BSH ] && echo "FATAL ERROR: Log4bsh not found!" && return 1;
+source $LIB_LOG4BSH;
+
 #-----------------------------------------------------------------------------
 #
 # Signal traps for cancellation (VM clean ups)
@@ -48,7 +56,6 @@ set -o nounset;
 # script that uses the functions.sh
 #
 trap abort SIGHUP SIGINT SIGTERM SIGKILL;
-
 
 
 #---------------------------------------------------------
@@ -186,7 +193,7 @@ isTimeoutReached() {
   fi
   timeoutFlag=false;
 
-  # cancelled meanwhile ?
+  # canceled meanwhile ?
   checkCancelFlag $doNotExit;
 
   # timeout reached ?
@@ -194,12 +201,13 @@ isTimeoutReached() {
     msg="Timeout of '$timeout' seconds reached while waiting for remote processes to finish their work.!";
     # timeout reached, abort
     if $doNotExit; then
-     logWarnMsg $msg;
-     timeoutFlag=true;
-    elif [ ! -e $CANCEL_FLAG_FILE ]; then # abort
-     touch $CANCEL_FLAG_FILE;
-   fi
-   logErrorMsg $msg;
+      logWarnMsg "$msg" false;
+      timeoutFlag=true;
+    else #abort
+      [ ! -e "$CANCEL_FLAG_FILE" ] \
+        && touch "$CANCEL_FLAG_FILE";
+      logErrorMsg "$msg" false;
+    fi
   fi
 
   # re-enable verbose logging if it was enabled before
@@ -237,6 +245,24 @@ informRemoteProcesses() {
 
 #---------------------------------------------------------
 #
+# Waits until the local root prologue{.parallel} has done
+# its work, which is instantiation of all local guests in
+# this case.
+#
+waitForRootPrologue() {
+  local timeOut=$1;
+  local startDate="$(date +%s)";
+  while [ ! -f "$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone" ]; do
+    sleep 1;
+    logDebugMsg "Waiting for flag file '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone' to become available..";
+    # timeout reached ? (if yes, we abort)
+    isTimeoutReached $timeOut $startDate;
+  done
+}
+
+
+#---------------------------------------------------------
+#
 # Waits until all flag files are removed.
 # Flag files are created/removed by the parallel scripts
 # before boot/when the SSH server is available
@@ -244,10 +270,11 @@ informRemoteProcesses() {
 #
 waitUntilAllReady() {
 
-  startDate="$(date +%s)";
+  # at first wait for the root prologue to boot VMs (required if parallel=true)
+  waitForRootPrologue $TIMEOUT;
 
-  logDebugMsg "Waiting for lock-file '$LOCKFILE' to be created..";
-  logDebugMsg "And waiting for equal content in files \$PBS_NODEFILE='$PBS_NODEFILE' and \$LOCKFILE='$LOCKFILE' ..";
+  logDebugMsg "Waiting for lock-file '$LOCKFILE' to be created and \
+for equal content in files \$PBS_NODEFILE='$PBS_NODEFILE' and \$LOCKFILE='$LOCKFILE' ..";
 
   # cancelled meanwhile ?
   checkCancelFlag;
@@ -257,6 +284,7 @@ waitUntilAllReady() {
   # each remote process writes its hostname into the lock file,
   # so we can compare it to the PBS host list
   #
+  local startDate="$(date +%s)";
   while [ ! -f $LOCKFILE ] \
           || [ "$(cat $PBS_NODEFILE | sort | uniq)" != "$(cat $LOCKFILE | sort)" ]; do
 
@@ -275,10 +303,10 @@ remote processes to finish their work.!\nLock file content:\n---\n$(cat $LOCKFIL
     # check if an error occurred before lock files could be created
     checkRemoteNodes;
 
-    # wait for a moment
-    logTraceMsg "Waiting for lock-file '$LOCKFILE' to be created..";
-    logTraceMsg "And waiting for equal content in files \$PBS_NODEFILE='$PBS_NODEFILE' and \$LOCKFILE='$LOCKFILE' ..";
-    sleep 2;
+    # wait a moment
+    logDebugMsg "Waiting for lock-file '$LOCKFILE' to be created and \
+for equal content in files \$PBS_NODEFILE='$PBS_NODEFILE' and \$LOCKFILE='$LOCKFILE' ..";
+    sleep 1;
 
   done
 
@@ -439,16 +467,6 @@ getVMsPerNode() {
 
 #---------------------------------------------------------
 #
-# Checks whether the job is a VM job.
-#
-function isVMJob() {
-  [ -f "$FLAG_FILE_DIR/.vmJob" ] && return 0;
-  return 1;
-}
-
-
-#---------------------------------------------------------
-#
 # Checks whether the execution has caused an error meanwhile
 # by a parallel or remote process.
 #
@@ -531,8 +549,8 @@ abort() {
 #
 # Dummy function in case a script doesn't need to implement it.
 #
-# If implemented it is expected to return in an error case a 2 
-# digit integer that is suffixed by a '0'. 
+# If implemented it is expected to return in an error case a 2
+# digit integer that is suffixed by a '0'.
 # For example: -90,-80,..,0,10,20,..,90
 # '0' for success
 # all other return codes indicate errors/failures

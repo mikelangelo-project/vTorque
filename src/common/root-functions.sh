@@ -22,7 +22,7 @@
 #        USAGE: source root-functions.sh
 #
 #  DESCRIPTION: Collection of vTorque helper functions executed as root.
-#               NOTE: file 'functions.sh' must be sourced first. 
+#               NOTE: file 'functions.sh' must be sourced first.
 #
 #      OPTIONS: ---
 # REQUIREMENTS: log4bsh must be available
@@ -63,26 +63,6 @@ source $ABSOLUTE_PATH/functions.sh;
 
 #---------------------------------------------------------
 #
-# Ensures access to the (correct) log file.
-#
-if [ -z ${LOG_FILE-} ]; then
-  logErrorMsg "No log file  \$LOG_FILE='' defined, aborting.";
-elif [ ! -f "$LOG_FILE" ]; then # no access yet, wait for symlink created by vsub
-  # get dir
-  logFileDir=$(dirname "$LOG_FILE");
-  startDate="$(date +%s)";
-  # ensure dir exists
-  while [ ! -e $logFileDir ]; do
-    checkCancelFlag;
-    sleep 1;
-    # wait up to 10sec
-    isTimeoutReached 10 $startDate;
-  done;
-fi
-
-
-#---------------------------------------------------------
-#
 # Checks if the shared fs prefix dir exists, if not it
 # it will be created
 #
@@ -99,8 +79,8 @@ checkSharedFS() {
 
   # if shared fs dir does not exist yet, create it quitely
   [ ! -d $SHARED_FS_JOB_DIR ] \
-     && mkdir -p $SHARED_FS_JOB_DIR > /dev/null 2>&1 \
-     && chown -R $USERNAME:$USERNAME $SHARED_FS_JOB_DIR \
+     && su - $USER_NAME -c "mkdir -p '$SHARED_FS_JOB_DIR'" \
+         > /dev/null 2>&1 \
      && chmod -R 775 $SHARED_FS_JOB_DIR;
 
   # check if shared fs: is present, is not in use, is read/write-able
@@ -141,7 +121,7 @@ createRAMDisk() {
   # mount ram disk and set owner
   mount -t ramfs ramfs $RAMDISK \
     && chmod 777 $RAMDISK \
-    && chown $USERNAME:$USERNAME $RAMDISK;
+    && chown $USER_NAME:$USER_NAME $RAMDISK;
 }
 
 
@@ -296,7 +276,7 @@ shutdown or timeout of '$TIMEOUT' sec has been reached.";
 #
 _flushARPcache() {
   if [ -f "$LOCAL_VM_IP_FILE" ]; then
-    vmIPs=$(cat "$LOCAL_VM_IP_FILE");
+    vmIPs=$(cat "$LOCAL_VM_IP_FILE" | uniq);
     logDebugMsg "Clearing VM IPs from local arp cache: $vmIPs";
     if [ -n "$vmIPs" ]; then
       for vmIP in $vmIPs; do
@@ -304,6 +284,15 @@ _flushARPcache() {
       done
     fi
   fi
+}
+
+
+#---------------------------------------------------------
+#
+# Checks whether the job is a VM job.
+#
+function isVMJob() {
+  return $([ -d "$VM_JOB_DIR" ]);
 }
 
 
@@ -317,8 +306,7 @@ cleanUpVMs() {
   logDebugMsg "Shutting down and destroying all local VMs now.";
 
   if [ -z ${DOMAIN_XML_PATH_NODE-} ] \
-      || [ ! -e $(dirname "$DOMAIN_XML_PATH_NODE") ] \
-      || [ -z ${DOMAIN_XML_PATH_NODE-} ]; then
+      || [ ! -d "$DOMAIN_XML_PATH_NODE" ]; then
     logWarnMsg "Skipping VM cleanup, no domain *.xml files found";
     return 0;
   fi
@@ -327,7 +315,8 @@ cleanUpVMs() {
   # domain XML(s) found ?
   if [ -z ${VM_DOMAIN_XML_LIST-} ]; then
       # no, abort
-    logErrorMsg "No domain XML files can be found in dir '$DOMAIN_XML_PATH_NODE' !";
+    logWarnMsg "No domain XML files can be found in dir '$DOMAIN_XML_PATH_NODE' !";
+    return 0;
   fi
 
   # let remote processes know that we started our work
@@ -366,7 +355,7 @@ cleanUpVMs() {
   _flushARPcache;
 
   # kill all processes owned by user
-  skill -KILL -u $USERNAME;
+  skill -KILL -u $USER_NAME;
 }
 
 
@@ -378,22 +367,24 @@ cleanUpVMs() {
 runScriptPreviouslyInPlace() {
 
   # check amount of params
-  if [ $# -ne 1 ]; then
+  if [ $# -lt 3 ]; then
     logErrorMsg "Function 'runScriptPreviouslyInPlace' called with '$#' \
-arguments, '1' is expected.\nProvided params are: '$@'" 2;
+arguments, '3-8' are expected.\nProvided args are: '$@'" 2;
   fi
 
+  # cache script name to execute
   scriptName=$1;
-  res=0;
+  # remove the first element from '$@'
+  shift;
 
   # in case there was a script for this in the $TORQUE_HOME/mom_priv
   # that has been renamed (by the Makefile) to *.orig
   script="$TORQUE_HOME/mom_priv/$scriptName.orig";
 
-
-  if [ -f "$script" ]; then
+  local res=0;
+  if [ -x "$script" ]; then
     logDebugMsg "Running '$script' script that was in place previously.";
-    exec $script;
+    exec $script $@;
     res=$?;
   else
     logTraceMsg "There is no previous script '$script' in place that could be executed."
@@ -460,7 +451,7 @@ stopSnapTask() {
 setUPvRDMA_P1() {
 
   # enabled ?
-  enabled=$($VRDMA_ENABLED && [ -f "$FLAG_FILE_DIR/.vrdma" ]);
+  enabled=$($VRDMA_ENABLED && [ -f "$FLAG_FILE_VRDMA" ]);
 
   # does the local node support the required feature ?
   if ! $enabled \
@@ -491,7 +482,7 @@ setUPvRDMA_P1() {
 tearDownvRDMA_P1() {
 
   # enabled ?
-  enabled=$($VRDMA_ENABLED && [ -f "$FLAG_FILE_DIR/.vrdma" ]);
+  enabled=$($VRDMA_ENABLED && [ -f "$FLAG_FILE_VRDMA" ]);
 
   # enabled and does the local node support the required feature ?
   if ! $enabled \
@@ -520,7 +511,7 @@ tearDownvRDMA_P1() {
 setupIOCM() {
 
   # enabled ?
-  enabled=$($IOCM_ENABLED && [ -f "$FLAG_FILE_DIR/.iocm" ]);
+  enabled=$($IOCM_ENABLED && [ -f "$FLAG_FILE_IOCM" ]);
 
   # does the local node support the required feature ?
   if ! $enabled \
@@ -551,7 +542,7 @@ setupIOCM() {
 teardownIOcm() {
 
   # enabled ?
-  enabled=$($IOCM_ENABLED && [ -f "$FLAG_FILE_DIR/.iocm" ]);
+  enabled=$($IOCM_ENABLED && [ -f "$FLAG_FILE_IOCM" ]);
 
   # enabled and does the local node support the required feature ?
   if ! $enabled \
@@ -580,14 +571,33 @@ teardownIOcm() {
 copyVMlogFile() {
   if [ -n "$(ls /var/log/libvirt/qemu/ | grep $JOBID | grep -E \.log$)" ]; then
     cp /var/log/libvirt/qemu/${JOBID}*.log "$VM_JOB_DIR/$LOCALHOST/";
-    chown $USERNAME:$USERNAME "$VM_JOB_DIR/$LOCALHOST/"${JOBID}*.log;
+    chown $USER_NAME:$USER_NAME "$VM_JOB_DIR/$LOCALHOST/"${JOBID}*.log;
   fi
 }
 
 
 #---------------------------------------------------------
 #
-# qsub creates the symlink based on the jobID as soon as the job is submitted
+# For non-VM jobs we need to change the log file env var,
+# otherwise log4bsh will create it as root in users $HOME.
+# In order to still have a log in the prologue{.parallel}
+# print ot stdout is enforced.
+#
+ensureProperSettings() {
+  # for non-vm jobs there is no log file
+  if [ ! -e $LOG_FILE ]; then
+    # happens in case of manual debugging
+    # prevents log file dir to be created
+    # as root by log4bsh
+    LOG_FILE=/dev/null;
+    PRINT_TO_STDOUT=true;
+  fi
+}
+
+
+#---------------------------------------------------------
+#
+# vsub creates the symlink based on the jobID as soon as the job is submitted
 # due to race-conditions it may be possible that we want to write the log file
 # but the symlink is not in place, yet
 #
@@ -598,12 +608,11 @@ waitUntilJobDirIsAvailable() {
 
   # we wait a moment if there is still no dir it's not a VM job
   # and we should run regardless of that dir
-  timeout=5;
   startDate="$(date +%s)";
   cachedValue=$PRINT_TO_STDOUT;
   PRINT_TO_STDOUT=true;
   while [ ! -e "$VM_JOB_DIR" ] \
-    && ! isTimeoutReached $timeout $startDate true; do
+    && ! isTimeoutReached $NFS_TIMEOUT $startDate true; do
     sleep 1;
     logDebugMsg "Waiting for job dir symlink '$VM_JOB_DIR' to become available.."
   done
@@ -613,7 +622,7 @@ waitUntilJobDirIsAvailable() {
 
 #---------------------------------------------------------
 #
-# Spawns a process that boots VMs and configures iocm
+# Spawns a process that boots VMs and configures IOcm, vRDMA
 #
 #
 function spawnProcess() {
@@ -626,10 +635,9 @@ function spawnProcess() {
 
     # ensure flag file dir exists
     if [ ! -e "$FLAG_FILE_DIR/$LOCALHOST" ]; then
-      {
-        mkdir -p "$FLAG_FILE_DIR/$LOCALHOST" \
-          && chown $USERNAME:$USERNAME "$FLAG_FILE_DIR/$LOCALHOST";
-      } || logErrorMsg "Failed to create flag files dir '$FLAG_FILE_DIR/$LOCALHOST'.";
+      su - $USER_NAME -c "mkdir -p '$FLAG_FILE_DIR/$LOCALHOST'";
+      [ $? -ne 0 ] \
+        && logErrorMsg "Failed to create flag files dir '$FLAG_FILE_DIR/$LOCALHOST'.";
     fi
 
     # wait for userPrologue to generate VM files
@@ -651,10 +659,9 @@ function spawnProcess() {
     setupIOCM;
 
     # indicate work is done
-    {
-      touch "$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone" \
-        && chown $USERNAME:$USERNAME "$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone";
-    } || logErrorMsg "Failed to create flag file '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone' and change owner to '$USERNAME'.";
+    su - $USER_NAME -c "touch '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone'";
+    [ $? -ne 0 ] \
+      && logErrorMsg "Failed to create flag file '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone' and change owner to '$USER_NAME'.";
 
   } & return 0;
 }
@@ -668,8 +675,7 @@ function spawnProcess() {
 function bootVMs() {
 
   if [ -z ${DOMAIN_XML_PATH_NODE-} ] \
-      || [ ! -e $(dirname "$DOMAIN_XML_PATH_NODE") ] \
-      || [ -z ${DOMAIN_XML_PATH_NODE-} ]; then
+      || [ ! -d "$DOMAIN_XML_PATH_NODE" ]; then
     logWarnMsg "Skipping VM instantiation, no domain *.xml files found";
     return 0;
   fi

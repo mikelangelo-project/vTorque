@@ -37,37 +37,83 @@
 #         v0.2: more options added, refactoring and cleanup
 #
 #=============================================================================
-#
+
 set -o nounset;
 ABSOLUTE_PATH_CONFIG="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
 
 
 #
-# set the job id (it's in the env when debugging with the help of an
-# interactive job, but given as arg when run by Torque or manually
+# set the job id (it's in the env when debugging in an interactive
+# job or given as arg $1 when run by Torque)
 #
-if [ -z ${JOBID-} ] && [ -n "${PBS_JOBID-}" ]; then
+if [ $# -gt 1 ]; then
+  # passed on as parameters (root script/manually)
+  # called by root {pro,epi}logue{.parallel,precancel}
+  PBS_JOBID=$1;
+  USER_NAME=$2;
+  JOBID=$PBS_JOBID;
+elif [ -z ${JOBID-} ] && [ -n "${PBS_JOBID-}" ]; then
+  # in running jobs
   export JOBID=$PBS_JOBID;
 elif [ -z ${PBS_JOBID-} ] && [ -n "${JOBID-}" ]; then
+  # manual debugging (?)
   export PBS_JOBID=$JOBID;
-elif [ $# -gt 0 ]; then #called by root {pro,epi}logue{.parallel,precancel}
-  export JOBID=$1;
 elif [ -n "${RUID-}" ]; then
+  # vsub only
   export JOBID=$RUID;
+else
+  echo "ERROR: Your installation seems broken, no '\$RUID' and no '\$PBS_JOBID' set!";
+  echo "For debugging use $(basename ${BASH_SOURCE[0]}) <jobID> <username>"; # relevant if not executed by Torque, but manually
+  return 1;
 fi
-# differ JOBID and PBS_JOBID ?
+
+#
+# ensure USER_NAME is set
+#
+if [ -z ${USER_NAME-} ]; then
+  if [ -n "${USERNAME-}" ]; then
+    USER_NAME=$USERNAME;
+  elif [ -n "${USER-}" ]; then
+    USER_NAME=$USER;
+  else
+    echo "ERROR: Neither '\$USER' nor '\$USERNAME' is not defined and not passed on as argument.";
+    return 1;
+  fi
+fi
+
+#
+# JOBID and PBS_JOBID differ ?
+#
 if [ ! -z ${PBS_JOBID-} ] \
     && [ ! -z ${JOBID-} ] \
     && [ "$PBS_JOBID" != "$JOBID" ]; then
   # JOBID is set and differs from PBS_JOBID - should not happen, abort
   echo "ERROR: JOBID and PBS_JOBID differ!";
-  exit 1;
+  return 1;
 fi
 
-# RUID set ?
-if [ -z ${RUID-} ]; then
-  # no, use the jobID instead
-  RUID=$JOBID;
+#
+# defines location of generated files and logs for vm-jobs
+# do not use $HOME as it is not set everywhere while '~' just works
+#
+if [ -z ${VM_JOB_DIR_PREFIX-} ]; then
+  # root or user level ?
+  if [ $(id -u) -eq 0 ]; then # root scripts
+    if [ -n "${USER_NAME-}" ]; then
+      VM_JOB_DIR_PREFIX="$(grep $USER_NAME /etc/passwd | cut -d':' -f6)/.vtorque";
+    else # abort now, the file is sourced a second time when the var is set
+      return 1;
+    fi
+  else # user scripts
+    VM_JOB_DIR_PREFIX=~/.vtorque;
+  fi
+fi
+
+#
+# Directory to store the job related files that are going to be generated
+#
+if [ -z ${VM_JOB_DIR-} ]; then
+  VM_JOB_DIR="$VM_JOB_DIR_PREFIX/$JOBID";
 fi
 
 #
@@ -75,30 +121,36 @@ fi
 # it is defined in the profile.d/ file
 #
 if [ -z ${VTORQUE_DIR-} ] \
-    || [ ! -n "${VTORQUE_DIR-}" ] \
     || [ ! -d "${VTORQUE_DIR-}" ]; then
-  logWarnMsg "Environment variable '\$VTORQUE_DIR' is not set.";
-  VTORQUE_DIR="$(realpath $(dirname ${BASH_SOURCE[0]}))/..";
+  echo "WARN: Your installation seems broken, environment variable '\$VTORQUE_DIR' is not set!";
+  VTORQUE_DIR="$(realpath $(dirname ${BASH_SOURCE[0]})/..)";
+  echo "INFO: Using '\$VTORQUE_DIR=$VTORQUE_DIR'";
 fi
 
+#
+# enforce availability of JOBID and USER_NAME in subscripts
+# (needed for snap-{start,stop}.sh, iocm-{start,stop}.sh, vrdma-{start,stop}.sh)
+#
+export JOBID=$JOBID;
+export USER_NAME=$USER_NAME;
 
 
 #============================================================================#
 #                                                                            #
-#                               CONSTANTS                                    #
-#                              Do Not Edit.                                  #
+#                           GLOBAL CONSTANTS                                 #
+#                             Do Not Edit.                                   #
 #                                                                            #
 #============================================================================#
 
 #
 # Flag that indicates the default filesystem type if not user defined
 #
-FILESYSTEM_TYPE_SFS="sharedfs"; # shared file system
+FILESYSTEM_TYPE_SFS="sharedfs";
 
 #
 # Filesystem type RAM disk
 #
-FILESYSTEM_TYPE_RD="ramdisk"; #ram disk
+FILESYSTEM_TYPE_RD="ramdisk";
 
 #
 # Regexpr to validate Debian and Ubuntu
@@ -131,29 +183,6 @@ SUPPORTED_CONTAINER_OS="$REGEX_OSV";
 SUPPORTED_OS="$SUPPORTED_STANDARD_LINUX_GUESTS|$SUPPORTED_CONTAINER_OS";
 
 #
-# defines location of generated files and logs for vm-jobs
-# do not use $HOME as it is not set everywhere while '~' just works
-#
-if [ -z ${VM_JOB_DIR_PREFIX-} ]; then
-  if [ $(id -u) -eq 0 ]; then # root scripts
-    if [ -n "${USERNAME-}" ]; then
-      VM_JOB_DIR_PREFIX="$(grep $USERNAME /etc/passwd | cut -d':' -f6)/.vtorque";
-    else # abort now, the file is sourced a second time when the var is set
-      return 0;
-    fi
-  else # user scripts
-    VM_JOB_DIR_PREFIX=~/.vtorque;
-  fi
-fi
-
-#
-# Directory to store the job related files that are going to be generated
-#
-if [ -z ${VM_JOB_DIR-} ]; then
-  VM_JOB_DIR="$VM_JOB_DIR_PREFIX/$RUID";
-fi
-
-#
 # Directory containing flag files used to pass on infos
 # from user env to root scripts
 #
@@ -165,34 +194,17 @@ FLAG_FILE_DIR="$VM_JOB_DIR/flags";
 FILESYSTEM_FLAG_FILE="$FLAG_FILE_DIR/.filesystype";
 
 #
-# Note: in the qsub wrapper, this file does not exist yet
+# Indicates whether to use a shared-fs or ram-disk for (local) VM images
 #
-USE_RAM_DISK=$(if [ -f "$FILESYSTEM_FLAG_FILE" ] && [ "$(cat $FILESYSTEM_FLAG_FILE)" == "$FILESYSTEM_TYPE_RD" ]; then echo 'true'; else echo 'false'; fi);
-
-#
-# File containing job submission aliases
-#
-ALIASES_FILE="$ABSOLUTE_PATH_CONFIG/aliases";
-
-#
-# initialize aliases mapping
-#
-declare -A ALIAS_MAP;
-
-# aliases file present ?
-if [ -f ALIASES_FILE ]; then
-  index=0;
-  while read line; do
-    ALIAS_MAP[$index]="$line";
-  index=$(($index + 1));
-  done < $ALIASES_FILE;
-  unset index;
-fi
+USE_RAM_DISK=$(\
+  if [ -f "$FILESYSTEM_FLAG_FILE" ] \
+      && [ "$(cat $FILESYSTEM_FLAG_FILE)" == "$FILESYSTEM_TYPE_RD" ]; then \
+    echo 'true'; else echo 'false'; fi);
 
 #
 # short name of local host
 #
-LOCALHOST=$(hostname -s);
+LOCALHOST="$(hostname -s)";
 
 #
 # Directory that contain all wrapper template files
@@ -208,7 +220,6 @@ VM_TEMPLATE_DIR="$VTORQUE_DIR/templates-vm";
 # Template (fragment), used to generate the cpu pinning file
 #
 PINNING_FILE="$VM_JOB_DIR/$LOCALHOST/pinning_frag.txt"; #DO NOT name it .xml
-
 
 
 #============================================================================#
@@ -244,20 +255,25 @@ SYS_LOG_FILE_RH="/var/log/messages";
 SYS_LOG_FILE_DEBIAN="/var/log/syslog";
 
 
-
 #============================================================================#
 #                                                                            #
-#                              QSUB WRAPPER                                  #
+#                                  VSUB                                      #
 #                                                                            #
 #============================================================================#
-
-
 
 #
-# Template files
+# User prologue wrapper template
 #
 SCRIPT_PROLOGUE_TEMPLATE="$TEMPLATE_DIR/vmPrologue.sh";
+
+#
+# User prologue.parallel template
+#
 SCRIPT_PROLOGUE_PARALLEL_TEMPLATE="$TEMPLATE_DIR/vmPrologue.parallel.sh";
+
+#
+# Job script wrapper template
+#
 JOB_SCRIPT_WRAPPER_TEMPLATE="$TEMPLATE_DIR/jobWrapper.sh";
 
 #
@@ -276,10 +292,18 @@ METADATA_TEMPLATE_REDHAT="$VM_TEMPLATE_DIR/metadata.redhat.yaml";
 METADATA_TEMPLATE_OSV="$VM_TEMPLATE_DIR/metadata.osv.yaml";
 
 #
-# qsub-wrapper output files
+# User prologue wrapper script (vsub output file)
 #
 SCRIPT_PROLOGUE="$VM_JOB_DIR/vmPrologue.sh";
+
+#
+# User prologue.parallel script (vsub output file)
+#
 SCRIPT_PROLOGUE_PARALLEL="$VM_JOB_DIR/vmPrologue.parallel.sh";
+
+#
+# Job script wrapper (vsub output file)
+#
 JOB_SCRIPT_WRAPPER="$VM_JOB_DIR/jobWrapper.sh";
 
 #
@@ -307,6 +331,21 @@ PBS_FLAG_PARAMETERS="f|F|h|I|n|V|x|X|z";
 #
 PBS_KV_PARAMETERS="a|A|b|c|C|d|D|e|j|k|K|l|L|m|M|N|o|p|P|q|r|S|t|u|v|w|W";
 
+#
+# initialize optional aliases mapping
+#
+declare -A ALIAS_MAP=();
+
+# aliases file present ?
+if [ -f "$ABSOLUTE_PATH_CONFIG/aliases" ]; then
+  index=0;
+  while read line; do
+    ALIAS_MAP[$index]="$line";
+    index=$(($index + 1));
+  done < "$ABSOLUTE_PATH_CONFIG/aliases";
+  unset index;
+fi
+
 
 #============================================================================#
 #                                                                            #
@@ -315,7 +354,7 @@ PBS_KV_PARAMETERS="a|A|b|c|C|d|D|e|j|k|K|l|L|m|M|N|o|p|P|q|r|S|t|u|v|w|W";
 #============================================================================#
 
 #
-# vm boot log
+# VM boot log
 #
 VMLOG_FILE_PREFIX="$VM_JOB_DIR/$LOCALHOST";
 
@@ -365,6 +404,27 @@ LOCKFILE="$FLAG_FILE_DIR/.remoteProcesses";
 # the host and corresponding error msg easily
 #
 ERROR_FLAG_FILE="$FLAG_FILE_DIR/.error";
+
+#
+# Flag file indicating debug mode.
+#
+FLAG_FILE_DEBUG="$FLAG_FILE_DIR/.debug"
+
+#
+# Flag file indicating verbose mode.
+#
+FLAG_FILE_TRACE="$FLAG_FILE_DIR/.trace"
+
+#
+# Flag file for the root prologue indicating whether to enable vRDMA.
+#
+FLAG_FILE_VRDMA="$FLAG_FILE_DIR/.vrdma";
+
+#
+# Flag file for the root prologue indicating whether to enable iocm.
+# Min/Max core count to use are stored inside this file.
+#
+FLAG_FILE_IOCM="$FLAG_FILE_DIR/.iocm";
 
 
 #-----------------------------------------------------------------------------
@@ -431,7 +491,6 @@ PBS_ENV_FILE_PREFIX="$VM_ENV_FILE_DIR"; #used this way => PBS_ENV_FILE=$PBS_ENV_
 COMPONENTS_DIR="$VTORQUE_DIR/components";
 
 
-
 #============================================================================#
 #                                                                            #
 #                                  IOcm                                      #
@@ -442,7 +501,6 @@ COMPONENTS_DIR="$VTORQUE_DIR/components";
 # location of iocm scripts
 #
 IOCM_SCRIPT_DIR="$COMPONENTS_DIR/iocm";
-
 
 
 #============================================================================#
@@ -457,7 +515,6 @@ IOCM_SCRIPT_DIR="$COMPONENTS_DIR/iocm";
 VRDMA_SCRIPT_DIR="$COMPONENTS_DIR/vrdma/";
 
 
-
 #============================================================================#
 #                                                                            #
 #                              SNAP MONITORING                               #
@@ -468,4 +525,3 @@ VRDMA_SCRIPT_DIR="$COMPONENTS_DIR/vrdma/";
 # location of snap management scripts
 #
 SNAP_SCRIPT_DIR="$COMPONENTS_DIR/snap";
-

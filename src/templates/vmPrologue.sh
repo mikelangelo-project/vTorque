@@ -661,21 +661,9 @@ _generateMetaDataFiles() {
       logErrorMsg "Something is wrong, the metaDataDisk '$metaDataDisk' already exists ?!";
     fi
 
-    if [ ${VM_PARAMS[$keyOne, 'DISTRO']} == "osv" ]; then
-      logTraceMsg "Creating OSv metaDataDisk.";
-      mkdir -p $metamataDiskDir;
-      local file2img=$(find "$VTORQUE_DIR/.." -type f -name file2img);
-      $file2img $metadataFile > $metaDataDisk;
-      res=$?;
-    elif [[ ${VM_PARAMS[$keyOne, 'DISTRO']} =~ $SUPPORTED_STANDARD_LINUX_GUESTS ]]; then
-      logTraceMsg "Creating standard linux guest metaDataDisk.";
-      mkdir -p $metamataDiskDir;
-      cloud-localds $metaDataDisk $metadataFile;
-      res=$?;
-    else
-      logErrorMsg "Unsupported OS: '${VM_PARAMS[$keyOne, 'DISTRO']}' !";
-      res=1;
-    fi
+    mkdir -p "$metamataDiskDir;"
+    cloud-localds "$metaDataDisk" "$metadataFile";
+    res=$?;
 
     # success ?
     [ $res -ne 0 ] \

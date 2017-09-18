@@ -114,6 +114,9 @@ if $KILL_USER_PROCESSES_AFTER_JOB; then
   pkill -u $USER_NAME;
 fi
 
+# remove all job related tmp files, created by vTorque
+cleanupTmpFiles;
+
 logInfoMsg "Root epilogue.parallel finished.";
 
 # print the consumed time in debug mode

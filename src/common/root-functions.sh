@@ -132,7 +132,7 @@ createRAMDisk() {
 _cleanUpSharedFS() {
   # running inside root epilogue ?
   if [ $# -eq 0 ] \
-      || [ "$1" != "rootNode" ]; then
+      || ! $1; then
     logDebugMsg "Skipping cleanup on sister node as we have a shared fs.";
   else # yes
     logDebugMsg "Cleaning up shared file system on root node '$LOCALHOST'.";
@@ -343,13 +343,6 @@ cleanUpVMs() {
   fi
 
   logDebugMsg "Destroyed ($vmNo) local VM, done.";
-
-  # clean up tmp files (images, etc)
-  if $USE_RAM_DISK; then
-    _cleanUpRAMDisk;
-  else
-    _cleanUpSharedFS $@;
-  fi
 
   # flush arp cache
   _flushARPcache;
@@ -727,5 +720,49 @@ function bootVMs() {
     fi
     logDebugMsg "VM is running.";
   done
+}
+
+
+#---------------------------------------------------------
+#
+# Removes all tmp files created by vTorque,
+# if not running in debug mode.
+#
+# I.e. all VM image files, metadata files, log, etc
+#
+cleanupTmpFiles() {
+
+  # clean up files on shared storage ?
+  if [ $# -eq 0 ]; then
+    cleanupSharedFS=false;
+  else
+    cleanupSharedFS=$1;
+  fi
+
+  # do not clean up in debug mode
+  if ! $DEBUG; then
+
+    # dir to clean up exists ?
+    if [ -d $VM_JOB_DIR ]; then
+      logWarnMsg "vTorque job tmp dir '$VM_JOB_DIR' does not exist.";
+    fi
+
+    # determine RUID for job
+    ruid="$(cat $RUID_CACHE_FILE)";
+    # reverse resolve symlink via RUID
+    ruidSymlink="$(find -L $VM_JOB_DIR_PREFIX/$RUID -samefile $VM_JOB_DIR_PREFIX/$JOBID 2>/dev/null | grep -v $VM_JOB_DIR_PREFIX/$RUID)";
+
+    # remove job dir
+    rm -Rf "$VM_JOB_DIR_PREFIX/$JOBID";
+    # remove symlink
+    rm -f "$ruidSymlink";
+
+    # remove local node's tmp file, like images
+    if $USE_RAM_DISK; then
+      _cleanUpRAMDisk;
+    else
+      _cleanUpSharedFS $cleanupSharedFS;
+    fi
+  fi
 }
 

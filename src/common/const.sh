@@ -332,6 +332,11 @@ PBS_FLAG_PARAMETERS="f|F|h|I|n|V|x|X|z";
 PBS_KV_PARAMETERS="a|A|b|c|C|d|D|e|j|k|K|l|L|m|M|N|o|p|P|q|r|S|t|u|v|w|W";
 
 #
+# Cache file that holds the job's RUID
+#
+RUID_CACHE_FILE="$VM_JOB_DIR/.ruid";
+
+#
 # initialize optional aliases mapping
 #
 declare -A ALIAS_MAP=();

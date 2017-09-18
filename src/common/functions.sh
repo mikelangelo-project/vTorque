@@ -198,7 +198,7 @@ isTimeoutReached() {
 
   # timeout reached ?
   if [ $timeout -lt $(expr $(date +%s) - $startDate) ]; then
-    msg="Timeout of '$timeout' seconds reached while waiting for remote processes to finish their work.!";
+    msg="Timeout of '$timeout' seconds reached while waiting for remote processes!";
     # timeout reached, abort
     if $doNotExit; then
       logWarnMsg "$msg" false;

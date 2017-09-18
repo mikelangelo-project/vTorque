@@ -1394,6 +1394,8 @@ if [ -n "${DISABLED_HOSTS_LIST-}" ] \
   exit 1;
 fi
 
+# cache RUID in job dir (to enable root epilogue to fetch it)
+echo $RUID > $RUID_CACHE_FILE;
 
 # debug log
 logDebugMsg "********************* BEGIN OF VSUB ************************";
@@ -1489,12 +1491,11 @@ exportFlags;
 # generate files, only ?
 if $DO_NOT_SUBMIT_JOB; then
 
-  local interactiveResReq;
   if $PBS_EXCLUSIVE_NODE_ALLOC \
-      && [ ! -n "$(echo $PARAMETERS_PBS_QSUB | grep naccesspolicy)" ]; then
-    interactiveResReq="-l naccesspolicy=uniqueuser $PARAMETERS_PBS_QSUB";
+      && [ ! -n "$(echo $PARAMETERS_CLEANED | grep naccesspolicy)" ]; then
+    interactiveResReq="-l naccesspolicy=uniqueuser $PARAMETERS_CLEANED";
   else
-    interactiveResReq=$PARAMETERS_CLEANED
+    interactiveResReq=$PARAMETERS_CLEANED;
   fi
 
   #yes
@@ -1504,7 +1505,7 @@ Skippping job submission." true;
   logInfoMsg "====================" true;
   logInfoMsg "1) Get an interactive job with cmd '$PBS_QSUB -I $interactiveResReq'" true;
   logInfoMsg "2) Create missing symlink with cmd: 'ln -s $VM_JOB_DIR $VM_JOB_DIR_PREFIX/\$PBS_JOBID'" true;
-  logInfoMsg "3) Re-execute the root-prologue with cmd: sudo /var/spool/torque/mom_priv/prologue \$PBS_JOBID $USER" true;
+  logInfoMsg "3) Re-execute the root-prologue with cmd: 'sudo /var/spool/torque/mom_priv/prologue \$PBS_JOBID $USER'" true;
   logInfoMsg "4) Then run the prologue script '$SCRIPT_PROLOGUE', only." true;
   logInfoMsg "5) And as last run the job script '$JOB_SCRIPT_WRAPPER'." true;
   res=0;
@@ -1577,7 +1578,7 @@ fi
 # successful job submission ?
 if [ $res -ne 0 ] \
     || [ -z ${jobID-} ] \
-    || [[ "$jobID" =~ failed ]]; then
+    || [[ failed =~ ${jobID-none} ]]; then
   # no, skip it
   jobID="";
   logDebugMsg "No jobID or job submission failed, cannot create RUID-2-JOBID linking.";

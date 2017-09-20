@@ -104,7 +104,11 @@ runScriptPreviouslyInPlace "$(basename ${BASH_SOURCE[0]})" $@;
 startSnapTask;
 
 # VM job ?
-if isVMJob; then
+if ! isVMJob; then
+  logDebugMsg "Bare-metal job detected.";
+else
+
+  logDebugMsg "VM job detected.";
 
   # setup vRDMA
   setUPvRDMA_P1;

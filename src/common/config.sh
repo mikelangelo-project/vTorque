@@ -302,13 +302,13 @@ DISK_DEFAULT="";
 # Default that is used in case there is no user defined value and it's enabled
 # in the global config
 #
-VRDMA_ENABLED_DEFAULT=true;
+VRDMA_ENABLED_DEFAULT=false;
 
 #
 # Default that is used in case there is no user defined value and it's enabled
 # in the global config
 #
-IOCM_ENABLED_DEFAULT=true;
+IOCM_ENABLED_DEFAULT=false;
 
 #
 # Default that is used in case there is no user defined value and it's enabled

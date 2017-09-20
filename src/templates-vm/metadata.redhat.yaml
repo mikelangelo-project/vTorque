@@ -49,7 +49,7 @@ bootcmd:
  # rename '/scratch' in VMs to '/workspace' and make it a hard requirement for images
  # for now support both via a symlink
  - rmdir /scratch
- - ln -s /workspace /scratch
+ - ln -sf /workspace /scratch
  #
  # create dirs for mount points
  #
@@ -76,7 +76,7 @@ __SW_PACKAGES__
 #
 mounts:
  - [ "__VM_NFS_HOME__/__USER_NAME__", /home/__USER_NAME__, "nfs", "rw,intr,noatime,nouser,auto", "0", "0" ]
- - [ "__VM_NFS_OPT__", /opt, "nfs", "rw,intr,noatime,nouser,auto", "0", "0" ]
+ - [ "__VM_NFS_OPT__", /opt-hpc, "nfs", "rw,intr,noatime,nouser,auto", "0", "0" ]
  - [ "__VM_NFS_WS__", /workspace, "nfs", "rw,intr,noatime,nouser,auto", "0", "0" ]
  # make PBS_NODEFILE available inside VM
  - [ "/var/spool/torque/aux", "/var/spool/torque/aux", "9p", "trans=virtio,version=9p2000.L,ro,chmod=0444,uid=0,guid=0", "0", "0" ]

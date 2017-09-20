@@ -212,7 +212,14 @@ prepareVMs() {
   fi
 
   # create flag file to indicate root process to boot VMs now
+  logDebugMsg "User prologue finished preparation, creating flag file '$FLAG_FILE_DIR/$LOCALHOST/.userPrologueDone'.";
   touch "$FLAG_FILE_DIR/$LOCALHOST/.userPrologueDone";
+  # success ?
+  if [ $# -ne 0 ]; then
+    logErrorMsg "Failed to create flag file '$FLAG_FILE_DIR/$LOCALHOST/.userPrologueDone' !";
+  else
+    logDebugMsg "Created flag file '$FLAG_FILE_DIR/$LOCALHOST/.userPrologueDone'.";
+  fi
 }
 
 

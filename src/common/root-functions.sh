@@ -74,6 +74,7 @@ checkSharedFS() {
     if [ ! $(mkdir -p $WS_DIR) ]; then
     logErrorMsg "Shared workspace dir '$WS_DIR' doesn't exist and cannot be created.";
     fi
+    # allow all users rw access to the workspace dir
     chmod 777 $WS_DIR;
   fi
 
@@ -519,8 +520,7 @@ setupIOCM() {
     # execute
     $IOCM_SCRIPT_DIR/iocm-start.sh;
   } || { #catch
-    logWarnMsg "IOcm cannot be started, skipping it.";
-    return -9;
+    logErrorMsg "IOcm cannot be started, aborting.";
   }
   res=$?;
   #logDebugMsg "IOcm setup return code: '$res'";
@@ -603,13 +603,21 @@ waitUntilJobDirIsAvailable() {
   # and we should run regardless of that dir
   startDate="$(date +%s)";
   cachedValue=$PRINT_TO_STDOUT;
+  cachedLogFile=$LOG_FILE;
   PRINT_TO_STDOUT=true;
+  LOG_FILE=/dev/null;
+  logInfoMsg "Checking if this is a VM job...\nPlease be patient, it may take up to '$NFS_TIMEOUT' sec.";
   while [ ! -e "$VM_JOB_DIR" ] \
     && ! isTimeoutReached $NFS_TIMEOUT $startDate true; do
     sleep 1;
-    logDebugMsg "Waiting for job dir symlink '$VM_JOB_DIR' to become available.."
+    logDebugMsg "Waiting for job dir symlink '$VM_JOB_DIR' to become available..";
   done
-  PRINT_TO_STDOUT=$cachedValue;
+  # VM job ?
+  if [ -e "$VM_JOB_DIR" ]; then
+    # yes, revert logfile to original value
+    PRINT_TO_STDOUT=$cachedValue;
+    LOG_FILE=$cachedLogFile;
+  fi
 }
 
 
@@ -637,7 +645,7 @@ function spawnProcess() {
     logDebugMsg "Waiting for flag file '$FLAG_FILE_DIR/$LOCALHOST/.userPrologueDone' to become available..";
     while [ ! -e "$FLAG_FILE_DIR/$LOCALHOST/.userPrologueDone" ]; do
       sleep 1;
-      logTraceMsg "Waiting for flag file '$FLAG_FILE_DIR/$LOCALHOST/.userPrologueDone' to become available..";
+      logDebugMsg "Waiting for flag file '$FLAG_FILE_DIR/$LOCALHOST/.userPrologueDone' to become available..";
       # timeout reached ? (if yes, we abort)
       isTimeoutReached $PROLOGUE_TIMEOUT $startDate;
       # cancelled meanwhile ?
@@ -653,8 +661,11 @@ function spawnProcess() {
 
     # indicate work is done
     su - $USER_NAME -c "touch '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone'";
-    [ $? -ne 0 ] \
-      && logErrorMsg "Failed to create flag file '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone' and change owner to '$USER_NAME'.";
+    if [ $? -ne 0 ]; then
+      logErrorMsg "Failed to create flag file '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone' and change owner to '$USER_NAME'.";
+    else
+    logDebugMsg "Flag file '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone' has been created.";
+    fi
 
   } & return 0;
 }

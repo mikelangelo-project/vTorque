@@ -65,7 +65,7 @@ numad (if automatic vCPU pinning is desired)
 * command `arp -an` is executable by users (used to determine IP of VMs)
 
 Also folders on a shared file-system are needed for
-  * the image pool dir `VM_IMAGE_DIR`
+  * the image pool dir `VM_IMG_DIR`
   * user homes `VM_NFS_HOME`
   * a fast workspace for intermediate data `VM_NFS_WS`
   * cluster wide software installations `VM_NFS_OPT`
@@ -304,8 +304,8 @@ For all [vsub](user.md#vsub-arguments) command line options, defaults can be def
 | `RAM_DEFAULT`                | n/a                         | Default RAM in MB per VM, mind `HOST_OS_RAM_MB`. |
 | `VMS_PER_NODE_DEFAULT`      | `1`                        | Default count of VMs per node, in case of NUMA domains (not managed by Torque) higher count than one may be beneficial. |
 | `DISK_DEFAULT`               | n/a                         | Persistent, optional disk mounted at the first VM (rank 0). |
-| `VRDMA_ENABLED_DEFAULT`     | `true`                     | Dis/enable vRDMA if parameter is not provided by user. |
-| `IOCM_ENABLED_DEFAULT`      | `true`                     | Dis/enable IOcm if parameter is not provided by user. |
+| `VRDMA_ENABLED_DEFAULT`     | `false`                     | Dis/enable vRDMA if parameter is not provided by user. |
+| `IOCM_ENABLED_DEFAULT`      | `false`                     | Dis/enable IOcm if parameter is not provided by user. |
 | `IOCM_MIN_CORES_DEFAULT`    | `1`                         | Minimum of cores reserved for IOcm, consider `HOST_OS_CORE_COUNT` and `VCPUS_DEFAULT`. |
 | `IOCM_MAX_CORES_DEFAULT`    | `4`                         | Maximum of cores reserved for IOcm, consider `HOST_OS_CORE_COUNT` and `VCPUS_DEFAULT`. |
 

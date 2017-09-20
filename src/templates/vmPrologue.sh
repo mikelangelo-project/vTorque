@@ -763,7 +763,7 @@ _copyImageFile() {
     res=$?;
     logTraceMsg "Output of transfer-cmd on node '$computeNode':\n\t$output";
   fi
-  logTraceMsg "Transfer-cmd on node '$computeNode' completed with result: '$res'";
+  logDebugMsg "Transfer-cmd on node '$computeNode' completed with result: '$res'";
 
   # check return code
   if [ $res -eq 255 ]; then
@@ -1159,10 +1159,10 @@ createVNodeFile() {
     # previously to this function, takes place after the boot and wait phase
     vmIPsFile=$VM_IP_FILE_PREFIX/$nodeName/$VM_IP_FILE_NAME;
 
-   # wait for file to appear
+    # wait for file to appear
     while [ ! -f "$vmIPsFile" ]; do
       sleep 1;
-      logDebugMsg "Waiting for flag file '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone' to become available..";
+      logDebugMsg "Waiting for VM hostfile '$vmIPsFile' to become available..";
       # timeout reached ? (if yes, we abort)
       isTimeoutReached $NFS_TIMEOUT $startDate true \
         && logErrorMsg "Node's '$nodeName' vmIPs file '$vmIPsFile' cannot be found!";

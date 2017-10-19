@@ -87,7 +87,7 @@ logTraceMsg "~~~~~~~~~~Environment_Start~~~~~~~~~~\n$(env)\n~~~~~~~~~~~Environme
 if isVMJob; then
 
   # clear up vRDMA config
-  tearDownvRDMA_P1;
+  tearDownvRDMA;
 
   # clear up IOcm config
   teardownIOcm;

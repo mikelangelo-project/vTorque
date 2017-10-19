@@ -104,17 +104,17 @@ RAMDISK_DIR="/ramdisk";
 #
 # NFS export for VM's "/home"
 #
-VM_NFS_HOME="nfs-server.my-domain.com:/nfs/homes/mikelangelo";
+VM_NFS_HOME="nfs-server.my-domain.com:/nfs/home";
 
 #
 # NFS export for VM's "/workspace" (fast intermediate workspace, e.g. Lustre)
 #
-VM_NFS_WS="nfs-server.my-domain.com:/storage/mikelangelo/ssd_scratch";
+VM_NFS_WS="nfs-server.my-domain.com:/fast_storage/workspace";
 
 #
 # NFS export for VM's "/opt"
 #
-VM_NFS_OPT="nfs-server.my-domain.com:/nfs/shared-opt/mikelangelo";
+VM_NFS_OPT="nfs-server.my-domain.com:/nfs/shared-opt";
 
 #
 # Full path to arp binary on the nodes.

@@ -670,7 +670,7 @@ _generateMetaDataFiles() {
       logErrorMsg "Something is wrong, the metaDataDisk '$metaDataDisk' already exists ?!";
     fi
 
-    mkdir -p "$metamataDiskDir;"
+    mkdir -p "$metamataDiskDir";
     cloud-localds "$metaDataDisk" "$metadataFile";
     res=$?;
 
@@ -934,6 +934,7 @@ _generateDomainXML() {
     sed -i "s,__VM_DIR__,$VM_DIR,g" $domainXMLtmpFile;
 
     # vrdma
+    sed -i "s,__VM_JOB_DIR__,$VM_JOB_DIR,g" $domainXMLtmpFile;
     sed -i "s,__HOSTNAME__,$LOCALHOST,g" $domainXMLtmpFile;
     sed -i "s,__JOBID__,$JOBID,g" $domainXMLtmpFile;
     sed -i "s,__VM_NO__,$number,g" $domainXMLtmpFile;
@@ -1183,8 +1184,8 @@ createVNodeFile() {
     while [ ! -f "$vmIPsFile" ]; do
       sleep 1;
       logDebugMsg "Waiting for VM hostfile '$vmIPsFile' to become available..";
-      # timeout reached ? (if yes, we abort)
-      isTimeoutReached $NFS_TIMEOUT $startDate true \
+      # timeout reached for SSH ? (if yes, we abort)
+      isTimeoutReached $TIMEOUT $startDate true \
         && logErrorMsg "Node's '$nodeName' vmIPs file '$vmIPsFile' cannot be found!";
     done
 

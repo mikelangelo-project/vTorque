@@ -45,7 +45,8 @@
 #
 #=============================================================================
 
-
+# time measurements
+START=$(date +%s.%N);
 
 #============================================================================#
 #                                                                            #
@@ -222,46 +223,13 @@ usage() {
   $PBS_QSUB -Ä /tmp/qsubfaketmpjob 2>&1 | \
     grep -v 'invalid option' | \
     grep -v '\[exiting\]' | \
-    sed 's,\[script\],\n    [ -listImages | [[-gf] -vm <vm_parameters> [script]],';
+    sed 's,\[script\],\n    [[-gf] -vm <vm_parameters> [script]],';
   rm -f /tmp/qsubfaketmpjob;
   if $DEBUG \
       && [ $# -ge 2 ]; then
     logWarnMsg "Invalid value '$2' for key '$1' found, corresponding RegExpr is: '$3', skipping it.";
   fi
   exit 1;
-}
-
-
-#---------------------------------------------------------
-#
-# Prints list of images available in the global VM_IMG_DIR
-#
-listImages() {
-
-  local imagesOutputStr;
-  local length;
-  local tabs;
-
-  imagesOutputStr="\n\t+++ Images available for job submission +++\n";
-  imagesOutputStr="$imagesOutputStr================================================================\n";
-  imagesOutputStr="$imagesOutputStr Name\t\t\t\t\t\t\t| Size";
-  imagesOutputStr="$imagesOutputStr\n----------------------------------------------------------------";
-
-  for imageFile in $(ls $VM_IMG_DIR); do
-    length=${#imageFile};
-    tabs="";
-    # determine count of tabs
-    while [ $length -lt $MAX_LENGTH ]; do
-      tabs="$tabs\t";
-      length=$(($length + $TAB_WIDTH));
-    done
-    # add line for image
-    imagesOutputStr="$imagesOutputStr\n ${imageFile}${tabs}| $(du -h $VM_IMG_DIR/$imageFile | cut -f1)";
-  done
-
-  imagesOutputStr="$imagesOutputStr\n================================================================\n";
-  echo -e $imagesOutputStr;
-  exit 0;
 }
 
 
@@ -381,10 +349,20 @@ is expected.\nProvided params are: '$@'" 2;
         fi
       # is it RAM ?
       elif [ "$key" == "RAM" ]; then
-        value=$(convertRAM $value);
+        value=$(_convertRAMtoMB $value);
       # is it UNCLOT IVSHMEM ?
       elif [ "$key" == "UNCLOT_SHMEM" ]; then
-        value=$(convertRAM $value);
+        value=$(_convertRAMtoMB $value);
+      # is it a boolean, e.g. UNCLOT or VRDMA or IOCM ?
+      elif [[ "$key" =~ ^(UNCLOT|VRDMA|IOCM)$ ]]; then
+        # convert string to boolean
+        if [[ "$value" =~ ^(disabled|Disabled|DISABLED|false|False|FALSE|no|No|NO|1)$ ]]; then
+          value='false';
+        elif [[ "$value" =~ ^(auto|enabled|Enabled|ENABLED|true|True|TRUE|yes|Yes|YES|0)$ ]]; then
+          value='true';
+        else
+          logErrorMsg "Invalid value for argument '-vm $key=<value>' provided, boolean expected.";
+        fi
       elif [ $key == "VCPU_PINNING" ]; then
         # check if it is a boolean or a mapping file
         if [[ "$value" =~ ^(disabled|Disabled|DISABLED|false|False|FALSE|no|No|NO|1)$ ]]; then
@@ -755,7 +733,7 @@ until there's an 'EOF'.\nPress 'ctrl+c' if this is not what you want";
 # Converts given amount of RAM requested for each VM
 # to MB.
 #
-_convertRAM() {
+_convertRAMtoMB() {
 
   arg=$1;
 
@@ -814,10 +792,7 @@ parseParameter() {
     # job script
   fi
 
-  # are there any '-vm ..' or '-listImages' requests on the cmd line provided ?
-  if [[ "${params[@]}" =~ -listImages ]]; then
-      listImages;
-  elif [[ "${params[@]}" =~ -vm\  ]]; then # yes
+  if [[ "${params[@]}" =~ -vm\  ]]; then # yes
     VMJOB_REQUESTED=true;
     logDebugMsg "Found '-vm' parsing cmd line arguments for VM resource requests.";
     _parseVMparameters $params;

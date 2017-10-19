@@ -40,6 +40,7 @@
 #============================================================================#
 #                                                                            #
 #                          SCRIPT CONFIGURATION                              #
+#                              DO NOT MODIFY                                 #
 #                                                                            #
 #============================================================================#
 
@@ -122,8 +123,14 @@ _configureVMnetworking() {
   echo -n "Name server IP: ";
   read NAME_SERVER;
 
-  echo -n "NFS server IP: ";
-  read NFS_SERVER;
+  echo -n "NFS 'server:/path' for \$HOME: ";
+  read NFS_HOME;
+
+  echo -n "NFS 'server:/path' for '/opt': ";
+  read NFS_OPT;
+
+  echo -n "NFS 'server:/path' for intermediate workspace: ";
+  read VM_NFS_WS;
 
   echo -n "NTP server (1/2) IP: ";
   read NTP_SERVER_1;
@@ -136,6 +143,9 @@ _configureVMnetworking() {
   sed -i -e "s,SEARCH_DOMAIN=.*,SEARCH_DOMAIN=\"$SEARCH_DOMAIN\";,g" $VTORQUE_CONFIG_FILE;
   sed -i -e "s,NTP_SERVER_1=.*,NTP_SERVER_1=\"$NTP_SERVER_1\";,g" $VTORQUE_CONFIG_FILE;
   sed -i -e "s,NTP_SERVER_2=.*,NTP_SERVER_2=\"$NTP_SERVER_1\";,g" $VTORQUE_CONFIG_FILE;
+  sed -i -e "s,VM_NFS_HOME=.*,VM_NFS_HOME=\"$NFS_HOME\";,g" $VTORQUE_CONFIG_FILE;
+  sed -i -e "s,VM_NFS_OPT=.*,VM_NFS_OPT=\"$NFS_OPT\";,g" $VTORQUE_CONFIG_FILE;
+  sed -i -e "s,VM_NFS_WS=.*,VM_NFS_WS=\"$NFS_WS\";,g" $VTORQUE_CONFIG_FILE;
 
   echo "VM networking settings applied.";
 }
@@ -146,7 +156,7 @@ _configureVMnetworking() {
 # prints out available targets
 #
 usage() {
-  echo "usage: $0 [--prefix|-c <PREFIX>] [--uninstall|-u]";
+  echo "usage: $0 [--prefix|-p <PREFIX>] [--uninstall|-u]";
 }
 
 

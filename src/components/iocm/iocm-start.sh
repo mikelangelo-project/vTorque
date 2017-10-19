@@ -42,7 +42,7 @@ shopt -s expand_aliases;
 
 # source the config and common functions
 IOCM_ABSOLUTE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
-source "$IOCM_ABSOLUTE_PATH/iocm-common.sh" $@;
+source "$IOCM_ABSOLUTE_PATH/iocm-common.sh";
 
 
 

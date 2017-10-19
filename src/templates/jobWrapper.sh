@@ -387,7 +387,7 @@ $(curl --connect-timeout 2 -X GET http://$FIRST_VM:8000/file//pbs_vm_nodefile?op
   local myEnvVars=$(set | grep "^PBS_");
   local key;
   local value;
-  for key_val in $MY_ENV_VARS; do
+  for key_val in $myEnvVars; do
     # allow '=' in value
     key=$(echo "$key_val" | sed 's/=.*$//')
     value=$(echo "$key_val" | sed 's/^[^=]*=//')

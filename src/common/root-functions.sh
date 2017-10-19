@@ -142,7 +142,8 @@ _cleanUpSharedFS() {
       logErrorMsg "Cannot clean shared file system '$SHARED_FS_JOB_DIR', it is in use.";
     fi
     # clean up the image files for the local node
-    ! $DEBUG && rm -rf $SHARED_FS_JOB_DIR/$LOCALHOST;
+    ! $DEBUG \
+      && rm -rf $SHARED_FS_JOB_DIR/$LOCALHOST;
   fi
 }
 
@@ -156,7 +157,7 @@ _cleanUpRAMDisk() {
   if [ -n "$(lsof | grep $RAMDISK)" ]; then
     # print info
     logErrorMsg "RAMdisk '$RAMDISK' is in use.";
-  elif [ ! $DEBUG ]; then
+  elif ! $DEBUG; then
     umount $RAMDISK;
     rm -Rf $RAMDISK;
   fi
@@ -339,7 +340,7 @@ cleanUpVMs() {
   done
 
   if $PARALLEL; then
-    # TODO wait for VMs to stop
+    # TODO wait for VMs to stop (?)
      :
   fi
 
@@ -439,19 +440,18 @@ stopSnapTask() {
 
 #---------------------------------------------------------
 #
-# this function sets up the environment to use shiquings prototype 1
-# $1 is the IP address used for the dpdk bridge
+# Sets up vRDMA.
 #
-setUPvRDMA_P1() {
+setUPvRDMA() {
 
   # enabled by admins (=config option) and requested by user (=flag file) ?  
   if ! $VRDMA_ENABLED \
       || [ ! -f "$FLAG_FILE_VRDMA" ]; then
-    logDebugMsg "vRDMA disabled, skipping setup.";
+    logInfoMsg "vRDMA disabled, skipping setup.";
     return 0;
   # is the local node configured to be available for vRDMA ?
   elif (! [[ "$LOCALHOST" =~ ^$VRDMA_NODES$ ]]); then
-    logDebugMsg "Node is not defined as vRDMA node, skipping setup.";
+    logWarnMsg "Node is not defined as vRDMA node, skipping setup.";
     return 0;
   fi
 
@@ -461,8 +461,7 @@ setUPvRDMA_P1() {
     # execute
     $VRDMA_SCRIPT_DIR/vrdma-start.sh;
   } || { #catch
-    logWarnMsg "vRDMA cannot be started, skipping it.";
-    return -9;
+    logErrorMsg "vRDMA cannot be started, aborting.";
   }
   res=$?;
   #logDebugMsg "vRDMA setup return code: '$res'";
@@ -474,16 +473,16 @@ setUPvRDMA_P1() {
 #
 # this function tear-down shiquing prototype 1
 #
-tearDownvRDMA_P1() {
+tearDownvRDMA() {
 
   # enabled by admins (=config option) and requested by user (=flag file) ?  
   if ! $VRDMA_ENABLED \
       || [ ! -f "$FLAG_FILE_VRDMA" ]; then
-    logDebugMsg "vRDMA disabled, skipping tear down.";
+    logInfoMsg "vRDMA disabled, skipping tear down.";
     return 0;
   # is the local node configured to be available for vRDMA ?
   elif (! [[ "$LOCALHOST" =~ ^$VRDMA_NODES$ ]]); then
-    logDebugMsg "Node is not defined as vRDMA node, skipping tear down.";
+    logWarnMsg "Node is not defined as vRDMA node, skipping tear down.";
     return 0;
   fi
 
@@ -510,11 +509,11 @@ setupIOCM() {
   # enabled by admins (=config option) and requested by user (=flag file) ?  
   if ! $IOCM_ENABLED \
       || [ ! -f "$FLAG_FILE_IOCM" ]; then
-    logDebugMsg "IOCM disabled, skipping setup.";
+    logInfoMsg "IOCM disabled, skipping setup.";
     return 0;
   # is the local node configured to be available for vRDMA ?
   elif (! [[ "$LOCALHOST" =~ ^$IOCM_NODES$ ]]); then
-    logDebugMsg "Node is not defined as IOCM node, skipping setup.";
+    logWarnMsg "Node is not defined as IOCM node, skipping setup.";
     return 0;
   fi
 
@@ -541,11 +540,11 @@ teardownIOcm() {
   # enabled by admins (=config option) and requested by user (=flag file) ?  
   if ! $IOCM_ENABLED \
       || [ ! -f "$FLAG_FILE_IOCM" ]; then
-    logDebugMsg "IOCM disabled, skipping tear down.";
+    logInfoMsg "IOCM disabled, skipping tear down.";
     return 0;
   # is the local node configured to be available for vRDMA ?
   elif (! [[ "$LOCALHOST" =~ ^$IOCM_NODES$ ]]); then
-    logDebugMsg "Node is not defined as IOCM node, skipping tear down.";
+    logWarnMsg "Node is not defined as IOCM node, skipping tear down.";
     return 0;
   fi
 

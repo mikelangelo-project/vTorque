@@ -45,7 +45,7 @@ shopt -s expand_aliases;
 
 # source the config and common functions
 SNAP_ABSOLUTE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
-source "$SNAP_ABSOLUTE_PATH/snap-common.sh" $@;
+source "$SNAP_ABSOLUTE_PATH/snap-common.sh";
 
 
 

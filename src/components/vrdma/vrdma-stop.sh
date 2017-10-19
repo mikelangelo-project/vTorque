@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Copyright 2016-2017 HLRS, University of Stuttgart
-# Copyright 2016 Huawei Technologies Co., Ltd.
+# Copyright 2016-2017 Huawei Technologies Co., Ltd.
 #
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,7 +46,7 @@ shopt -s expand_aliases;
 
 # source the config and common functions
 VRDMA_ABSOLUTE_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)";
-source "$VRDMA_ABSOLUTE_PATH/vrdma-common.sh" $@;
+source "$VRDMA_ABSOLUTE_PATH/vrdma-common.sh";
 
 
 
@@ -59,39 +59,75 @@ source "$VRDMA_ABSOLUTE_PATH/vrdma-common.sh" $@;
 
 #---------------------------------------------------------
 #
-# Stops vRDMA (OVS and DHCP services)
+# Removes all kernel modules that were loaded by vRDMA.
 #
-stopQEMU() {
-
-  # We need to make sure that all QEMU processes are terminated,
-  # as there might be hanging processes which cannot be stopped by exiting libvirt
-  logDebugMsg "Stopping qemu."
-  [ -n '$(pidof qemu-system-x86_64)' ] && killall qemu-system-x86_64;
+# Note:
+#  Overlaps with previously loaded modules are not relevant
+#  as the original list has been cached and will be restored.
+#
+removeKernelModules() {
+  /sbin/rmmod vhost;
+  /sbin/rmmod vhost_hyv;
+  /sbin/rmmod mlx4_ib;
+  /sbin/rmmod rdma_cm;
+  /sbin/rmmod rdma_ucm;
+  /sbin/rmmod vhost_rdmacm;
 }
 
 
 #---------------------------------------------------------
 #
-# Stops all OVS services
+# Loads all kernel modules that were in place before.
 #
-stopOVSservices() {
-  #stop services
-  logDebugMsg "Stopping OVS services.";
-  [ -n '$(pidof ovs-vswitchd)' ] && killall ovs-vswitchd;
-  [ -n '$(pidof qemu-system-x86_64)' ] && killall ovsdb-server;
+reloadOrigModules() {
+  for line in $(cat $VM_JOB_DIR/$LOCALHOST/kernel_modules); do
+    moduleName="$(echo $line | xargs | cut -d' ' -f1)";
+    /sbin/modprobe $moduleName;
+    # success ?
+    if [ $? -ne 0 ]; then
+      logErrorMsg "Restoring previously loaded kernel module '$moduleName' failed!";
+    fi
+  done
 }
 
 
 #---------------------------------------------------------
 #
-# Stops the DHCP server dedicated to the vRDMA-bridge.
+# Restores IB port mode.
 #
-stopDHCPserver() {
-  # stop DHCP server
-  logDebugMsg "Stopping local DHCP server.";
-  service isc-dhcp-server stop;
+restoreIBmode() {
+
+  # ensure we have 1 arg
+  if [ $# -ne 1 ]; then
+    logErrorMsg "Function 'restoreIBmode' expects '1' parameters, provided '$#'\nProvided params are: '$@'" 2;
+  fi
+  ibTargetPort=$1;
+
+  # read the cached mode to apply
+  ibTargetMode="$(cat $VM_JOB_DIR/$LOCALHOST/ib_mode_port$ibTargetPort)";
+  switchIBmode $ibTargetPort $ibTargetMode;
 }
 
+
+#---------------------------------------------------------
+#
+# Tears down the vRDMA bridge.
+#
+tearDownBridge() {
+
+  # release assigned IP
+  /sbin/ifconfig $VRDMA_NIC_NAME 0; 
+  # disable IPoIB for the ib port
+  /sbin/rmmod ib_ipoib;
+
+  # release IPs
+  /sbin/ifconfig $VRDMA_ROCE_PORT 0;
+  /sbin/ifconfig $VRDMA_BRIDGE 0;
+
+  # remove linux bridge and its roce port
+  /sbin/brctl delif $VRDMA_BRIDGE $VRDMA_ROCE_PORT;
+  /sbin/brctl delbr $VRDMA_BRIDGE;
+}
 
 
 #============================================================================#
@@ -100,23 +136,24 @@ stopDHCPserver() {
 #                                                                            #
 #============================================================================#
 
+logInfoMsg "Tearing down vRDMA..";
+
 # ensure everything is known / in place
 checkVRDMAPreconditions;
 
-# stop qemu
-stopQEMU;
+# tear down bridge used by vRDMA
+tearDownBridge;
 
-# stop all OVS services
-stopOVSservices;
+# remove vRDMA modules
+removeKernelModules;
 
-# remove vRDMA bridge
-removeBridge;
+# restore previous IB port mode
+restoreIBmode $IB_TARGET_PORT;
 
-# clean up files
-cleanupFiles;
+# restore previously loaded kernel modules
+reloadOrigModules;
 
-# stop DHCP server
-stopDHCPserver;
+logInfoMsg "Tearing down vRDMA done.";
 
 # done
 exit 0;

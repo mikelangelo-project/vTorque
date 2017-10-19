@@ -111,7 +111,7 @@ else
   logDebugMsg "VM job detected.";
 
   # setup vRDMA
-  setUPvRDMA_P1;
+  setUPvRDMA;
 
   # ram disk or shared FS ?
   if $USE_RAM_DISK; then

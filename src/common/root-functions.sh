@@ -664,7 +664,7 @@ function spawnProcess() {
     if [ $? -ne 0 ]; then
       logErrorMsg "Failed to create flag file '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone' and change owner to '$USER_NAME'.";
     else
-    logDebugMsg "Flag file '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone' has been created.";
+      logDebugMsg "Flag file '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone' has been created.";
     fi
 
   } & return 0;
@@ -761,7 +761,7 @@ cleanupTmpFiles() {
     # determine RUID for job
     ruid="$(cat $RUID_CACHE_FILE)";
     # reverse resolve symlink via RUID
-    ruidSymlink="$(find -L $VM_JOB_DIR_PREFIX/$RUID -samefile $VM_JOB_DIR_PREFIX/$JOBID 2>/dev/null | grep -v $VM_JOB_DIR_PREFIX/$RUID)";
+    ruidSymlink="$(find -L $VM_JOB_DIR_PREFIX/$ruid -samefile $VM_JOB_DIR_PREFIX/$JOBID 2>/dev/null | grep -v $VM_JOB_DIR_PREFIX/$ruid)";
 
     # remove job dir
     rm -Rf "$VM_JOB_DIR_PREFIX/$JOBID";

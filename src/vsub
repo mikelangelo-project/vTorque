@@ -1395,6 +1395,7 @@ if [ -n "${DISABLED_HOSTS_LIST-}" ] \
 fi
 
 # cache RUID in job dir (to enable root epilogue to fetch it)
+mkdir -p $(dirname $RUID_CACHE_FILE);
 echo $RUID > $RUID_CACHE_FILE;
 
 # debug log

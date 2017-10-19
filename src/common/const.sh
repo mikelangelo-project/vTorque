@@ -517,7 +517,7 @@ IOCM_SCRIPT_DIR="$COMPONENTS_DIR/iocm";
 #
 # location of vRDMA management scripts
 #
-VRDMA_SCRIPT_DIR="$COMPONENTS_DIR/vrdma/";
+VRDMA_SCRIPT_DIR="$COMPONENTS_DIR/vrdma";
 
 
 #============================================================================#

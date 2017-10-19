@@ -53,7 +53,7 @@ bootcmd:
 #
 mounts:
  - [ "__VM_NFS_HOME__/__USER_NAME__", /home/__USER_NAME__, "nfs", "rw,intr,noatime,uid=__USER_ID__,gid=__GROUP_ID__", "0", "0" ]
- - [ "__VM_NFS_OPT__", /opt, "nfs", "rw,intr,noatime,uid=__USER_ID__,gid=__GROUP_ID__", "0", "0" ]
+ - [ "__VM_NFS_OPT__", /opt-hpc, "nfs", "rw,intr,noatime,uid=__USER_ID__,gid=__GROUP_ID__", "0", "0" ]
  - [ "__VM_NFS_WS__", /workspace, "nfs", "rw,intr,noatime,uid=__USER_ID__,gid=__GROUP_ID__", "0", "0" ]
 
 

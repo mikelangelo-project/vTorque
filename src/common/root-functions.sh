@@ -444,13 +444,14 @@ stopSnapTask() {
 #
 setUPvRDMA_P1() {
 
-  # enabled ?
-  enabled=$($VRDMA_ENABLED && [ -f "$FLAG_FILE_VRDMA" ]);
-
-  # does the local node support the required feature ?
-  if ! $enabled \
-      || ! [[ "$LOCALHOST" =~ ^$VRDMA_NODES$ ]]; then
+  # enabled by admins (=config option) and requested by user (=flag file) ?  
+  if ! $VRDMA_ENABLED \
+      || [ ! -f "$FLAG_FILE_VRDMA" ]; then
     logDebugMsg "vRDMA disabled, skipping setup.";
+    return 0;
+  # is the local node configured to be available for vRDMA ?
+  elif (! [[ "$LOCALHOST" =~ ^$VRDMA_NODES$ ]]); then
+    logDebugMsg "Node is not defined as vRDMA node, skipping setup.";
     return 0;
   fi
 
@@ -475,15 +476,17 @@ setUPvRDMA_P1() {
 #
 tearDownvRDMA_P1() {
 
-  # enabled ?
-  enabled=$($VRDMA_ENABLED && [ -f "$FLAG_FILE_VRDMA" ]);
-
-  # enabled and does the local node support the required feature ?
-  if ! $enabled \
-      || ! [[ "$LOCALHOST" =~ ^$VRDMA_NODES$ ]]; then
+  # enabled by admins (=config option) and requested by user (=flag file) ?  
+  if ! $VRDMA_ENABLED \
+      || [ ! -f "$FLAG_FILE_VRDMA" ]; then
     logDebugMsg "vRDMA disabled, skipping tear down.";
     return 0;
+  # is the local node configured to be available for vRDMA ?
+  elif (! [[ "$LOCALHOST" =~ ^$VRDMA_NODES$ ]]); then
+    logDebugMsg "Node is not defined as vRDMA node, skipping tear down.";
+    return 0;
   fi
+
   # try
   {
     # execute
@@ -504,13 +507,14 @@ tearDownvRDMA_P1() {
 #
 setupIOCM() {
 
-  # enabled ?
-  enabled=$($IOCM_ENABLED && [ -f "$FLAG_FILE_IOCM" ]);
-
-  # does the local node support the required feature ?
-  if ! $enabled \
-      || ! [[ "$LOCALHOST" =~ ^$IOCM_NODES$ ]]; then
+  # enabled by admins (=config option) and requested by user (=flag file) ?  
+  if ! $IOCM_ENABLED \
+      || [ ! -f "$FLAG_FILE_IOCM" ]; then
     logDebugMsg "IOCM disabled, skipping setup.";
+    return 0;
+  # is the local node configured to be available for vRDMA ?
+  elif (! [[ "$LOCALHOST" =~ ^$IOCM_NODES$ ]]); then
+    logDebugMsg "Node is not defined as IOCM node, skipping setup.";
     return 0;
   fi
 
@@ -534,15 +538,17 @@ setupIOCM() {
 #
 teardownIOcm() {
 
-  # enabled ?
-  enabled=$($IOCM_ENABLED && [ -f "$FLAG_FILE_IOCM" ]);
-
-  # enabled and does the local node support the required feature ?
-  if ! $enabled \
-      || ! [[ "$LOCALHOST" =~ ^$IOCM_NODES$ ]]; then
+  # enabled by admins (=config option) and requested by user (=flag file) ?  
+  if ! $IOCM_ENABLED \
+      || [ ! -f "$FLAG_FILE_IOCM" ]; then
     logDebugMsg "IOCM disabled, skipping tear down.";
     return 0;
+  # is the local node configured to be available for vRDMA ?
+  elif (! [[ "$LOCALHOST" =~ ^$IOCM_NODES$ ]]); then
+    logDebugMsg "Node is not defined as IOCM node, skipping tear down.";
+    return 0;
   fi
+
   # try
   {
     # execute

@@ -377,6 +377,9 @@ is expected.\nProvided params are: '$@'" 2;
         if [ ! -f "$value" ]; then
           logErrorMsg "The given argument '$key' is not a valid file '$value' !";
         fi
+      # is it RAM ?
+      elif [ "$key" == "RAM" ]; then
+        value=$(convertRAM $value);
       elif [ $key == "VCPU_PINNING" ]; then
         # check if it is a boolean or a mapping file
         if [[ "$value" =~ ^(disabled|Disabled|DISABLED|false|False|FALSE|no|No|NO|1)$ ]]; then
@@ -741,6 +744,31 @@ until there's an 'EOF'.\nPress 'ctrl+c' if this is not what you want";
   done
   # trace log
   logTraceMsg "Tmp file contents:\n-----\n$(cat $TMP_JOB_SCRIPT)\n----";
+}
+
+
+#---------------------------------------------------------
+#
+# Converts given amount of RAM requested for each VM
+# to MB.
+#
+_convertRAM() {
+
+  arg=$1;
+
+  if [[ "$arg" =~ K$ ]]; then
+    arg=$(echo $arg | cut -d'K' -f1);
+    arg=$(($arg * 1024));
+  elif [[ "$arg" =~ M$ ]]; then
+    arg=$(echo $arg | cut -d'M' -f1);
+  elif [[ "$arg" =~ G$ ]]; then
+    arg=$(echo $arg | cut -d'G' -f1);
+    arg=$(($arg / 1024));
+  else
+    logErrorMsg "Invalid value for RAM='$arg' !";
+  fi
+
+  echo $arg;
 }
 
 

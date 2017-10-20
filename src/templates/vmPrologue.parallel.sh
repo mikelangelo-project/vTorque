@@ -200,8 +200,8 @@ prepareVMs() {
     vHostName=$(grep 'hostname: ' $metadataFile | cut -d' ' -f2);
 
     # create the dir that will be shared with VM
-    logDebugMsg "Creating dir '$VM_NODE_FILE_DIR' for VM's nodefile.";
-    mkdir -p "$VM_ENV_FILE_DIR/$LOCALHOST/$vHostName" \
+    logDebugMsg "Creating dir '$VM_NODEFILE_DIR' for VM's nodefile.";
+    mkdir -p "$PBS_ENV_FILE_PREFIX/$LOCALHOST/$vHostName" \
       || logErrorMsg "Failed to create env file dir for VMs!";
   done
 

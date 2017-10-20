@@ -392,7 +392,7 @@ _generateVMParameterSets() {
       # VM's MAC
       mac=$(generateMAC $vmsPerHost $number);
       logTraceMsg "Generated MAC='$mac' for VM '$number/$vmsPerHost' on node '$computeNode' '$total/$amountOfVMs'.";
-
+    VM_SPOOL_DIR=$VM_NFS_HOME/.vtorque/..
       #
       # apply
       #
@@ -486,8 +486,8 @@ _prepareNode() {
   _generateVMFiles "$computeNode" "$vnodesPerHost" "$amountOfVMs";
 
   # create the dir that will be shared with VMs
-  logDebugMsg "Creating dir '$VM_NODE_FILE_DIR' for VM's nodefile.";
-  mkdir -p $VM_NODE_FILE_DIR || logErrorMsg "Failed to create node file dir for VMs!";
+  logDebugMsg "Creating dir '$VM_NODEFILE_DIR' for VM's nodefile.";
+  mkdir -p $VM_NODEFILE_DIR || logErrorMsg "Failed to create node file dir for VMs!";
 
   logDebugMsg "Staging VM image files for compute node '$computeNode'.";
 
@@ -623,8 +623,8 @@ _generateMetaDataFiles() {
     sed -i "s,__USER_NAME__,$JOB_OWNER,g" $metadataFile;
     sed -i "s,__VM_JOB_DIR__,$VM_JOB_DIR,g" $metadataFile;
     # sed -i "s,__VM_NODE_FILE__,$VM_NODE_FILE,g" $metadataFile; // not used in any template, and VM_NODE_FILE in not set
-    sed -i "s,__VM_NODE_FILE_DIR__,$VM_NODE_FILE_DIR,g" $metadataFile;
-    sed -i "s,__VM_ENV_FILE_DIR__,$VM_ENV_FILE_DIR/$computeNode/$vhostName,g" $metadataFile;
+    sed -i "s,__VM_NODEFILE_DIR__,$VM_NODEFILE_DIR,g" $metadataFile; # /var/spool/torque/aux
+    sed -i "s,__VM_ENV_FILE_DIR__,$PBS_ENV_FILE_PREFIX/$computeNode/$vhostName,g" $metadataFile; #/var/spool/torque/vm
     sed -i "s,__VTORQUE_DIR__,$VTORQUE_DIR,g" $metadataFile;
     sed -i "s,__VM_NFS_HOME__,$VM_NFS_HOME,g" $metadataFile; #/home/<username>
     sed -i "s,__VM_NFS_OPT__,$VM_NFS_OPT,g" $metadataFile; #/opt
@@ -635,6 +635,7 @@ _generateMetaDataFiles() {
     sed -i "s,__NTP_SERVER_1__,$NTP_SERVER_1,g" $metadataFile;
     sed -i "s,__NTP_SERVER_2__,$NTP_SERVER_2,g" $metadataFile;
 
+    # distro of guest OS ?
     if [[ $DISTRO =~ ^($REGEX_DEBIAN)$ ]]; then
       # DEBIAN
       SW_PACKAGES=$SW_PACKAGES_DEBIAN;
@@ -927,9 +928,9 @@ _generateDomainXML() {
     done
 
     #
-    # replace place holder for VM_NODE_FILE_DIR
+    # replace place holder for VM_NODEFILE_DIR
     #
-    sed -i "s,__VM_NODE_FILE_DIR__,$VM_NODE_FILE_DIR,g" $domainXMLtmpFile;
+    sed -i "s,__VM_NODEFILE_DIR__,$VM_NODEFILE_DIR,g" $domainXMLtmpFile;
     sed -i "s,__VM_DIR__,$VM_DIR,g" $domainXMLtmpFile;
 
     # vrdma
@@ -939,7 +940,7 @@ _generateDomainXML() {
 
     # use the default location no env var like TORQUE_HOME that may point to the wrong location
     # since host may differ from default and thus the guest
-    sed -i "s,__DEFAUL_NODE_FILE_DIR__,$VM_NODE_FILE_DIR,g" $domainXMLtmpFile;
+    sed -i "s,__DEFAUL_NODE_FILE_DIR__,$VM_NODEFILE_DIR,g" $domainXMLtmpFile;
 
     # mv the template to its destination
     logDebugMsg "Moving final domain XML file '$domainXMLtmpFile' to destination '$domainXMLfile'.";
@@ -1205,10 +1206,10 @@ createVNodeFile() {
   FIRST_VM="$(head -n1 $PBS_VM_NODEFILE)";
 
   # make the VM nodes file available to VMs
-  ln -s $PBS_VM_NODEFILE $VM_NODE_FILE_DIR/$JOBID;
+  ln -s $PBS_VM_NODEFILE $VM_NODEFILE_DIR/$JOBID;
 
   # done
-  logDebugMsg "PBS node-file '$PBS_VM_NODEFILE' linked to '$VM_NODE_FILE_DIR/$JOBID'.";
+  logDebugMsg "PBS node-file '$PBS_VM_NODEFILE' linked to '$VM_NODEFILE_DIR/$JOBID'.";
   logTraceMsg "PBS_VM_NODEFILE='$PBS_VM_NODEFILE'\n----file_content_start-----\n$(cat $PBS_VM_NODEFILE)\n-----file_content_end-----";
 }
 

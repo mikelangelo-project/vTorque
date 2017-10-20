@@ -482,7 +482,7 @@ PBS_VM_NODEFILE="$VM_JOB_DIR/$JOBID";
 #
 # directory that is mounted into the VM and contains the PBS_NODEFILE
 #
-VM_NODE_FILE_DIR="$VM_JOB_DIR/aux";
+VM_NODEFILE_DIR="$VM_JOB_DIR/aux";
 
 #
 # directory that is mounted into the VM and contains the PBS job environment vars
@@ -498,7 +498,7 @@ VM_DIR="$VM_JOB_DIR/$LOCALHOST";
 #
 # Prefix for the host env files that are host specific
 #
-PBS_ENV_FILE_PREFIX="$VM_ENV_FILE_DIR"; #used this way => PBS_ENV_FILE=$PBS_ENV_FILE_PREFIX/$node/vmJobEnviornment
+PBS_ENV_FILE_PREFIX="$VM_JOB_DIR"; #used this way => PBS_ENV_FILE=$PBS_ENV_FILE_PREFIX/$node/vmJobEnviornment
 
 #
 # Path to directory where all component ctrl script reside

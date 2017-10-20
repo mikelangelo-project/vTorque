@@ -232,7 +232,7 @@ createJobEnvironmentFiles() {
 
     logDebugMsg "Creating individual PBS env for VM(s) on host '$computeNode'.";
     # construct the file name to that we write the following exports
-    pbsVMsEnvFile="$VM_ENV_FILE_DIR/$computeNode/vmJobEnvironment";
+    pbsVMsEnvFile="$PBS_ENV_FILE_PREFIX/$computeNode/vmJobEnvironment";
 
     # write all PBS env vars into a dedicated vm job env file (one per physical host)
     echo "\
@@ -280,7 +280,7 @@ export PBS_VMS_PN='VMS_PER_NODE';" > $pbsVMsEnvFile;
       logDebugMsg "Creating individual PBS env for VM '$vNodeName'.";
 
       # construct dest dir name for VM's PBS env file
-      destDir="$VM_ENV_FILE_DIR/$computeNode/$vNodeName";
+      destDir="$PBS_ENV_FILE_PREFIX/$computeNode/$vNodeName";
 
       # ensure dir exists
       mkdir -p $destDir \

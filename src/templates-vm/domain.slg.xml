@@ -32,7 +32,7 @@ __UNCLOT_XML__
   <devices>
     <emulator>/usr/bin/kvm-spice</emulator>
     <disk type='file' device='disk'>
-      <driver name='qemu' type='qcow2'/>
+      <driver name='qemu' type='qcow2' cache='none' io='native'/>
       <source file='__IMG__'/>
       <target dev='vda' bus='virtio'/>
       <boot order='1'/>
@@ -43,22 +43,9 @@ __DISK_XML__
     <controller type='ide' index='1'>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x10' function='0x1'/>
     </controller>
-    <filesystem type='mount' accessmode='passthrough'>
-      <source dir='__VM_NODE_FILE_DIR__' />
-      <target dir='/var/spool/torque/aux' />
-      <readonly/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x11' function='0x0'/>
-    </filesystem>
     <controller type='ide' index='2'>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x14' function='0x1'/>
     </controller>
-    <filesystem type='mount' accessmode='passthrough'>
-      <source dir='__VM_DIR__' />
-      <target dir='/var/spool/torque/vm' />
-      <readonly/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x15' function='0x0'/>
-    </filesystem>
-
     <controller type='usb' index='0' model='ich9-ehci1'>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x07' function='0x7'/>
     </controller>

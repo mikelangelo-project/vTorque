@@ -79,9 +79,9 @@ mounts:
  - [ "__VM_NFS_OPT__", /opt-hpc, "nfs", "rw,intr,noatime,nouser,auto", "0", "0" ]
  - [ "__VM_NFS_WS__", /workspace, "nfs", "rw,intr,noatime,nouser,auto", "0", "0" ]
  # make PBS_NODEFILE available inside VM
- - [ "/var/spool/torque/aux", "/var/spool/torque/aux", "9p", "trans=virtio,version=9p2000.L,ro,chmod=0444,uid=0,guid=0", "0", "0" ]
+ - [ "__VM_NODEFILE_DIR__", /var/spool/torque/aux, "nfs", "rw,intr,noatime,nouser,auto", "0", "0" ]
  # make the pbs env available via profile.d (other part see below and domain.xml)
- - [ "/var/spool/torque/vm", "/var/spool/torque/vm", "9p", "trans=virtio,version=9p2000.L,ro,chmod=0444,uid=0,guid=0", "0", "0" ]
+ - [ "__VM_ENV_FILE_DIR__", /var/spool/torque/vm, "nfs", "rw,intr,noatime,nouser,auto", "0", "0" ]
 
 
 

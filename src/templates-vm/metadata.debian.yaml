@@ -64,7 +64,6 @@ bootcmd:
  # allow to fetch the syslog as user
  - chmod 644 /var/log/syslog
 
-
 #
 # install missing packages
 # for ex: NFS, OpenMPI, libMetis and 9p support
@@ -164,6 +163,7 @@ write_files:
      #!/bin/bash
      file="/var/spool/torque/vm/vmJobEnvironment";
      [ -f "$file" ] && source "$file";
+     export DISTRO='SLG';
  #
  # create starter script for root VM {pro,epi}logue[.parallel]
  # this way we do not need a root access afterwards to the VM instance

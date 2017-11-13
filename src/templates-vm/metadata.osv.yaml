@@ -66,6 +66,7 @@ files:
     #!bin/bash
     file="/var/spool/torque/vm/vmJobEnvironment";
     [ -f "$file" ] && source $file;
+    export DISTRO='OSV';
 
 #
 # ping the physical host, otherwise it cannot see the VM's IP by the help of

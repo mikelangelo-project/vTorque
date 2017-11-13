@@ -163,6 +163,7 @@ write_files:
      #!/bin/bash
      file="/var/spool/torque/vm/vmJobEnvironment";
      [ -f "$file" ] && source "$file";
+     export DISTRO='SLG';
  #
  # create starter script for root VM {pro,epi}logue[.parallel]
  # this way we do not need a root access afterwards to the VM instance
@@ -267,7 +268,7 @@ write_files:
      params=$@;
      nodeFile=$PBS_NODEFILE;
      # ensure we call the binary in case the runcmd doesn't work as desired
-     if [ ! -n "$(which mpirun)" ]; then
+     if [ ! -e /opt/openmpi/bin/mpirun ]; then
        echo "VM mpirun wrapper ERROR: No mpirun found.";
        exit 1;
      fi
@@ -277,9 +278,9 @@ write_files:
      done
      if [[ $params =~ -H|-host|--host|-hostfile|--hostfile-default-hostfile|--default-hostfile ]]; then
        # no need to do anything else
-       /usr/bin/mpirun $params;
+       /opt/openmpi/bin/mpirun $params;
      else # append hostsfile to mpirun cmd
-       /usr/bin/mpirun --hostfile $nodeFile $params;
+       /opt/openmpi/bin/mpirun --hostfile $nodeFile $params;
      fi
      exit $?;
  #

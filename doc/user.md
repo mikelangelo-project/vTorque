@@ -60,6 +60,11 @@ The command line submission tool vsub accepts several arguments enabling users t
 For each `-vm ..` parameter there are defaults, defined by the cluster administrators. These are applied in case user doesn't request it explicitly. In case of doubts it is recommended to rely on the defaults provided.
 
 
+## Environment Variables
+
+Virtual guests provide an environment variable called `DISTRO`, which is either set to `SLG` or `OSV`.
+
+
 ## Considerations
 
 Use `/workspace` to write out intermediate application data that benefit from the fast shared file-system. This path is not intended to keep any data beyond a job’s runtime. It is mapped to the actual cluster’s shared workspace file-system, configured by the cluster administrators, and may be wiped after a job has completed.

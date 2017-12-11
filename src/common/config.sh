@@ -87,6 +87,11 @@ PBS_QSUB_ON_NODES="/usr/bin/qsub";
 VM_IMG_DIR="/opt/vm-images";
 
 #
+# Where suspended images are stored.
+#
+SUSPENDED_IMAGE_DIR="/opt/vm-images-suspended";
+
+#
 # Path to a fast shared file-system (used by jobs for intermediate data)
 #
 WS_DIR="/workspace/.vtorque";

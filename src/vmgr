@@ -1,0 +1,588 @@
+#!/bin/bash
+#
+# Copyright 2016 HLRS, University of Stuttgart
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+#=============================================================================
+#
+#         FILE: vmgr
+#
+#        USAGE: vmgr <parameters>
+#
+#  DESCRIPTION: TODO
+#
+#      OPTIONS: ---
+# REQUIREMENTS: vTorque config file is available.
+#         BUGS: ---
+#        NOTES: ---
+#       AUTHOR: Nico Struckmann, struckmann@hlrs.de
+#      COMPANY: HLRS, University of Stuttgart
+#      VERSION: 0.2
+#      CREATED: Jul 06 2017
+#     REVISION: Dec 11 2017
+#
+#    CHANGELOG
+#
+#=============================================================================
+
+source /etc/profile.d/99-mikelangelo-hpc_stack.sh;
+source "$VTORQUE_DIR/common/const.sh" "none" "$(stat -c \"%U\" $(tty))";
+source "$VTORQUE_DIR/common/config.sh";
+source "$VTORQUE_DIR/common/functions.sh";
+
+
+
+#============================================================================#
+#                                                                            #
+#                          SCRIPT CONFIGURATION                              #
+#                                                                            #
+#============================================================================#
+
+#
+# Options to print for users (not all are relevant for users)
+#
+OPTIONS_TO_PRINT="(\
+ENABLED|DEFAULT|NODES|HOST_OS_CORE_COUNT|HOST_OS_RAM_MB|\
+PBS_EXCLUSIVE_NODE_ALLOC|SW_PACKAGES_DEBIAN|DISABLED_HOSTS_LIST|\
+PARALLEL|ALLOW_USER_IMAGES|ENABLE_DEV_MODE|IOCM_MIN_CORES|IOCM_MAX_CORES\
+)";
+
+#
+# Maximum length for filenames.
+#
+MAX_LENGTH_FILENAME=40;
+
+#
+# Maximum length for size.
+#
+MAX_LENGTH_SIZE=5;
+
+
+
+#============================================================================#
+#                                                                            #
+#                               FUNCTIONS                                    #
+#                                                                            #
+#============================================================================#
+
+
+
+#---------------------------------------------------------
+#
+# Displays usage infromation.
+#
+usage() {
+  echo "";
+  echo "Usage: $(basename $0) [show [images|image <name>]|add [--description=""] <image>|delete [image <name>|suspended [--job=<jobID>|--user=<userName>]]]";
+  echo "";
+  echo "Usage Examples:";
+  echo " vmgr show config";
+  echo " vmgr show images";
+  echo " vmgr show image <name>";
+  echo " vmgr show suspended [--job=<jobID>|--user=<userName>]";
+  echo " vmgr add <image> [<description>]";
+  echo " vmgr update <image> <description>";
+  echo " vmgr delete image <name>";
+  echo " vmgr delete suspended [--job=<jobID>|--user=<userName>]";
+  echo "";
+  exit 1;
+}
+
+
+#
+#---------------------------------SHOW---------------------------------------#
+#
+
+
+
+#---------------------------------------------------------
+#
+# Adds trailing tabs to string, up to max length
+#
+_addSpaces() {
+  string=$1;
+  maxLength=$2;
+  length=${#string};
+  spaces="";
+  # determine count of tabs
+  while [ $length -lt $maxLength ]; do
+    spaces="$spaces ";
+    length=$(($length + 1));
+  done
+  echo "${string}${spaces}";
+}
+
+
+#---------------------------------------------------------
+#
+# Print config
+#
+showConfig() {
+
+  # print header
+  imagesOutputStr="\n\t\t+++ vTorque Configuration +++\n";
+  imagesOutputStr="$imagesOutputStr================================================================\n";
+
+  # user is admin ?
+  uid=$(id -u);
+
+  # print config
+  while IFS=' =' read lhs rhs; do #rhs2
+    # comment line ?
+    if [[ $lhs =~ ^\ *# || -z $lhs ]]; then
+      continue;
+    fi
+    #  config option line ?
+    if [[ ! ${lhs//[[:blank:]]/} =~ [[:lower:]] ]]; then
+      # strip
+      rhs="${rhs%%\#*}"    # Del in line right comments
+      rhs="${rhs%%*( )}"   # Del trailing spaces
+      rhs="${rhs%\"*}"     # Del opening string quotes
+      rhs="${rhs#\"*}"     # Del closing string quotes
+      # for users, print not all, but selected ones only
+      if [ $uid -ne 0 ] \
+          && [[ ! "$lhs" =~ $OPTIONS_TO_PRINT ]]; then
+        # skip
+        continue;
+      # to skip ?
+      elif [[ "$rhs" =~ $PBS_QSUB_ON_NODES ]]; then
+        continue;
+      # to eval ?
+      elif [[ "$rhs" =~ ^\$ ]]; then
+        rhs=$(echo $rhs);
+      fi
+      # trailing ';' ?
+      if [[ $rhs =~ \;$ ]]; then
+        # yes, remove it
+        rhs=${rhs::-1}
+      fi
+      # print on screen
+      imagesOutputStr="$imagesOutputStr  $lhs = $rhs\n";
+    fi
+  done < "$VTORQUE_DIR/common/config.sh";
+
+  # print footer
+  imagesOutputStr="$imagesOutputStr================================================================\n";
+  echo -e "$imagesOutputStr";
+  exit 0;
+}
+
+
+#---------------------------------------------------------
+#
+# Prints list of images available in the global VM_IMG_DIR
+#
+showImages() {
+
+  # print header
+  imagesOutputStr="\n\t+++ Images available for job submission +++\n";
+  imagesOutputStr="$imagesOutputStr================================================================\n";
+  imagesOutputStr="$imagesOutputStr Name\t\t\t\t\t\t\t| Size\t\t| Description";
+  imagesOutputStr="$imagesOutputStr\n----------------------------------------------------------------";
+
+  # print images
+  for imageFile in $(find $VM_IMG_DIR -name \*.img 2>/dev/null); do
+    # get info file name
+    infoFile="$(echo $imageFile | sed 's,.img,.info,g')";
+    # get image size
+    fileSize=$(du -h $imageFile | cut -f1);
+    # get image descr
+    descr="$(cat $infoFile)";
+    # make the output looking nicer
+    imageFile="$(basename $imageFile)";
+    imageFile="$(_addSpaces $imageFile $MAX_LENGTH_FILENAME)";
+    fileSize="$(_addSpaces $fileSize $MAX_LENGTH_SIZE)";
+    # construct line
+    imagesOutputStr="$imagesOutputStr\n $imageFile| $fileSize | $descr";
+  done
+
+  # print footer
+  imagesOutputStr="$imagesOutputStr\n================================================================\n";
+  echo -e "$imagesOutputStr";
+  exit 0;
+}
+
+
+#---------------------------------------------------------
+#
+# Print details about given image.
+#
+showImage() {
+
+  if [ $# -ne 1 ]; then
+    usage;
+  fi
+
+  name=$1;
+  imageFile="$VM_IMG_DIR/$name";
+  # ensure it is an image
+  if [ ! -f "$imageFile" ]; then
+    echo "Not a file '$imageFile'";
+    usage;
+  fi
+
+  # get image details
+  size=$(du -h $imageFile | cut -f1);
+  infoFile="$(echo $imageFile | sed 's,.img,.info,g')";
+  descr="$(cat $infoFile)";
+  date="$(stat -c %y $imageFile | cut -d'.' -f1)";
+  type="$(file $imageFile | cut -d':' -f2 | cut -d',' -f1)";
+
+  # is descr empty ?
+  if [ -z $descr ]; then
+    descr="-none-";
+  fi
+
+  # print details
+  imagesOutputStr="\n\t+++ Details for Image '$name' +++\n";
+  imagesOutputStr="$imagesOutputStr================================================================\n";
+  imagesOutputStr="$imagesOutputStr  Name:      $(basename $imageFile)\n";
+  imagesOutputStr="$imagesOutputStr  Size:      $size\n";
+  imagesOutputStr="$imagesOutputStr  Modified:  $date\n";
+  imagesOutputStr="$imagesOutputStr  Type:      $type\n";
+  imagesOutputStr="$imagesOutputStr  Description:\n    $descr\n";
+  imagesOutputStr="$imagesOutputStr================================================================\n";
+  echo -e "$imagesOutputStr";
+  exit 0;
+}
+
+
+#---------------------------------------------------------
+#
+# TODO print metadata for suspended images (=descr)
+# TODO filter by groups, so users can check co-workers images, too
+#
+showSuspended() {
+
+  if [ $# -lt 1 ]; then
+    type="all";
+  elif [ $# -gt 1 ]; then
+    usage;
+  else
+    type=$1;
+  fi
+
+  # filter by job ?
+  if [[ $type =~ job ]]; then #--job=<jobID>
+    jobID=$(echo $1 | cut -d '=' -f2);
+    # root or user ?
+    if [ $(id -u) -eq 0 ]; then # root user, show regardless of user ID
+      imagesOutputStr="\n\t+++ Suspended Image(s) for job '$jobID' +++\n";
+      filter=" -name \*$jobID\*.img";
+    else
+      # user, show owned imaged only
+      imagesOutputStr="\n\t+++ Suspended Image(s) for job '$jobID' +++\n";
+      filter="-user $(id -n) -name \*$jobID\*.img";
+    fi
+  # filter by user ?
+  elif [[ $type =~ user ]]; then #--user=<userName>
+    # ensure user is admin
+    if [ $(id -u) -ne 0 ]; then
+      echo "Root required.";
+      exit 1;
+    fi
+    # determine user to show images for
+    userName=$(echo $1 | cut -d '=' -f2);
+    imagesOutputStr="\n\t+++ Suspended Images for user '$userName' +++\n";
+    filter="-user $userName -name \*.img";
+  # no filter for user or job
+  else
+    # user is admin ?
+    if [ $(id -u) -ne 0 ]; then
+      # yes, list all
+      imagesOutputStr="\n\t+++ Suspended Images for all users +++\n";
+      filter="-name \*.img";
+    else
+      # no, list user's suspended images only
+      userName=$(id -n);
+      imagesOutputStr="\n\t+++ Suspended Images for user '$userName' +++\n";
+      filter="-user $userName -name \*.img";
+    fi
+  fi
+
+  # print header
+  imagesOutputStr="$imagesOutputStr================================================================\n";
+  imagesOutputStr="$imagesOutputStr Name\t\t\t\t\t\t\t| Size\t\t| Description";
+  imagesOutputStr="$imagesOutputStr\n----------------------------------------------------------------";
+
+  # get list of images to print
+  imagesToPrint="$(find $SUSPENDED_IMAGE_DIR $filter)";
+  # print images
+  for imageFile in $imagesToPrint; do
+    length=${#imageFile};
+    tabs="";
+    # determine count of tabs
+    while [ $length -lt $MAX_LENGTH ]; do
+      tabs="$tabs\t";
+      length=$(($length + $TAB_WIDTH));
+    done
+    # add line for image
+    metaData="$($SUSPENDED_IMAGE_DIR/${imageFile}).info";
+    imagesOutputStr="$imagesOutputStr\n ${imageFile}${tabs}| $(du -h $SUSPENDED_IMAGE_DIR/$imageFile | cut -f1) | $(cat $metaData)";
+  done
+
+  # print footer
+  imagesOutputStr="$imagesOutputStr\n================================================================\n";
+  echo -e "$imagesOutputStr";
+  exit 0;
+}
+
+
+#---------------------------------------------------------
+#
+# Displays data on screen.
+#
+show() {
+
+  # ensure valid amount of arguments
+  if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+    usage;
+  fi
+
+  # show what ?
+  case $1 in
+    config)
+      showConfig;
+      ;;
+    images)
+      showImages;
+      ;;
+    image)
+      # image <imageName>
+      showImage ${2-};
+      ;;
+    suspended)
+      # suspended [--job=<jobID>|--user=<username>]
+      showSuspended ${2-};
+      ;;
+    *)
+      usage;
+      ;;
+  esac
+}
+
+
+#
+#----------------------------------ADD---------------------------------------#
+#
+
+
+
+#---------------------------------------------------------
+#
+# Adds image to the image pool dir, including an optional description.
+#
+addImage() {
+
+  # ensure valid count of arguments
+  if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+    usage;
+  fi
+
+  # ensure user is admin
+  if [ $(id -u) -ne 0 ]; then
+    echo "Root required.";
+    exit 1;
+  fi
+
+  # 'add [--description=""] <image>'
+  imageToCopy="$1";
+  descr="${2-}";
+  imageName="$(basename $imageToCopy)";
+  infoFile="$(echo $imageName | sed 's,.img,.info,g')";
+
+  # copy imge into image pool dir
+  cp $imageToCopy $VM_IMG_DIR/;
+  # write description (might be empty)
+  echo $descr > "$VM_IMG_DIR/$infoFile";
+  # make image and descr accessible to users
+  chmod 444 "$VM_IMG_DIR/$imageName";
+  chmod 444 "$VM_IMG_DIR/$infoFile";
+}
+
+
+#
+#---------------------------------UPDATE-------------------------------------#
+#
+
+
+#---------------------------------------------------------
+#
+# Update image description.
+#
+updateImageDescr() {
+
+  # ensure valid count of arguments
+  if [ $# -ne 2 ]; then
+    usage;
+  fi
+
+  # ensure user is admin
+  if [ $(id -u) -ne 0 ]; then
+    echo "Root required.";
+    exit 1;
+  fi
+
+  # 'add [--description=""] <image>'
+  imageName="$1";
+  descr="$2";
+
+  # check if exists
+  if [ ! -f "$VM_IMG_DIR/$imageName" ]; then
+    echo "ERROR: Image '$VM_IMG_DIR/$imageName' not found."
+    exit 1;
+  fi
+
+  # write description (might be empty)
+  infoFile="$(echo $imageName | sed 's,.img,.info,g')";
+  echo $descr > "$VM_IMG_DIR/$infoFile";
+}
+
+
+#
+#---------------------------------DELETE-------------------------------------#
+#
+
+
+#---------------------------------------------------------
+#
+# Delete image from disk.
+#
+deleteImage() {
+
+  # ensure valid count of arguments
+  if [ $# -ne 1 ]; then
+    usage;
+  fi
+
+  # ensure user is admin
+  if [ $(id -u) -ne 0 ]; then
+    echo "Root required.";
+    exit 1;
+  fi
+
+  # 'delete <image>'
+  imageName="$1";
+
+  # check if exists
+  if [ ! -f "$VM_IMG_DIR/$imageName" ]; then
+    echo "ERROR: Image '$VM_IMG_DIR/$imageName' not found."
+    exit 1;
+  fi
+
+  # remove image from image pool dir
+  rm -f "$VM_IMG_DIR/$imageName";
+  # remove description for image
+  rm -f "$VM_IMG_DIR/${imageName}.info";
+}
+
+
+#---------------------------------------------------------
+#
+# Deletes suspended image from disk.
+#
+deleteSuspended() {
+
+  # ensure valid count of arguments
+  if [ $# -ne 1 ]; then
+    usage;
+  fi
+
+  # 'delete <image>'
+  imageName="$1";
+
+  # check if exists
+  if [ ! -f "$SUSPENDED_IMAGE_DIR/$imageName" ]; then
+    echo "ERROR: Image '$SUSPENDED_IMAGE_DIR/$imageName' not found."
+    exit 1;
+  fi
+
+  # user is admin ?
+  admin=([ $(id -u) -ne 0 ]);
+  # user can delete their onw ones, only
+  if ! $admin \
+      && [ "$(stat -c %U $SUSPENDED_IMAGE_DIR/$imageName)" != "$(id -n)" ]; then
+     echo "ERROR: Image is owned by another user. Cannot be deleted.";
+     exit 1;
+  fi
+
+  # remove image from image pool dir
+  rm -f "$SUSPENDED_IMAGE_DIR/$imageName";
+  # remove description for image
+  rm -f "$SUSPENDED_IMAGE_DIR/${imageName}.info";
+
+}
+
+
+#---------------------------------------------------------
+#
+# Deletes images.
+#
+delete() {
+
+  # ensure there are 2 arguments
+  if [ $# -ne 2 ]; then
+    usage;
+  fi
+
+  # delete what ?
+  case $1 in
+    image)
+      #delete image <imageName>
+      deleteImage ${2-};
+      ;;
+    suspended)
+      #delete suspended [--job=<jobID>|--user=<userName>]
+      deleteSuspended ${2-};
+      ;;
+    *)
+      usage;
+      ;;
+  esac
+}
+
+
+#============================================================================#
+#                                                                            #
+#                                  MAIN                                      #
+#                                                                            #
+#============================================================================#
+
+if [ $# -lt 2 ]; then
+  usage;
+fi
+
+# determine action (show, add, delete)
+case $1 in
+  show)
+    show ${2-} ${3-};
+    ;;
+  add)
+    add ${2-} ${3-};
+    ;;
+  delete)
+    delete ${2-} ${3-};
+    ;;
+  update)
+    updateImageDescr ${2-} ${3-};
+    ;;
+  *)
+    usage;
+    ;;
+esac
+
+# done
+exit $?;
+

@@ -413,12 +413,12 @@ ERROR_FLAG_FILE="$FLAG_FILE_DIR/.error";
 #
 # Flag file indicating debug mode.
 #
-FLAG_FILE_DEBUG="$FLAG_FILE_DIR/.debug"
+FLAG_FILE_DEBUG="$FLAG_FILE_DIR/.debug";
 
 #
 # Flag file indicating verbose mode.
 #
-FLAG_FILE_TRACE="$FLAG_FILE_DIR/.trace"
+FLAG_FILE_TRACE="$FLAG_FILE_DIR/.trace";
 
 #
 # Flag file for the root prologue indicating whether to enable vRDMA.
@@ -426,11 +426,20 @@ FLAG_FILE_TRACE="$FLAG_FILE_DIR/.trace"
 FLAG_FILE_VRDMA="$FLAG_FILE_DIR/.vrdma";
 
 #
+# Flag file for whether to enable UNCLOT.
+#
+FLAG_FILE_UNCLOT="$FLAG_FILE_DIR/.unclot";
+
+#
 # Flag file for the root prologue indicating whether to enable iocm.
 # Min/Max core count to use are stored inside this file.
 #
 FLAG_FILE_IOCM="$FLAG_FILE_DIR/.iocm";
 
+#
+# Flag file indicating interactive jobs.
+#
+FLAG_FILE_X11="$FLAG_FILE_DIR/.x11";
 
 #-----------------------------------------------------------------------------
 #
@@ -445,6 +454,7 @@ DOMAIN_XML_TEMPLATE_OSV="$VM_TEMPLATE_DIR/domain.osv.xml";
 DOMAIN_METADATA_XML_TEMPLATE="$VM_TEMPLATE_DIR/domain-fragment-metadata.xml";
 DOMAIN_DISK_XML_TEMPLATE="$VM_TEMPLATE_DIR/domain-fragment-disk.xml";
 DOMAIN_VRDMA_XML_TEMPLATE="$VM_TEMPLATE_DIR/domain-fragment-vrdma.xml";
+DOMAIN_UNCLOT_XML_TEMPLATE="$VM_TEMPLATE_DIR/domain-fragment-unclot.xml";
 DOMAIN_NUMA_XML_TEMPLATE="$VM_TEMPLATE_DIR/domain-fragment-numa.xml";
 
 

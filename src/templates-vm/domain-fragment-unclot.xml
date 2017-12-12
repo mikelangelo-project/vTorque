@@ -1,0 +1,4 @@
+  <qemu:commandline>
+    <qemu:arg value='-device'/>
+    <qemu:arg value='ivshmem,shm=ivshmem,size=__UNCLOT_SHMEM__'/>
+  </qemu:commandline>

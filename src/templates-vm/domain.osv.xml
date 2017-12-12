@@ -6,7 +6,8 @@
   <memory unit='MiB'>__RAM__</memory>
   <currentMemory unit='MiB'>__RAM__</currentMemory>
 __VCPU_PINNING__
-
+__VRDMA_XML__
+__UNCLOT_XML__
   <!--  OS type and boot -->
   <os>
     <type arch='__ARCH__'>hvm</type>

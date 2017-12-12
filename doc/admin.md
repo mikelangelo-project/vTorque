@@ -301,10 +301,11 @@ For all [vsub](user.md#vsub-arguments) command line options, defaults can be def
 | `ARCH_DEFAULT`               | `x86_64`                   | Default CPU architecture. |
 | `VCPUS_DEFAULT`              | `7`                        | Amount of VCPUs to assign to each guest. Mind also `HOST_OS_CORE_COUNT`, `IOCM_MIN_CORES_DEFAULT`, `IOCM_MAX_CORES_DEFAULT`. |
 | `VCPU_PINNING_DEFAULT`      | `true`                     | Indicates whether to enable vCPU pinning. |
-| `RAM_DEFAULT`                | n/a                         | Default RAM in MB per VM, mind `HOST_OS_RAM_MB`. |
+| `RAM_DEFAULT`                | n/a                         | Default RAM in MB per VM in K/M/G/T, mind `HOST_OS_RAM_MB`. |
 | `VMS_PER_NODE_DEFAULT`      | `1`                        | Default count of VMs per node, in case of NUMA domains (not managed by Torque) higher count than one may be beneficial. |
 | `DISK_DEFAULT`               | n/a                         | Persistent, optional disk mounted at the first VM (rank 0). |
 | `VRDMA_ENABLED_DEFAULT`     | `false`                     | Dis/enable vRDMA if parameter is not provided by user. |
+| `UNCLOT_ENABLED_DEFAULT`    | `false`                     | Dis/enable UNCLOT for OSv if parameter is not provided by user. |
 | `IOCM_ENABLED_DEFAULT`      | `false`                     | Dis/enable IOcm if parameter is not provided by user. |
 | `IOCM_MIN_CORES_DEFAULT`    | `1`                         | Minimum of cores reserved for IOcm, consider `HOST_OS_CORE_COUNT` and `VCPUS_DEFAULT`. |
 | `IOCM_MAX_CORES_DEFAULT`    | `4`                         | Maximum of cores reserved for IOcm, consider `HOST_OS_CORE_COUNT` and `VCPUS_DEFAULT`. |
@@ -356,6 +357,15 @@ In addition to the listed vRDMA configuration options, there is also file [src/c
 | :---                           | :---                        | :---                   |
 | `VRDMA_ENABLED`              | `false`                    | Dis/enables vRDMA. |
 | `VRDMA_NODES`                | `*`                         | Regex for hosts with vRDMA support. |
+
+
+### UNCLOT (ivshmem)
+
+
+| Configuration Parameter        | Default Value               | Description            |
+| :---                           | :---                        | :---                   |
+| `UNCLOT_ENABLED`             | `false`                    | Dis/enables vRDMA. |
+| `UNCLOT_SHMEM`               | `1024M`                    | Memory for OSv ivshmem in K/M/G/T. |
 
 
 ### Snap Telemetry

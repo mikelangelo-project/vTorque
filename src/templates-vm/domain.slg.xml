@@ -5,6 +5,7 @@
   <currentMemory unit='MiB'>__RAM__</currentMemory>
 __VCPU_PINNING__
 __VRDMA_XML__
+__UNCLOT_XML__
   <os>
     <type arch='__ARCH__' machine='pc-i440fx-trusty'>hvm</type>
   </os>

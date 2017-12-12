@@ -525,7 +525,7 @@ runInteractiveJobOnSLG(){
 
   # check if we are running with 'qsub -I -X [...]'
   local sshOpts="";
-  if [ -f "$FLAG_FILES_DIR/.xIsRequested" ]; then
+  if [ -f "$FLAG_FILE_X11" ]; then
     sshOpts="-X";
   fi
 

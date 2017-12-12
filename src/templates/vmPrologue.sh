@@ -170,6 +170,14 @@ VMS_PER_NODE=__VMS_PER_NODE__;
 VRDMA_REQUESTED=$(if [ -e "$FLAG_FILE_VRDMA" ]; then echo 'true'; else echo 'false'; fi);
 
 #
+# UNCLOT requested by user ?
+#
+UNCLOT_REQUESTED=$(if [ -e "$FLAG_FILE_UNCLOT" ]; then echo 'true'; else echo 'false'; fi);
+
+# memory for UNCLOT, mandatory if UNCLOT is enabled (OSv, only)
+UNCLOT_SHMEM=__UNCLOT_SHMEM__;
+
+#
 # keys that needs to be replaced in generateDomainXML (note: it's not all KEYS, some are replaces elsewhere)
 #
 KEYS="UUID RAM VCPUS MAC ARCH IMG METADATA_DISK DISK CONSOLE_LOG";
@@ -893,6 +901,17 @@ _generateDomainXML() {
     else
       logDebugMsg "VRDMA disabled, removing place-holder from domain XML";
       sed -i "s,__VRDMA_XML__,,g" $domainXMLtmpFile;
+    fi
+
+    # is UNCLOT enabled ?
+    if $UNCLOT_ENABLED \
+        && $UNCLOT_REQUESTED; then
+      logDebugMsg "UNCLOT requested, merging into domain XML";
+      sed -i -e "/__UNCLOT_XML__/e cat $DOMAIN_UNCLOT_XML_TEMPLATE" -e "s,__UNCLOT_XML__,,g" $domainXMLtmpFile;
+      sed -i -e "s,__UNCLOT_SHMEM__,$UNCLOT_SHMEM,g" $domainXMLtmpFile;
+    else
+      logDebugMsg "UNCLOT disabled, removing place-holder from domain XML";
+      sed -i "s,__UNCLOT_XML__,,g" $domainXMLtmpFile;
     fi
 
     # replace place holders (the ones above are already applied and will be skipped,

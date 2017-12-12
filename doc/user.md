@@ -40,6 +40,7 @@ The command line submission tool vsub accepts several arguments enabling users t
 | Parameter         | Valid values                  | Description            |
 | :---              | :---                          | :---                   |
 | `img`             | Any `*.img/*.qcow2` file.   | VM image file for the job execution. |
+| `ram`             | In `K/M/G/T`                 | Amount of memory per guest, i.e. `15G`. |
 | `distro`          | `debian/ubuntu/redhat/centos/osv` | Distro of the image, i.e. debian, redhat, osv. |
 | `arch`            | Refer to KVM docs, please.   | CPU architecture, must match compute nodes and the guest image. |
 | `vcpus`           | Positive number.             | Amount of vCPU assigned to each guest. |
@@ -47,8 +48,10 @@ The command line submission tool vsub accepts several arguments enabling users t
 | `vms_per_node`   | Positive number.             | Amount of VMs per allocated physical node. |
 | `vm_prologue`    | An executable file.           | Optional user prologue script run in standard Linux guests. |
 | `vm_epilogue`    | An executable file.           | Optional user epilogue script run in standard Linux guests. |
-| `vrdma`           | `true/false`                | Dis/enable vRDMA. |
-| `iocm`            | `true/false`                | Dis/enable IOcm. |
+| `vrdma`           | `enabled|true|yes|0|disabled|false|no|1` | Dis/enable vRDMA. |
+| `unclot`          | `enabled|true|yes|0|disabled|false|no|1` | Dis/enable UNCLOT (ivshmem for OSv). |
+| `unclot_shmem`   | In `K/M/G/T`                | Amount of memory per guest for ivshmem, i.e. `1024M` |
+| `iocm`            | `enabled|true|yes|0|disabled|false|no|1` | Dis/enable IOcm. |
 | `iocm_min_cores` | Positive number.              | Define minimum amount of dedicated IOcm cores. |
 | `iocm_max_cores` | Positive number.              | Define maximum amount of dedicated IOcm cores. |
 | `fs_type`         | `sharedfs/ramdisk`          | File-system type for VM images, either sahred fs or local ram disk. |

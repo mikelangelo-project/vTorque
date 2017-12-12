@@ -313,6 +313,12 @@ VRDMA_ENABLED_DEFAULT=false;
 # Default that is used in case there is no user defined value and it's enabled
 # in the global config
 #
+UNCLOT_ENABLED_DEFAULT=false;
+
+#
+# Default that is used in case there is no user defined value and it's enabled
+# in the global config
+#
 IOCM_ENABLED_DEFAULT=false;
 
 #
@@ -438,6 +444,18 @@ VRDMA_ENABLED=false;
 # list of nodes supporting RoCE feature for Infiniband
 #
 VRDMA_NODES="*";
+
+
+#============================================================================#
+#                                                                            #
+#                              UNCLOT (ivshmem)                              #
+#                                                                            #
+#============================================================================#
+
+#
+# Indicates whether UNCLOT is enabled
+#
+UNCLOT_ENABLED=false;
 
 
 #============================================================================#

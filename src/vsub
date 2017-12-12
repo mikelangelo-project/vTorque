@@ -84,7 +84,7 @@ source "$VTORQUE_DIR/common/functions.sh";
 declare -A REGEXPR=( \
                      [IMG]="^(/|\w|[0-9]|\.|_|-)+\.(img|qcow2)$"
                      [DISTRO]="^($SUPPORTED_OS)$" \
-                     [RAM]="^[0-9]+(K|M|G)$" \
+                     [RAM]="^[0-9]+(K|M|G|T)$" \
                      [VCPUS]="^[0-9]+$" \
                      [VMS_PER_NODE]="^[0-9]+$" \
                      [METADATA]="^(\w|[0-9]|.|_|-)+\.yaml$" \
@@ -94,8 +94,10 @@ declare -A REGEXPR=( \
 auto|enabled|Enabled|ENABLED|true|True|TRUE|yes|Yes|YES|0)$" \
                      [VM_PROLOGUE]="^(\w|[0-9]|.|_|-)+$" \
                      [VM_EPILOGUE]="^(\w|[0-9]|.|_|-)+$" \
-                     [VRDMA]="^(enabled|true|0|disabled|false|1)$" \
-                     [IOCM]="^(enabled|true|0|disabled|false|1)$" \
+                     [VRDMA]="^(enabled|true|yes|0|disabled|false|no|1)$" \
+                     [UNCLOT]="^(enabled|true|yes|0|disabled|false|no|1)$" \
+                     [UNCLOT_SHMEM]="^[0-9]+(K|M|G|T)$" \
+                     [IOCM]="^(enabled|true|yes|0|disabled|false|no|1)$" \
                      [IOCM_MIN_CORES]="^[0-9]+$" \
                      [IOCM_MAX_CORES]="^[0-9]+$" \
                      [FS_TYPE]="^($FILESYSTEM_TYPE_RD|$FILESYSTEM_TYPE_SFS)$" \
@@ -380,6 +382,9 @@ is expected.\nProvided params are: '$@'" 2;
       # is it RAM ?
       elif [ "$key" == "RAM" ]; then
         value=$(convertRAM $value);
+      # is it UNCLOT IVSHMEM ?
+      elif [ "$key" == "UNCLOT_SHMEM" ]; then
+        value=$(convertRAM $value);
       elif [ $key == "VCPU_PINNING" ]; then
         # check if it is a boolean or a mapping file
         if [[ "$value" =~ ^(disabled|Disabled|DISABLED|false|False|FALSE|no|No|NO|1)$ ]]; then
@@ -624,15 +629,13 @@ _parseVMparameters() {
       _putParameterInMap "$arg";
       next="";
     elif [ "$arg" == "-gf" ]; then
-    if ${ENABLE_DEV_MODE-false}; then
+      if ${ENABLE_DEV_MODE-false}; then
         logDebugMsg "Detected flag '-gf' to generate files, only.";
         # generate files for manual debugging, only
         DO_NOT_SUBMIT_JOB=true;
       else
         logErrorMsg "Argument '-gf' is allowed in development mode, only!";
       fi
-    elif [ "$arg" == "-listImages" ]; then
-      listImages;
     else # neither a defined PBS key[/value], not a vm key
       # we assume it's the last one, the optional job script file
       # compare the current match to the last parameter provided
@@ -946,6 +949,30 @@ applyVMDefaultParameter() {
     VM_PARAMETER['VRDMA']=$VRDMA_ENABLED_DEFAULT;
   fi
 
+  # use UNCLOT
+  if [ -z ${VM_PARAMETER['UNCLOT']-} ]; then
+    # UNCLOT for OSv, only, not SLG
+    if [[ ${VM_PARAMETER[DISTRO]-} =~ $REGEX_OSV ]]; then
+      logDebugMsg "Applying UNCLOT='$UNCLOT_ENABLED_DEFAULT' as default VM parameter.";
+      VM_PARAMETER['UNCLOT']=$UNCLOT_ENABLED_DEFAULT;
+    else # UNCLOt not available
+      logDebugMsg "Applying UNCLOT='false' as default VM parameter, guest is not OSv.";
+      VM_PARAMETER['UNCLOT']=$UNCLOT_ENABLED_DEFAULT;
+    fi
+  # UNCLOT only for OSv, not SLG
+  elif ${VM_PARAMETER[UNCLOT]} \
+      && [[ ! ${VM_PARAMETER[DISTRO]-} =~ $REGEX_OSV ]]; then
+    logWarnMsg "UNCLOT is available for OSv guests, only. Will be disabled.";
+    VM_PARAMETER[UNCLOT]=false;
+  fi
+
+  # use UNCLOT SHMEM
+  if ${VM_PARAMETER[UNCLOT]} \
+      && [ -z ${VM_PARAMETER['UNCLOT_SHMEM']-} ]; then
+    logDebugMsg "Applying UNCLOT_SHMEM='$UNCLOT_SHMEM_DEFAULT' as default VM parameter.";
+    VM_PARAMETER['UNCLOT_SHMEM']=$UNCLOT_SHMEM_DEFAULT;
+  fi
+
   # global admin setting override user settings
   if ! $IOCM_ENABLED; then
     VM_PARAMETER['IOCM']=false;
@@ -1140,7 +1167,7 @@ generateJobScriptWrapper() {
       # not used in this case, just ensure it doesn't contain anything
       LAST_PARAM="";
       # create indicator flag for x-forwarding request issued by user
-      touch "$FLAG_FILES_DIR/.xIsRequested";
+      touch "$FLAG_FILE_X11";
     elif $IS_READLINE_JOB; then
       logTraceMsg "STDIN job detected.";
       # set job type
@@ -1312,6 +1339,13 @@ exportFlags() {
   #
   if ${VM_PARAMETER['VRDMA']}; then
     touch "$FLAG_FILE_VRDMA";
+  fi
+
+  #
+  # UNCLOT enabled/requested ?
+  #
+  if ${VM_PARAMETER['UNCLOT']}; then
+    touch "$FLAG_FILE_UNCLOT";
   fi
 
   #
@@ -1505,9 +1539,14 @@ touch "$FLAG_FILE_DIR/.vmJob";
 applyVMDefaultParameter;
 
 #
-# calculate the required PPN
+# calculate the required cores per node
 #
 calculatePPN;
+
+#
+# calculate the required memory per node
+#
+calculateRAM;
 
 # generates vmPrologue, Epilogue and jobWrapper scripts
 # and detects the job type

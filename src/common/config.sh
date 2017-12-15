@@ -316,6 +316,11 @@ VRDMA_ENABLED_DEFAULT=false;
 UNCLOT_ENABLED_DEFAULT=false;
 
 #
+# Default amount of memory allocated for UNCLOT
+#
+UNCLOT_SHMEM_DEFAULT="1024M";
+
+#
 # Default that is used in case there is no user defined value and it's enabled
 # in the global config
 #

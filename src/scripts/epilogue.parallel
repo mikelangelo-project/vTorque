@@ -40,6 +40,9 @@
 #
 #=============================================================================
 
+# time measurements
+START=$(date +%s.%N);
+
 #============================================================================#
 #                                                                            #
 #                          GLOBAL CONFIGURATION                              #
@@ -119,8 +122,10 @@ cleanupTmpFiles;
 
 logInfoMsg "Root epilogue.parallel finished.";
 
-# print the consumed time in debug mode
-runTimeStats;
+# measure time ?
+if $MEASURE_TIME; then
+  printRuntime $0 $START;
+fi
 
 # exit the job
 exit 0;

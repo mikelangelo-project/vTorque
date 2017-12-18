@@ -37,11 +37,19 @@
 #
 #=============================================================================
 
+# time measurements
+START=$(date +%s.%N);
+
+#============================================================================#
+#                                                                            #
+#                          GLOBAL CONFIGURATION                              #
+#                                                                            #
+#============================================================================#
+
 source /etc/profile.d/99-mikelangelo-hpc_stack.sh;
 source "$VTORQUE_DIR/common/const.sh" "none" "$(stat -c \"%U\" $(tty))";
 source "$VTORQUE_DIR/common/config.sh";
 source "$VTORQUE_DIR/common/functions.sh";
-
 
 
 #============================================================================#
@@ -582,6 +590,11 @@ case $1 in
     usage;
     ;;
 esac
+
+# measure time ?
+if $MEASURE_TIME; then
+  printRuntime $START;
+fi
 
 # done
 exit $?;

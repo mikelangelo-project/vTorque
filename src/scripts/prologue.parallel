@@ -41,6 +41,9 @@
 #
 #=============================================================================
 
+# time measurements
+START=$(date +%s.%N);
+
 #============================================================================#
 #                                                                            #
 #                          GLOBAL CONFIGURATION                              #
@@ -118,14 +121,16 @@ else
   fi
 
   # spawn process for booting VMs and configuring iocm
-  spawnProcess;
+  spawnProcess $START;
 fi
 
 # print info
 logInfoMsg "Root prologue.parallel script finished";
 
-# print the consumed time in debug mode
-runTimeStats;
+# measure time ?
+if $MEASURE_TIME; then
+  printRuntime $0 $START;
+fi
 
 # run the job
 exit 0;

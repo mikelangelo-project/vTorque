@@ -42,6 +42,8 @@
 # bash strict mode
 set -euo pipefail;
 
+# time measurements
+START=$(date +%s.%N);
 
 #============================================================================#
 #                                                                            #
@@ -128,8 +130,10 @@ captureOutputStreams;
 # print info
 logInfoMsg "Root VM epilogue finished."
 
-# print the consumed time in debug mode
-runTimeStats;
+# measure time ?
+if $MEASURE_TIME; then
+  printRuntime $0 $START;
+fi
 
 # exit the job
 exit 0;

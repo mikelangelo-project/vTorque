@@ -149,6 +149,9 @@ PBS_EXCLUSIVE_NODE_ALLOC=true;
 #
 KILL_USER_PROCESSES_AFTER_JOB=true;
 
+# print script run times
+MEASURE_TIME=false;
+
 
 #============================================================================#
 #                                                                            #

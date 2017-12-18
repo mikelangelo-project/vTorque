@@ -43,6 +43,9 @@
 #
 #=============================================================================
 
+# time measurements
+START=$(date +%s.%N);
+
 #============================================================================#
 #                                                                            #
 #                          GLOBAL CONFIGURATION                              #
@@ -227,7 +230,7 @@ prepareVMs() {
 #
 # Waits until root process has booted VMs and they are available.
 #
-function waitForVMs() {
+waitForVMs() {
 
   logDebugMsg "Waiting for boot of local VMs..";
 
@@ -299,6 +302,7 @@ arguments, '2' are expected.\nProvided params are: '$@'" 2;
 
   # create lock file
   logDebugMsg "Waiting for VM '$vhostName' with MAC='$mac', using lock dir: '$LOCKFILES_DIR'";
+  waitForNFS "$LOCKFILES_DIR";
   local lockFile="$LOCKFILES_DIR/$mac";
   touch $lockFile;
 
@@ -529,8 +533,10 @@ res=$?;
 logDebugMsg "************** END OF JOB PROLOGUE.PARALLEL ******************";
 logInfoMsg "User prologue.parallel wrapper script finished.";
 
-# print the consumed time in debug mode
-runTimeStats;
+# measure time ?
+if $MEASURE_TIME; then
+  printRuntime $0 $START;
+fi
 
 # return exit code
 exit $res;

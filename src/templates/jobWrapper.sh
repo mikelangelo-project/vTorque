@@ -45,6 +45,9 @@
 #
 #=============================================================================
 
+# time measurements
+START=$(date +%s.%N);
+
 __INLINE_RES_REQUESTS__
 
 #============================================================================#
@@ -410,7 +413,7 @@ $(curl --connect-timeout 2 -X GET http://$FIRST_VM:8000/file//pbs_vm_nodefile?op
   #
   # run job script
   #
-  local cmd=$(cat "$JOB_SCRIPT");
+  local cmd=$(cat "$JOB_SCRIPT" | grep -Ev '^#'); # skip comment lines
   # execute command
   logDebugMsg "Command to execute: 'PUT http://$FIRST_VM:8000/app \"$cmd\"'";
   local tid=$(curl -X PUT http://$FIRST_VM:8000/app/ --data-urlencode command="$cmd")
@@ -459,6 +462,11 @@ $(curl --connect-timeout 2 -X GET http://$FIRST_VM:8000/file//pbs_vm_nodefile?op
     result=$?;
     if [ $result -ne 0 ]; then
       logErrorMsg "Failed to check if application with tid='$tid' is finished.";
+    fi
+    # return code is a number ?
+    if ! [[ $app_finished =~ ^[0-9]+$ ]]; then
+      logWarnMsg "Number expected, but OSv HTTP RESTful interface returned '$app_finished' as application status!";
+      app_finished=0;
     fi
   done
   exec {CON_FD}>&-
@@ -704,8 +712,10 @@ stopOutputCapturing;
 # debug log
 logDebugMsg "***************** END OF JOB WRAPPER ********************";
 
-# print the consumed time in debug mode
-runTimeStats;
+# measure time ?
+if $MEASURE_TIME; then
+  printRuntime $0 $START;
+fi
 
 # return job exit code
 exit $jobExitCode;

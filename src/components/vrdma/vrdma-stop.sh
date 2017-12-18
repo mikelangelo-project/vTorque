@@ -116,7 +116,7 @@ restoreIBmode() {
 tearDownBridge() {
 
   # release assigned IP
-  /sbin/ifconfig $VRDMA_NIC_NAME 0; 
+  /sbin/ifconfig $VRDMA_NIC_NAME 0;
   # disable IPoIB for the ib port
   /sbin/rmmod ib_ipoib;
 

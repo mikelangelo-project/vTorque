@@ -44,6 +44,8 @@
 #
 #=============================================================================
 
+# time measurements
+START=$(date +%s.%N);
 
 #============================================================================#
 #                                                                            #
@@ -1354,8 +1356,10 @@ fi
 logDebugMsg "***************** END OF JOB PROLOGUE ********************";
 logInfoMsg "User prologue wrapper script finished.";
 
-# print the consumed time in debug mode
-runTimeStats;
+# measure time ?
+if $MEASURE_TIME; then
+  printRuntime $0 $START;
+fi
 
 # done, pass back return code, run the job
 exit $res;

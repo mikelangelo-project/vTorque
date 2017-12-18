@@ -1492,6 +1492,11 @@ if ! $VMJOB_REQ_DETECTED; then
     createRUID2JOBIDmapping $jobID;
   fi
 
+  # measure time ?
+  if $MEASURE_TIME; then
+    printRuntime $START;
+  fi
+
   # stop here
   exit $res;
 fi
@@ -1633,8 +1638,10 @@ fi
 # debug log
 logDebugMsg "********************* END OF VSUB ************************";
 
-# print the consumed time in debug mode
-runTimeStats;
+# measure time ?
+if $MEASURE_TIME; then
+  printRuntime $START;
+fi
 
 # show log ?
 showLog;

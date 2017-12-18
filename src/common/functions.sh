@@ -369,6 +369,7 @@ indicateRemoteError() {
   msg=$2;
 
   # write error msg into lockFile, parent process checks this
+  waitForNFS $(dirname $lockFile);
   echo "[$LOCALHOST|ERROR] $msg" > $lockFile;
   # abort with error code 2 to trigger a cleanup in the parent vm prologue: i.e. kill all running VMs
   logErrorMsg $msg 2;
@@ -462,6 +463,25 @@ getVMsPerNode() {
   fi
   cat "$FLAG_FILE_DIR/.vms_per_node";
   return $?;
+}
+
+
+#---------------------------------------------------------
+#
+# Waits until requested file or dir is visible or $NFS_TIMEOUT
+# is reached.
+#
+waitForNFS() {
+  if [ $# -ne 1 ]; then
+    logErrorMsg "Function 'waitForNFS' expects '1' parameter, provided '$#'\nProvided params are: '$@'" 2;
+  fi
+  startDate=$(date +%s);
+  dirOrFile=$1;
+  while [ ! -e $dirOrFile ]; then
+    logDebugMsg "Waiting for '$dirOrFile' to become available.";
+    sleep 1;
+    isTimeoutReached $NFS_TIMEOUT $startDate;
+  done
 }
 
 

@@ -293,7 +293,7 @@ _flushARPcache() {
 #
 # Checks whether the job is a VM job.
 #
-function isVMJob() {
+isVMJob() {
   return $([ -d "$VM_JOB_DIR" ]);
 }
 
@@ -444,7 +444,7 @@ stopSnapTask() {
 #
 setUPvRDMA() {
 
-  # enabled by admins (=config option) and requested by user (=flag file) ?  
+  # enabled by admins (=config option) and requested by user (=flag file) ?
   if ! $VRDMA_ENABLED \
       || [ ! -f "$FLAG_FILE_VRDMA" ]; then
     logInfoMsg "vRDMA disabled, skipping setup.";
@@ -475,7 +475,7 @@ setUPvRDMA() {
 #
 tearDownvRDMA() {
 
-  # enabled by admins (=config option) and requested by user (=flag file) ?  
+  # enabled by admins (=config option) and requested by user (=flag file) ?
   if ! $VRDMA_ENABLED \
       || [ ! -f "$FLAG_FILE_VRDMA" ]; then
     logInfoMsg "vRDMA disabled, skipping tear down.";
@@ -506,7 +506,7 @@ tearDownvRDMA() {
 #
 setupIOCM() {
 
-  # enabled by admins (=config option) and requested by user (=flag file) ?  
+  # enabled by admins (=config option) and requested by user (=flag file) ?
   if ! $IOCM_ENABLED \
       || [ ! -f "$FLAG_FILE_IOCM" ]; then
     logInfoMsg "IOCM disabled, skipping setup.";
@@ -537,7 +537,7 @@ setupIOCM() {
 #
 teardownIOcm() {
 
-  # enabled by admins (=config option) and requested by user (=flag file) ?  
+  # enabled by admins (=config option) and requested by user (=flag file) ?
   if ! $IOCM_ENABLED \
       || [ ! -f "$FLAG_FILE_IOCM" ]; then
     logInfoMsg "IOCM disabled, skipping tear down.";
@@ -631,9 +631,12 @@ waitUntilJobDirIsAvailable() {
 # Spawns a process that boots VMs and configures IOcm, vRDMA
 #
 #
-function spawnProcess() {
+spawnProcess() {
   # spawn
   {
+
+    # time measurements
+    start=$1;
 
     logDebugMsg "Spawning root process (pid=$$)..";
     # cache start date
@@ -671,7 +674,10 @@ function spawnProcess() {
     else
       logDebugMsg "Flag file '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone' has been created.";
     fi
-
+    # measure time ?
+    if $MEASURE_TIME; then
+      printRuntime "<spawn VM boot process>" $start;
+    fi
   } & return 0;
 }
 
@@ -681,7 +687,7 @@ function spawnProcess() {
 # Boots VMs.
 #
 #
-function bootVMs() {
+bootVMs() {
 
   if [ -z ${DOMAIN_XML_PATH_NODE-} ] \
       || [ ! -d "$DOMAIN_XML_PATH_NODE" ]; then

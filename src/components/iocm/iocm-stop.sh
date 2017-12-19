@@ -59,25 +59,8 @@ source "$IOCM_ABSOLUTE_PATH/iocm-common.sh";
 unsetCores() {
   logDebugMsg "Releasing iocm cores..";
   $IOCM_ABSOLUTE_PATH/dynamic-io-manager/src/stop_io_manager.py;
-  res=$?;
-  if [ $res -eq 0 ]; then
-    logInfoMsg "IOCM stopped.";
-  else
-    logWarnMsg "Failed to stop IOCM, return code: '$res'";
-  fi
-  return $res;
+  return $?;
 }
-
-#---------------------------------------------------------
-#
-# Releases the min/max amount of cores bound to IOcm.
-#
-cleanupIOCM() {
-  if ! $DEBUG; then
-    rm -f $IOCM_JSON_CONFIG;
-  fi
-}
-
 
 
 #============================================================================#
@@ -86,14 +69,11 @@ cleanupIOCM() {
 #                                                                            #
 #============================================================================#
 
+logInfoMsg "Stopping I/O Core Manager (IOCM)..";
+
 # release cores managed by IOcm
 unsetCores;
 res=$?;
-
-if [ $res -eq 0 ]; then
-  # clean up config file
-  cleanupIOCM;
-fi
 
 # in verbose mode print the file that is created if DEBUG is enabled
 if $TRACE; then
@@ -101,6 +81,13 @@ if $TRACE; then
 ~~~~~~~~~~~~~~~~~IOcm log file start~~~~~~~~~~~~~~~\n\
 $(cat $IOCM_LOG_FILE)\
 \n~~~~~~~~~~~~~~~~~IOcm log file end~~~~~~~~~~~~~~~";
+fi
+
+# success ?
+if [ $res -eq 0 ]; then
+  logInfoMsg "Stopping IOCM done.";
+else
+  logWarnMsg "Stopping IOCM failed, error code: '$res'";
 fi
 
 # pass on return code

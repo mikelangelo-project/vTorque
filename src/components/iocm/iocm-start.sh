@@ -63,7 +63,7 @@ generateConfig() {
   # determine min/max core count
   minCores=$(sed -n '1{p;q;}' "$FLAG_FILE_IOCM"); #grep first line
   maxCores=$(sed -n '2{p;q;}' "$FLAG_FILE_IOCM"); # grep second line
-  logTraceMsg "IOCM minCores='$minCores' maxCores='$maxCores'";
+  logDebugMsg "IOCM minCores='$minCores' maxCores='$maxCores'";
 
   # determine total CPU count
   totalCores=$(grep -c ^processor /proc/cpuinfo);
@@ -117,14 +117,7 @@ setCores() {
   # start iocm as background process
   $IOCM_ABSOLUTE_PATH/dynamic-io-manager/src/start_io_manager.py \
     --config $IOCM_JSON_CONFIG &>> $IOCM_LOG_FILE;
-
-  # success ?
-  if [ $? -eq 0 ]; then
-    logInfoMsg "IOCM succesfully started.";
-    return 0;
-  fi
-  logWarnMsg "IOCM failed to start!";
-  return 1;
+  return $?;
 }
 
 
@@ -134,11 +127,21 @@ setCores() {
 #                                                                            #
 #============================================================================#
 
+logInfoMsg "Setting up I/O Core Manager (IOCM)..";
+
 # generate config based on template
 generateConfig;
 
 # configure the IOcm cores
 setCores;
 
+# success ?
+res=$?;
+if [ $res -eq 0 ]; then
+  logInfoMsg "Setting up IOCM done.";
+else
+  logWarnMsg "Setting up IOCM failed.";
+fi
+
 # pass on return code
-exit $?;
+exit $res;

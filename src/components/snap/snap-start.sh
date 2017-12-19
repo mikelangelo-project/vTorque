@@ -72,7 +72,8 @@ tagTask() {
   destDir=$(dirname $SNAP_TASK_JSON_FILE);
   if [ ! -d $destDir ] ;then
     logDebugMsg "Creating destination dir '$destDir' for snap task template file.";
-    su - $USER_NAME -c "mkdir -p $destDir || logErrorMsg \"Failed to create destination dir for snap task template file '$SNAP_TASK_JSON_FILE'.\"";
+    su - $USER_NAME -c "mkdir -p $destDir \
+      || logErrorMsg \"Failed to create destination dir for snap task template file '$SNAP_TASK_JSON_FILE'.\"";
   fi
 
   # move template
@@ -114,7 +115,6 @@ $(cat $SNAP_TASK_ID_FILE)\n\
   fi
   # pass on return code
   return $res;
-
 }
 
 
@@ -134,7 +134,13 @@ checkSnapPreconditions;
 tagTask;
 res=$?;
 
-logInfoMsg "Setting up SNAP monitoring done.";
+# success ?
+res=$?;
+if [ $res -eq 0 ]; then
+  logInfoMsg "Setting up SNAP monitoring done.";
+else
+  logWarnMsg "Setting up SNAP monitoring failed.";
+fi
 
 # pass on return code
 exit $res;

@@ -107,8 +107,18 @@ untagTask() {
 #                                                                            #
 #============================================================================#
 
+logInfoMsg "Stopping SNAP monitoring..";
+
 # tag task
 untagTask;
+res=$?;
+
+# success ?
+if [ $res -eq 0 ]; then
+  logInfoMsg "Stopping SNAP monitoring done.";
+else
+  logWarnMsg "Stopping SNAP failed, error code: '$res'";
+fi
 
 # pass on return code
-exit $?;
+exit $res;

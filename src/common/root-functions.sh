@@ -79,10 +79,11 @@ checkSharedFS() {
   fi
 
   # if shared fs dir does not exist yet, create it quitely
-  [ ! -d $SHARED_FS_JOB_DIR ] \
-     && su - $USER_NAME -c "mkdir -p '$SHARED_FS_JOB_DIR'" \
+  if [ ! -d $SHARED_FS_JOB_DIR ]; then
+    su - $USER_NAME -c "mkdir -p '$SHARED_FS_JOB_DIR'" \
          > /dev/null 2>&1 \
      && chmod -R 775 $SHARED_FS_JOB_DIR;
+  fi
 
   # check if shared fs: is present, is not in use, is read/write-able
   if [ -d "$SHARED_FS_JOB_DIR" ]; then
@@ -131,6 +132,14 @@ createRAMDisk() {
 # Cleans up hte shared fs dir, on the first allocated node in the list.
 #
 _cleanUpSharedFS() {
+
+  # check if VMs are still running
+  domainNames=$(echo ${VM_DOMAIN_XML_LIST[@]} | sed 's, ,|,g');
+  vmsFound="$(virsh list --all | grep -E $domainNames)";
+  if [ ! -z ${vmsFound-} ]; then
+    logErrorMsg "VMs still not cleaned up: '$vmsFound'";
+  fi
+
   # running inside root epilogue ?
   if [ $# -eq 0 ] \
       || ! $1; then
@@ -274,6 +283,21 @@ shutdown or timeout of '$TIMEOUT' sec has been reached.";
 
 #---------------------------------------------------------
 #
+# Blocks until all VMs are stopped.
+#
+_waitForVMsToStop() {
+  domainNames=$(echo ${VM_DOMAIN_XML_LIST[@]} | sed 's, ,|,g');
+  startDate=$(date +%s);
+  while ! isTimeoutReached $TIMEOUT $startDate true \
+      && [ -n "$(virsh list --all | grep -E $domainNames)" ]; do
+    logDebugMsg "Job's VMs still alive, waiting..";
+    sleep 1;
+  done
+}
+
+
+#---------------------------------------------------------
+#
 # Clear local arp cache
 #
 _flushARPcache() {
@@ -340,8 +364,8 @@ cleanUpVMs() {
   done
 
   if $PARALLEL; then
-    # TODO wait for VMs to stop (?)
-     :
+    # wait for VMs to stop
+    _waitForVMsToStop;
   fi
 
   logDebugMsg "Destroyed ($vmNo) local VM, done.";
@@ -761,29 +785,42 @@ cleanupTmpFiles() {
     cleanupSharedFS=$1;
   fi
 
+  # remove local node's tmp file, like images
+  if $USE_RAM_DISK; then
+    _cleanUpRAMDisk;
+  elif $cleanupSharedFS; then
+    _cleanUpSharedFS $cleanupSharedFS;
+  else
+    # if there is no RAM disk to clean up, all is on a shared fs
+    return $?;
+  fi
+
   # do not clean up in debug mode
   if ! $DEBUG; then
 
     # dir to clean up exists ?
-    if [ -d $VM_JOB_DIR ]; then
+    if [ ! -e "$VM_JOB_DIR" ]; then
       logWarnMsg "vTorque job tmp dir '$VM_JOB_DIR' does not exist.";
-    fi
-
-    # determine RUID for job
-    ruid="$(cat $RUID_CACHE_FILE)";
-    # reverse resolve symlink via RUID
-    ruidSymlink="$(find -L $VM_JOB_DIR_PREFIX/$ruid -samefile $VM_JOB_DIR_PREFIX/$JOBID 2>/dev/null | grep -v $VM_JOB_DIR_PREFIX/$ruid)";
-
-    # remove job dir
-    rm -Rf "$VM_JOB_DIR_PREFIX/$JOBID";
-    # remove symlink
-    rm -f "$ruidSymlink";
-
-    # remove local node's tmp file, like images
-    if $USE_RAM_DISK; then
-      _cleanUpRAMDisk;
     else
-      _cleanUpSharedFS $cleanupSharedFS;
+
+      # determine RUID for job
+      ruid="$(cat $RUID_CACHE_FILE)";
+      # reverse resolve symlink via RUID
+      # ruidSymlink="$(find -L $VM_JOB_DIR_PREFIX/$ruid -samefile $VM_JOB_DIR_PREFIX/$JOBID 2>/dev/null | grep -v $VM_JOB_DIR_PREFIX/$ruid)";
+      ruidDir="$VM_JOB_DIR_PREFIX/$ruid";
+      # remove symlink
+      rm -f "$VM_JOB_DIR_PREFIX/$JOBID";
+      mv "$ruidDir" "$VM_JOB_DI_PREFIX/$JOBID";
+
+      # remove all files ?
+      if $MEASURE_TIME; then
+        # remove all files and all dirs, but the debug.log
+        find "$VM_JOB_DI_PREFIX/$JOBID" ! -name '$LOG_FILE' -type d -exec rm -rf {} +;
+        find "$VM_JOB_DI_PREFIX/$JOBID" ! -name '$LOG_FILE' -type f -exec rm -f {} +
+      else
+	# yes, all
+        rm -rf "$VM_JOB_DI_PREFIX/$JOBID";
+      fi
     fi
   fi
 }

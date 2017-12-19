@@ -123,6 +123,7 @@ fi
 # remove all job related tmp files, created by vTorque
 cleanupTmpFiles true;
 
+# job life cycle ended
 logInfoMsg "Root epilogue finished."
 
 # measure time ?

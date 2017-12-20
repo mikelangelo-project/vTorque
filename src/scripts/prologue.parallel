@@ -121,7 +121,7 @@ else
   fi
 
   # spawn process for booting VMs and configuring iocm
-  spawnProcess $START;
+  spawnProcess $(date +%s.%N);
 fi
 
 # print info

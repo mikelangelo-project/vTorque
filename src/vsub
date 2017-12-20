@@ -569,24 +569,26 @@ _parseVMparameters() {
       logTraceMsg "Assuming PBS key/value resource request, caching it: '$arg'";
       _appendCleanedPBSparams "$arg";
       # check if the value we have is the core count per node (PPN)
-      if [[ "$arg" =~ \:ppn\= ]]; then
+      if [[ "$arg" =~ \:(ppn|mem)\= ]]; then
+        logTraceMsg "PBS key/value resource request (with i.e. ':ppn=') detected ";
         tmpResReq=":";
         # cache it in a separate var
         for resReq in ${arg//:/ }; do
           if [ $tmpResReq == ":" ]; then
             tmpResReq="$resReq";
           elif [[ "$resReq" =~ ^ppn\= ]]; then
-            PBS_RES_REQ_PPN=$(echo $resReq | cut -d'=' -f2);
+            PBS_RES_REQ_PPN=$(echo $resReq | cut -d'=' -f2 | cut -d',' -f1 | cut -d'+' -f1);
             tmpResReq="$tmpResReq:ppn=PLACEHOLDER_PPN";
-          elif [[ "$resReq" =~ ^ram\= ]]; then
-            PBS_RES_REQ_RAM=$(echo $resReq | cut -d'=' -f2);
-            tmpResReq="$tmpResReq:ram=PLACEHOLDER_RAM";
+          elif [[ "$resReq" =~ ^mem\= ]]; then
+            PBS_RES_REQ_RAM=$(echo $resReq | cut -d'=' -f2 | cut -d',' -f1 | cut -d'+' -f1);
+            tmpResReq="$tmpResReq:mem=PLACEHOLDER_RAM";
           else
             tmpResReq="$tmpResReq:$resReq";
           fi
         done
         if [ "$tmpResReq" != ":" ]; then
           CLEANED_PBS_RES_REQ="$tmpResReq,";
+          logTraceMsg "Appending cached arguments: 'CLEANED_PBS_RES_REQ=\"$tmpResReq,\"'";
         fi
       fi
       next="";
@@ -735,7 +737,8 @@ until there's an 'EOF'.\nPress 'ctrl+c' if this is not what you want";
 #
 _convertRAMtoMB() {
 
-  arg=$1;
+  # convert all to uppercase
+  arg=$(echo $1 | tr '[:upper:]' '[:lower:]');
 
   if [[ "$arg" =~ K$ ]]; then
     arg=$(echo $arg | cut -d'K' -f1);
@@ -1021,15 +1024,17 @@ calculateRAM() {
   local totalRAMPerNode=$(($HOST_OS_RAM_MB + ($vRAM * $vmsPerNode)));
 
   # is there a ppn res request ?
-  if [[ $PBS_RES_REQ_RAM =~ [0-9]+ ]]; then
+  if [[ $PBS_RES_REQ_RAM =~ ^[0-9]+(mb|gb|tb)$ ]]; then
     # check if user's ppn request is sufficient to cover the VM resources required
-    if [ $PBS_RES_REQ_RAM -lt $totalRAMPerNode ]; then # no, user requested less than needed
+    ram=$(_convertRAMtoMB $PBS_RES_REQ_RAM);
+    units=$(echo $PBS_RES_REQ_RAM | sed -e 's,^[0-9]+,,g');
+    if [ $ram -lt $totalRAMPerNode ]; then # no, user requested less than needed
       logInfoMsg "Requested RAM is not sufficient to satisfy VM requirements, \
-increasing RAM value to '$totalRAMPerNode'.\n\
+increasing RAM value to '$totalRAMPerNode' MB.\n\
 Job needs:\n for host OS '$HOST_OS_RAM_MB' MB RAM\n\
- vcpus for each VM '$vRAM' MB RAM * amount of VMs per node '$vmsPerNode' => '$totalRAMPerNode'" true;
+ vcpus for each VM '$vRAM' MB RAM * amount of VMs per node '$vmsPerNode' => '$totalRAMPerNode' MB" true;
       # increase ppn value to required count
-      PBS_RES_REQ_RAM=$totalRAMPerNode;
+      PBS_RES_REQ_RAM="$(totalRAMPerNode )mb"; #TODO
     fi
   fi
 }
@@ -1494,7 +1499,7 @@ if ! $VMJOB_REQ_DETECTED; then
 
   # measure time ?
   if $MEASURE_TIME; then
-    printRuntime $START;
+    printRuntime $0 $START;
   fi
 
   # stop here
@@ -1640,7 +1645,7 @@ logDebugMsg "********************* END OF VSUB ************************";
 
 # measure time ?
 if $MEASURE_TIME; then
-  printRuntime $START;
+  printRuntime $0 $START;
 fi
 
 # show log ?

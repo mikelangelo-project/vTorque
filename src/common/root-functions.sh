@@ -659,6 +659,9 @@ spawnProcess() {
   # spawn
   {
 
+    # prevent duplicate log msgs
+    PRINT_TO_STDOUT=false;
+
     # time measurements
     start=$1;
 

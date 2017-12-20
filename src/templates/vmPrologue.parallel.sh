@@ -153,8 +153,8 @@ _waitForFiles() {
     # wait for flag file
     logDebugMsg "Waiting for VM-files on '$LOCALHOST' to be placed in dir '$DOMAIN_XML_PATH_NODE' ..";
     sleep 1;
-    # timeout (150sec) reached ?
-    isTimeoutReached 150 $startDate;
+    # timeout reached ?
+    isTimeoutReached $TIMEOUT $startDate;
   done
 
   # initialize list of domain XMLs

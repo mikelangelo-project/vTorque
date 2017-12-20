@@ -369,8 +369,16 @@ indicateRemoteError() {
   msg=$2;
 
   # write error msg into lockFile, parent process checks this
-  waitForNFS $(dirname $lockFile);
-  echo "[$LOCALHOST|ERROR] $msg" > $lockFile;
+  dir=$(dirname $lockFile);
+  if [ ! -e $dir ]; then
+    mkdir -p "$dir";
+  fi
+
+  # dir exits or had been created successfully ?
+  if [ -e $dir ]; then
+    echo "[$LOCALHOST|ERROR] $msg" > $lockFile;
+  fi
+
   # abort with error code 2 to trigger a cleanup in the parent vm prologue: i.e. kill all running VMs
   logErrorMsg $msg 2;
 }
@@ -477,7 +485,7 @@ waitForNFS() {
   fi
   startDate=$(date +%s);
   dirOrFile=$1;
-  while [ ! -e $dirOrFile ]; then
+  while [ ! -e $dirOrFile ]; do
     logDebugMsg "Waiting for '$dirOrFile' to become available.";
     sleep 1;
     isTimeoutReached $NFS_TIMEOUT $startDate;

@@ -464,8 +464,11 @@ $(curl --connect-timeout 2 -X GET http://$FIRST_VM:8000/file//pbs_vm_nodefile?op
       logErrorMsg "Failed to check if application with tid='$tid' is finished.";
     fi
     # return code is a number ?
-    if ! [[ $app_finished =~ ^[0-9]+$ ]]; then
-      logWarnMsg "Number expected, but OSv HTTP RESTful interface returned '$app_finished' as application status!";
+    if [ -z ${app_finished-} ]; then
+      logDebugMsg "Status code returned by OSv RESTful API is empty.";
+      app_finished=0;
+    elif ! [[ $app_finished =~ ^[0-9]+$ ]]; then
+      logWarnMsg "Number expected, but OSv's RESTful API returned '$app_finished' as application status!";
       app_finished=0;
     fi
   done

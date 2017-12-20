@@ -586,7 +586,7 @@ _parseVMparameters() {
             tmpResReq="$tmpResReq:$resReq";
           fi
         done
-        if [ "$tmpResReq" != ":" ]; then
+        if ! [[ "$tmpResReq" =~ ":" ]]; then
           CLEANED_PBS_RES_REQ="$tmpResReq,";
           logTraceMsg "Appending cached arguments: 'CLEANED_PBS_RES_REQ=\"$tmpResReq,\"'";
         fi
@@ -749,7 +749,7 @@ _convertRAMtoMB() {
     arg=$(echo $arg | cut -d'G' -f1);
     arg=$(($arg / 1024));
   else
-    logErrorMsg "Invalid value for RAM='$arg' !";
+    logErrorMsg "Invalid value for RAM: '$arg' !";
   fi
 
   echo $arg;
@@ -1034,7 +1034,7 @@ increasing RAM value to '$totalRAMPerNode' MB.\n\
 Job needs:\n for host OS '$HOST_OS_RAM_MB' MB RAM\n\
  vcpus for each VM '$vRAM' MB RAM * amount of VMs per node '$vmsPerNode' => '$totalRAMPerNode' MB" true;
       # increase ppn value to required count
-      PBS_RES_REQ_RAM="$(totalRAMPerNode )mb"; #TODO
+      PBS_RES_REQ_RAM="${totalRAMPerNode}mb";
     fi
   fi
 }

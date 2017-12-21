@@ -123,6 +123,11 @@ fi
 # remove all job related tmp files, created by vTorque
 cleanupTmpFiles true;
 
+if isVMJob; then
+  # indicate job ended
+  su - $USER_NAME -c "touch '$JOB_ENDED_FLAG'";
+fi
+
 # job life cycle ended
 logInfoMsg "Root epilogue finished."
 

@@ -1073,7 +1073,7 @@ _bootVMsOnHost() {
 
   # successful boot init ? (booting still takes place now)
   if [ $res -eq 0 ]; then
-    logDebugMsg "Triggering boot of VMs on node '$computeNode' success.";
+    logDebugMsg "Starting 'vmPrologue.parallel.sh' on node '$computeNode' was successful.";
   else
     # abort with returned exit code
     touch "$ERROR_FLAG_FILE";

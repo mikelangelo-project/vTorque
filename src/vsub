@@ -1387,8 +1387,24 @@ showLog() {
       touch "$LOG_FILE";
     fi
     trap _printLogFileName SIGHUP SIGINT SIGTERM SIGKILL;
-    tail -f -n0 $LOG_FILE;
+    tail -f -n0 $LOG_FILE \
+      & _waitForJob $!;
   fi
+}
+
+
+#---------------------------------------------------------
+#
+# Waits until job is done.
+#
+_waitForJob(){
+  tailPID=$1;
+  while ([ ! -e $CANCEL_FLAG_FILE ] \
+      && [ ! -e $JOB_ENDED_FLAG ]) \
+        || [ -n "$(ps -p $tailPID > /dev/null)" ]; do
+    logTraceMsg "Waiting for Job to complete.";
+    sleep 1;
+  done
 }
 
 
@@ -1417,6 +1433,8 @@ _abort() {
 #
 _printLogFileName() {
   echo -e "\nLog file: '$LOG_FILE'";
+  # clear trap
+  trap - SIGHUP SIGINT SIGTERM SIGKILL;
 }
 
 

@@ -83,6 +83,9 @@ tagTask() {
   sed -i "s,__SNAP_TASK_NAME__,$SNAP_TASK_TAG,g" $SNAP_TASK_JSON_FILE;
   logTraceMsg "~~~~~~~~~~SNAP_TASK_JASON_Start~~~~~~~~~~\n$(cat $SNAP_TASK_JSON_FILE | python -m json.tool)\n~~~~~~~~~~SNAP_TASK_JASON_End~~~~~~~~~~";
 
+  # change ownership to user
+  chown $USER_NAME:$USER_NAME "$SNAP_TASK_JSON_FILE";
+
   # verbose logging
   logTraceMsg "Content of snap's JSON config file\
 \n~~~~~~~~~~~Snap_Config_File_BEGIN~~~~~~~~~~~\n\
@@ -107,6 +110,10 @@ $(cat $SNAP_TASK_TEMPLATE_FILE | python -m json.tool)\
 
     # cache task ID
     echo $snapTaskID > $SNAP_TASK_ID_FILE;
+    # change ownership to user
+    chown $USER_NAME:$USER_NAME "$SNAP_TASK_ID_FILE";
+
+    # verbose logging
     logTraceMsg "Caching Snap ID '$snapTaskID' in file '$SNAP_TASK_ID_FILE'";
     logTraceMsg "\
 \n~~~~~~~~~~SNAP_TASK_ID_FILE_Start~~~~~~~~~~\n\

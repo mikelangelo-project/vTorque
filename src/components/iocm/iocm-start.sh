@@ -98,11 +98,11 @@ setCores() {
   fi
 
   logInfoMsg "IOCM starting..";
+  su - $USER_NAME -c "touch '$IOCM_LOG_FILE'";
 
   # debugging mode ?
   if $DEBUG; then
     logDebugMsg "IOCM log file: '$IOCM_LOG_FILE'.";
-    su - $USER_NAME -c "touch '$IOCM_LOG_FILE'";
     {
       # call in debug mode as process (forground and all stdout/err printed)
       $IOCM_ABSOLUTE_PATH/dynamic-io-manager/src/start_io_manager.py \

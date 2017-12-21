@@ -179,6 +179,9 @@ prepareVMs() {
 
   logDebugMsg "Preparing VM boot..";
 
+  # abort due to previous error ?
+  checkCancelFlag;
+
   # wait for needed files to come into place
   _waitForFiles;
 

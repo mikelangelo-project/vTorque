@@ -399,6 +399,11 @@ FLAG_FILE_CONTINUE="$FLAG_FILE_DIR/.continue";
 CANCEL_FLAG_FILE="$FLAG_FILE_DIR/.abort";
 
 #
+# Flag file indicating job ended.
+#
+JOB_ENDED_FLAG="$FLAG_FILE_DIR/.jobIsDone";
+
+#
 # Lock file that contains started remote processes
 #
 LOCKFILE="$FLAG_FILE_DIR/.remoteProcesses";

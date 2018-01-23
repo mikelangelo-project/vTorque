@@ -113,7 +113,7 @@ runScriptPreviouslyInPlace "$(basename ${BASH_SOURCE[0]})" $@;
 # clean up user processes ?
 if $KILL_USER_PROCESSES_AFTER_JOB; then
   # kill all remaining user processes
-  logDebugMsg "Killing any remaining user processes for user '$USER_NAME'.";
+  logDebugMsg "Killing any remaining processes of user '$USER_NAME'.";
   pkill -u $USER_NAME;
 fi
 

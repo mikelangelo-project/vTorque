@@ -53,16 +53,20 @@ bootcmd:
  #
  # create dirs for mount points
  #
- - mkdir -p /var/spool/torque/aux
- - mkdir -p /var/spool/torque/vm
+ - mkdir -p /var/spool/torque
  #
- # load kernel module for file-system passthrough
+ # symlink Torque's aux dir and the VM env file dir
  #
- - modprobe 9p
- - modprobe 9pnet
- - modprobe 9pnet_virtio
+ # make PBS_NODEFILE available inside VM
+ - ln -s __VM_NODEFILE_DIR__ /var/spool/torque/aux
+ # make the pbs env available via profile.d (other part see below and domain.xml)
+ - ln -s __VM_ENV_FILE_DIR__ /var/spool/torque/vm
+ #
  # allow to fetch the syslog as user
+ #
  - chmod 644 /var/log/syslog
+
+
 
 #
 # install missing packages
@@ -78,11 +82,6 @@ mounts:
  - [ "__VM_NFS_HOME__/__USER_NAME__", /home/__USER_NAME__, "nfs", "rw,intr,noatime,nouser,auto", "0", "0" ]
  - [ "__VM_NFS_OPT__", /opt-hpc, "nfs", "rw,intr,noatime,nouser,auto", "0", "0" ]
  - [ "__VM_NFS_WS__", /workspace, "nfs", "rw,intr,noatime,nouser,auto", "0", "0" ]
- # make PBS_NODEFILE available inside VM
- - [ "__VM_NODEFILE_DIR__", /var/spool/torque/aux, "nfs", "rw,intr,noatime,nouser,auto", "0", "0" ]
- # make the pbs env available via profile.d (other part see below and domain.xml)
- - [ "__VM_ENV_FILE_DIR__", /var/spool/torque/vm, "nfs", "rw,intr,noatime,nouser,auto", "0", "0" ]
-
 
 
 #

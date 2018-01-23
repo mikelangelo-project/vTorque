@@ -23,32 +23,6 @@ hostname: __VHOSTNAME__
 
 
 #
-# add the user and its group with exactly same UID/GID (crucial for NFS access)
-#
-bootcmd:
- #
- # create user's home dir
- #
- - mkdir /home/__USER_NAME__
-
- #
- # create the workspace mount point in case it is not present
- #
- - mkdir /workspace
- #
- # rename '/scratch' in VMs to '/workspace' and make it a hard requirement for images
- # for now support both via a symlink
- - rmdir /scratch
- - ln -s /workspace /scratch
- #
- # create dirs for mount points
- #
- - mkdir -p /var/spool/torque/aux
- - mkdir -p /var/spool/torque/vm
-
-
-
-#
 # mount the NFS shares
 #
 mounts:

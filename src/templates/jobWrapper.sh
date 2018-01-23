@@ -326,7 +326,7 @@ runBatchJobOnSLG() {
 
   # execute command
   logDebugMsg "Command to execute: 'ssh $SSH_OPTS $FIRST_VM \"$cmd\"'";
-  logDebugMsg "===============JOB_OUTPUT_BEGIN====================";
+  logInfoMsg "===============JOB_OUTPUT_BEGIN====================";
   if $DEBUG; then
     ssh $FIRST_VM "$cmd"; # |& tee -a "$LOG_FILE";
   else
@@ -335,7 +335,7 @@ runBatchJobOnSLG() {
   # store the return code (ssh returns the return value of the command in
   # question, or 255 if an error occurred in ssh itself.)
   local result=$?
-  logDebugMsg "================JOB_OUTPUT_END=====================";
+  logInfoMsg "================JOB_OUTPUT_END=====================";
 
   return $result;
 }
@@ -428,7 +428,7 @@ $(curl --connect-timeout 2 -X GET http://$FIRST_VM:8000/file//pbs_vm_nodefile?op
     logErrorMsg "Returned tid='$tid' is not a number";
   fi
 
-  logDebugMsg "===============JOB_OUTPUT_BEGIN====================";
+  logInfoMsg "===============JOB_OUTPUT_BEGIN====================";
   local console_log="$VM_JOB_DIR/`hostname`/1-console.log"
   exec {CON_FD}<$console_log
   local con_eof=0
@@ -453,7 +453,7 @@ $(curl --connect-timeout 2 -X GET http://$FIRST_VM:8000/file//pbs_vm_nodefile?op
         fi
       done
     fi
-    sleep 5;
+    sleep 5; # to check each 5 sec is sufficient
     app_finished=$(\
       curl --connect-timeout 2 \
            -X GET http://$FIRST_VM:8000/app/finished \
@@ -480,7 +480,7 @@ $(curl --connect-timeout 2 -X GET http://$FIRST_VM:8000/file//pbs_vm_nodefile?op
   # TODO how to detect that program was run, but failed immediately?
   # On OSv, HTTP REST will return 200/OK, and error is shown only on
   # stderr/console. So it seems we cannot detect failure at all.
-  logDebugMsg "================JOB_OUTPUT_END=====================";
+  logInfoMsg "================JOB_OUTPUT_END=====================";
   return $result;
 }
 
@@ -503,7 +503,7 @@ runSTDINJobOnSLG() {
 
   # execute command
   logDebugMsg "Command to execute: 'ssh $SSH_OPTS $FIRST_VM \"$cmd\"'";
-  logDebugMsg "===============JOB_OUTPUT_BEGIN====================";
+  logInfoMsg "===============JOB_OUTPUT_BEGIN====================";
   if $DEBUG; then
     ssh $FIRST_VM "$cmd" |& tee -a "$LOG_FILE";
   else
@@ -513,7 +513,7 @@ runSTDINJobOnSLG() {
   # question, or 255 if an error occurred in ssh itself.)
   local result=$?;
 
-  logDebugMsg "================JOB_OUTPUT_END=====================";
+  logInfoMsg "================JOB_OUTPUT_END=====================";
   return $result;
 }
 
@@ -532,7 +532,7 @@ runInteractiveJobOnSLG(){
 
   # execute command
   logDebugMsg "Command to execute: 'ssh $FIRST_VM \"$cmd\"'";
-  logDebugMsg "============INTERACTIVE_JOB_BEGIN==================";
+  logInfoMsg "============INTERACTIVE_JOB_BEGIN==================";
 
   # check if we are running with 'qsub -I -X [...]'
   local sshOpts="";
@@ -550,7 +550,7 @@ runInteractiveJobOnSLG(){
   # question, or 255 if an error occurred in ssh itself.)
   local result=$?;
 
-  logDebugMsg "=============INTERACTIVE_JOB_END===================";
+  logInfoMsg "=============INTERACTIVE_JOB_END===================";
   return $result;
 }
 
@@ -687,9 +687,6 @@ logDebugMsg "***************** START OF JOB WRAPPER ********************";
 # check if canceled meanwhile
 checkCancelFlag;
 
-# capture output streams in vTorque's log
-captureOutputStreams;
-
 # make sure everything needed is in place
 checkPreConditions;
 
@@ -702,15 +699,18 @@ setRank0VM;
 # create the file containing the required PBS VARs
 createJobEnvironmentFiles;
 
+# capture output streams in vTorque's log
+captureOutputStreams true;
+
 # execute user's job in the first/rank0 VM
 runJobInVM;
 jobExitCode=$?;
 
-# are we debugging and is keep alive requested ?
-keepVMsAliveIfRequested;
-
 # stop capturing
 stopOutputCapturing;
+
+# are we debugging and is keep alive requested ?
+keepVMsAliveIfRequested;
 
 # debug log
 logDebugMsg "***************** END OF JOB WRAPPER ********************";

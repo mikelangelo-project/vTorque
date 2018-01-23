@@ -1378,7 +1378,7 @@ to '$VM_JOB_DIR_PREFIX/$jobID'";
 # Interactive jobs do not make any sense either, since they
 # display everything in the console.
 #
-showLog() {
+showVTorqueLog() {
   if ! $DO_NOT_SUBMIT_JOB \
       && ! $IS_INTERACTIVE_JOB \
       && [ ! -z ${SHOW_LOG-} ] \
@@ -1387,9 +1387,7 @@ showLog() {
       touch "$LOG_FILE";
     fi
     trap _printLogFileName SIGHUP SIGINT SIGTERM SIGKILL;
-    tail -f -n0 $LOG_FILE \
-      & _waitForJob $!;
-  fi
+    showLog false & _waitForJob $?;
 }
 
 
@@ -1399,29 +1397,41 @@ showLog() {
 #
 _waitForJob(){
   tailPID=$1;
-  while ([ ! -e $CANCEL_FLAG_FILE ] \
-      && [ ! -e $JOB_ENDED_FLAG ]) \
-        || [ -n "$(ps -p $tailPID > /dev/null)" ]; do
-    logTraceMsg "Waiting for Job to complete.";
+  while [ ! -e $CANCEL_FLAG_FILE ] \
+      && [ ! -e $JOB_ENDED_FLAG ] \
+      && [ -n "$(ps | grep $tailPID)" ]; do
     sleep 1;
   done
+  # remove trap
+  trap - SIGHUP SIGINT SIGTERM SIGKILL;
+  # tail still alive ?
+  if [ -n "$(ps aux | grep $tailPID)" ]; then
+    sleep 1; # give the NFS some time to write last msgs
+    kill $tailPID 2>/dev/null; # stop tail
+  fi
+  exit;
 }
 
 
 #---------------------------------------------------------
 #
-# Abort function that is called by the (global) signal trap.
-# Cleans ups the created job dir with generated files.
+# Abort function overriding (global) signal trap.
+# Stops tail if running.
 #
-_abort() {
+abort() {
 
   # inform user
-  logInfoMsg "Canceling job submission" true;
+  logInfoMsg "Aborting job submission" true;
 
-  # clean up the created tmp dir
+  # clean up the created tmp dir (happens only if job hasn't been submitted yet)
   ! $DEBUG \
-    && logInfoMsg "Removing dir '$VM_JOB_DIR/'" true \
-    && rm -Rf $VM_JOB_DIR;
+    && logInfoMsg "Removing tmp dir '$VM_JOB_DIR/$RUID'" true \
+    && rm -Rf "$VM_JOB_DIR/$RUID";
+
+  # quietly stop all processes started by this script
+  trap - SIGHUP SIGINT SIGTERM SIGKILL;
+  $(jobs -p) 2>/dev/null;
+  #kill $$;
 
   return 0;
 }
@@ -1435,8 +1445,10 @@ _printLogFileName() {
   echo -e "\nLog file: '$LOG_FILE'";
   # clear trap
   trap - SIGHUP SIGINT SIGTERM SIGKILL;
+  # stop log printing with tail
+  hideLog;
+  exit;
 }
-
 
 
 #============================================================================#
@@ -1455,8 +1467,8 @@ if [ -n "${DISABLED_HOSTS_LIST-}" ] \
 fi
 
 # cache RUID in job dir (to enable root epilogue to fetch it)
-mkdir -p $(dirname $RUID_CACHE_FILE);
-echo $RUID > $RUID_CACHE_FILE;
+mkdir -p $(dirname "$RUID_CACHE_FILE");
+echo $RUID > "$RUID_CACHE_FILE";
 
 # debug log
 logDebugMsg "********************* BEGIN OF VSUB ************************";
@@ -1621,6 +1633,9 @@ cannot be loaded - No such file or directory.";
     submitCmd="$PBS_QSUB $PARAMETERS_PBS_QSUB";
   fi
 
+  # remove trap for 'strg+c', no longer valid after this point
+  trap {} SIGHUP SIGINT SIGTERM SIGKILL;
+
   # pass on to PBS qsub
   logDebugMsg "Executing cmd:\n-----\n$submitCmd\n-----";
   logDebugMsg "------PBS_QSUB_START------";
@@ -1667,7 +1682,7 @@ if $MEASURE_TIME; then
 fi
 
 # show log ?
-showLog;
+showVTorqueLog;
 
 # pass exit code back (not present for interactive jobs - unknown reason)
 if [ ! -z ${res-} ]; then

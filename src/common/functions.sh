@@ -226,19 +226,30 @@ isTimeoutReached() {
 #
 informRemoteProcesses() {
 
+  # init or tear down (?)
+  if [ ${1-none} == "init" ]; then
+    lockFilesDir=$LOCKFILES_INIT_DIR;
+    lockFile="$LOCKFILE_INIT";
+  elif [ ${1-none} == "trdwn" ];
+    lockFilesDir=$LOCKFILES_TRDWN_DIR;
+    lockFile="$LOCKFILE_TRDWN";
+  else
+    logErrorMsg "Function 'informRemoteProcesses', missing/unknown argument: '${1-}'";
+  fi
+
   # create lock files dir
-  if [ ! -d $LOCKFILES_DIR ]; then # a sister process may have created it
-    logTraceMsg "Creating lock files dir '$LOCKFILES_DIR'.";
-    mkdir -p $LOCKFILES_DIR;
+  if [ ! -d "$lockFilesDir" ]; then # a sister process may have created it
+    logTraceMsg "Creating lock files dir '$lockFilesDir'.";
+    mkdir -p "$lockFilesDir";
   fi
 
   # indicate master process we are running (workaround for remote processes finished to fast)
-  if [ ! -f $LOCKFILE ] \
-      || [ ! -n "$([ -f "$LOCKFILE" ] && grep $LOCALHOST $LOCKFILE)" ]; then
-    if [ ! -f $LOCKFILE ]; then
-      logDebugMsg "Creating lock file '$LOCKFILE'.";
+  if [ ! -f "$lockFile" ] \
+      || [ ! -n "$([ -f "$lockFile" ] && grep $LOCALHOST $lockFile)" ]; then
+    if [ ! -f "$lockFile" ]; then
+      logDebugMsg "Creating lock file '$lockFile'.";
     fi
-    echo "$LOCALHOST" >> $LOCKFILE;
+    echo "$LOCALHOST" >> $lockFile;
   fi
 }
 
@@ -270,11 +281,22 @@ waitForRootPrologue() {
 #
 waitUntilAllReady() {
 
+  # init or tear down (?)
+  if [ ${1-none} == "init" ]; then
+    lockFilesDir=$LOCKFILES_INIT_DIR;
+    lockFile="$LOCKFILE_INIT";
+  elif [ ${1-none} == "trdwn" ];
+    lockFilesDir=$LOCKFILES_TRDWN_DIR;
+    lockFile="$LOCKFILE_TRDWN";
+  else
+    logErrorMsg "Function 'informRemoteProcesses', missing/unknown argument: '${1-}'";
+  fi
+
   # at first wait for the root prologue to boot VMs (required if parallel=true)
   waitForRootPrologue $TIMEOUT;
 
-  logDebugMsg "Waiting for lock-file '$LOCKFILE' to be created and \
-for equal content in files \$PBS_NODEFILE='$PBS_NODEFILE' and \$LOCKFILE='$LOCKFILE' ..";
+  logDebugMsg "Waiting for lock-file '$lockFile' to be created and \
+for equal content in files \$PBS_NODEFILE='$PBS_NODEFILE' and \$lockFile='$lockFile' ..";
 
   # cancelled meanwhile ?
   checkCancelFlag;
@@ -285,7 +307,7 @@ for equal content in files \$PBS_NODEFILE='$PBS_NODEFILE' and \$LOCKFILE='$LOCKF
   # so we can compare it to the PBS host list
   #
   local startDate="$(date +%s)";
-  while [ ! -f $LOCKFILE ] \
+  while [ ! -f "$lockFile" ] \
           || [ "$(cat $PBS_NODEFILE | sort | uniq)" != "$(cat $LOCKFILE | sort)" ]; do
 
     # cancelled meanwhile ?
@@ -301,26 +323,26 @@ remote processes to finish their work.!\nLock file content:\n---\n$(cat $LOCKFIL
     fi
 
     # check if an error occurred before lock files could be created
-    checkRemoteNodes;
+    checkRemoteNodes $1;
 
     # wait a moment
-    logDebugMsg "Waiting for lock-file '$LOCKFILE' to be created and \
-for equal content in files \$PBS_NODEFILE='$PBS_NODEFILE' and \$LOCKFILE='$LOCKFILE' ..";
+    logDebugMsg "Waiting for lock-file '$lockFile' to be created and \
+for equal content in files \$PBS_NODEFILE='$PBS_NODEFILE' and \$lockFile='$lockFile' ..";
     sleep 1;
 
   done
 
-  logDebugMsg "lock-file '$LOCKFILE' is in place and content in files \$PBS_NODEFILE='$PBS_NODEFILE' and \$LOCKFILE='$LOCKFILE' is equal, continuing."
+  logDebugMsg "lock-file '$lockFile' is in place and content in files \$PBS_NODEFILE='$PBS_NODEFILE' and \$lockFile='$lockFile' is equal, continuing."
 
   # any locks remaining (clean up is fast!) ?
-  while [ -d "$LOCKFILES_DIR" ] && [ -n "$(ls $LOCKFILES_DIR/)" ]; do
+  while [ -d "$lockFilesDir" ] && [ -n "$(ls $lockFilesDir/)" ]; do
 
     # cancelled meanwhile ?
     checkCancelFlag;
 
     # tell what's happening
-    logDebugMsg "Waiting for '$(ls $LOCKFILES_DIR | wc -w)' locks to disappear from (shared-fs) dir '$LOCKFILES_DIR' ..";
-    logTraceMsg "Locks still in place for MACs:\n---\n$(ls $LOCKFILES_DIR)\n---";
+    logDebugMsg "Waiting for '$(ls $lockFilesDir | wc -w)' locks to disappear from (shared-fs) dir '$lockFilesDir' ..";
+    logTraceMsg "Locks still in place for MACs:\n---\n$(ls $lockFilesDir)\n---";
     # timeout reached ?
     isTimeoutReached $TIMEOUT $startDate true;
     res=$?;
@@ -331,7 +353,7 @@ remote processes to finish their work.!";
     fi
 
     # check the lock files's content for any error msgs (non-empty file means error msg inside)
-    checkRemoteNodes;
+    checkRemoteNodes $1;
 
     # wait a short moment for lock files to disappear
     sleep 1;
@@ -339,16 +361,20 @@ remote processes to finish their work.!";
   done
 
   # check if an error occurred before lock files could be created
-  checkRemoteNodes;
+  checkRemoteNodes $1;
 
   # cancelled meanwhile ?
   checkCancelFlag;
 
-  # done, locks are gone - clean up locks dir
-  logDebugMsg "Locks are gone, all remote processes have finished - removing LOCKFILES_DIR='$LOCKFILES_DIR' and LOCKFILE='$LOCKFILE'.";
-  rm -Rf $LOCKFILES_DIR;
-  rm -f $LOCKFILE;
-
+if [ ${1-none} == "trdwn" ]; then
+    # done, locks are gone - clean up locks dir
+    logDebugMsg "Locks are gone, all remote processes have finished - removing \$lockFilesDir='$lockFilesDir'.";
+    rm -Rf "$lockFilesDir";
+  else
+    # done, locks are gone - clean up, dir is reused, keep it
+    logDebugMsg "Locks are gone, all remote processes have finished - removing \$lockFile='$lockFile'.";
+    rm -f "$lockFile";
+  fi 
 }
 
 
@@ -417,16 +443,25 @@ getStaticMAC() {
 #
 checkRemoteNodes() {
 
+  # init or tear down (?)
+  if [ ${1-none} == "init" ]; then
+    lockFilesDir=$LOCKFILES_INIT_DIR;
+  elif [ ${1-none} == "trdwn" ];
+    lockFilesDir=$LOCKFILES_TRDWN_DIR;
+  else
+    logErrorMsg "Function 'checkRemoteNodes', missing/unknown argument: '${1-}'";
+  fi
+
   # check if an error occured before lock files could be created
   checkErrorFlag;
 
   # check the lock files's content for any error msgs (non-empty file means error msg inside)
-  if [ -d "$LOCKFILES_DIR" ] \
-       && [ -n "$(ls $LOCKFILES_DIR/)" ] \
-       && [ -n "$(ls -l $LOCKFILES_DIR | tr -s ' ' | cut -d ' ' -f5 | grep -E [0-9]+ | grep -vE ^0$)" ]; then
+  if [ -d "$lockFilesDir" ] \
+       && [ -n "$(ls $lockFilesDir/)" ] \
+       && [ -n "$(ls -l $lockFilesDir | tr -s ' ' | cut -d ' ' -f5 | grep -E [0-9]+ | grep -vE ^0$)" ]; then
     # an error occured during boot on a remote node, abort
-    logErrorMsg "Error occured during boot on remote nodes: '$(find $LOCKFILES_DIR/ -maxdepth 1  -type f ! -size 0)'\n\
-Errors:\n$(cd $LOCKFILES_DIR/ && for file in $(ls -l | tr -s ' ' | cut -d ' ' -f9); do cat \$file; done 2>/dev/null)";
+    logErrorMsg "Error occured on remote nodes: '$(find $lockFilesDir/ -maxdepth 1  -type f ! -size 0)'\n\
+Errors:\n$(cd $lockFilesDir/ && for file in $(ls -l | tr -s ' ' | cut -d ' ' -f9); do cat \$file; done 2>/dev/null)";
   fi
 
   # abort flag present ?
@@ -486,7 +521,7 @@ waitForNFS() {
   startDate=$(date +%s);
   dirOrFile=$1;
   while [ ! -e $dirOrFile ]; do
-    logDebugMsg "Waiting for '$dirOrFile' to become available.";
+    logDebugMsg "Waiting for NFS dir '$dirOrFile' to become available.";
     sleep 1;
     isTimeoutReached $NFS_TIMEOUT $startDate;
   done

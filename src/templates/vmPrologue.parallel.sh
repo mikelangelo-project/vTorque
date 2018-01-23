@@ -186,10 +186,10 @@ prepareVMs() {
   _waitForFiles;
 
   # check if there is an error on remote hosts
-  checkRemoteNodes;
+  checkRemoteNodes "init";
 
   # let remote processes know that we started our work
-  informRemoteProcesses;
+  informRemoteProcesses "init";
 
   # create env file dir for each VM
   i=1;
@@ -237,6 +237,7 @@ waitForVMs() {
 
   logDebugMsg "Waiting for boot of local VMs..";
 
+  # wait until root prologue is ready
   waitForRootPrologue $TIMEOUT;
 
   logDebugMsg "Local VMs are booting, waiting until they are ready..";
@@ -304,10 +305,9 @@ arguments, '2' are expected.\nProvided params are: '$@'" 2;
   checkCancelFlag;
 
   # create lock file
-  logDebugMsg "Waiting for VM '$vhostName' with MAC='$mac', using lock dir: '$LOCKFILES_DIR'";
-  waitForNFS "$LOCKFILES_DIR";
-  local lockFile="$LOCKFILES_DIR/$mac";
-  touch $lockFile;
+  logDebugMsg "Waiting for VM '$vhostName' with MAC='$mac', using lock dir: '$LOCKFILES_INIT_DIR'";
+  local lockFile="$LOCKFILES_INIT_DIR/$mac";
+  touch $lockFile || logErrorMsg "lockfiles dir '$LOCKFILES_INIT_DIR' missing!";
 
   # wait until it the VM has requested an IP
   local arpOut=$($ARP_BIN -an | grep -i "$mac"); #FIX for 'since a few days this binary can no longer be found'
@@ -325,7 +325,7 @@ arguments, '2' are expected.\nProvided params are: '$@'" 2;
     checkCancelFlag;
 
     # check remote hosts for errors and abort flag
-    checkRemoteNodes;
+    checkRemoteNodes "init";
 
     # timeout reached ?
     isTimeoutReached $TIMEOUT $startDate true;
@@ -439,7 +439,7 @@ and VM '$vhostName' with MAC='$mac' is still not available.";
     checkCancelFlag;
 
     # check remote hosts for errors and abort flag
-    checkRemoteNodes;
+    checkRemoteNodes "init";
 
     # wait a moment before checking again
     logDebugMsg "Waiting for VM ($mac / $vmIP) to become available via $protocol ..";

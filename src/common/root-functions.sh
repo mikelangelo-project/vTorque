@@ -114,16 +114,16 @@ createRAMDisk() {
       logErrorMsg "RAMdisk '$RAMDISK' is in use.";
     else
       logDebugMsg "Dir for ramdisk mount '$RAMDISK already exists, cleaning up.."
-      umount $RAMDISK 2>/dev/null;
-      rm -Rf $RAMDISK;
+      umount "$RAMDISK" 2>/dev/null;
+      rm -Rf "$RAMDISK";
     fi
   fi
   # (re)create ramdisk mount point
-  mkdir -p $RAMDISK;
+  mkdir -p "$RAMDISK";
   # mount ram disk and set owner
-  mount -t ramfs ramfs $RAMDISK \
-    && chmod 777 $RAMDISK \
-    && chown $USER_NAME:$USER_NAME $RAMDISK;
+  mount -t ramfs ramfs "$RAMDISK" \
+    && chmod 777 "$RAMDISK" \
+    && chown "$USER_NAME:$USER_NAME" "$RAMDISK";
 }
 
 
@@ -152,7 +152,7 @@ _cleanUpSharedFS() {
     fi
     # clean up the image files for the local node
     ! $DEBUG \
-      && rm -rf $SHARED_FS_JOB_DIR/$LOCALHOST;
+      && rm -rf "$SHARED_FS_JOB_DIR/$LOCALHOST";
   fi
 }
 
@@ -167,8 +167,8 @@ _cleanUpRAMDisk() {
     # print info
     logErrorMsg "RAMdisk '$RAMDISK' is in use.";
   elif ! $DEBUG; then
-    umount $RAMDISK;
-    rm -Rf $RAMDISK;
+    umount "$RAMDISK";
+    rm -Rf "$RAMDISK";
   fi
 }
 
@@ -203,8 +203,8 @@ _stopLocalJobVMs() {
   consoleLog="$VM_JOB_DIR/$LOCALHOST/$i-console.log";
 
   # create lock file
-  logDebugMsg "Waiting for VM domain name '$domainName', using lock dir: '$LOCKFILES_DIR'";
-  lockFile="$LOCKFILES_DIR/$domainName";
+  logDebugMsg "Waiting for VM domain name '$domainName', using lock dir: '$LOCKFILES_TRDWN_DIR'";
+  lockFile="$LOCKFILES_TRDWN_DIR/$domainName";
   touch $lockFile;
 
   #
@@ -346,7 +346,7 @@ cleanUpVMs() {
   fi
 
   # let remote processes know that we started our work
-  informRemoteProcesses;
+  informRemoteProcesses "trdwn";
 
   # shutdown all VMs
   vmNo=0;
@@ -697,7 +697,7 @@ spawnProcess() {
     # indicate work is done
     su - $USER_NAME -c "touch '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone'";
     if [ $? -ne 0 ]; then
-      logErrorMsg "Failed to create flag file '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone' and change owner to '$USER_NAME'.";
+      logErrorMsg "Failed to create flag file '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone' as user '$USER_NAME'.";
     else
       logDebugMsg "Flag file '$FLAG_FILE_DIR/$LOCALHOST/.rootPrologueDone' has been created.";
     fi
@@ -813,16 +813,16 @@ cleanupTmpFiles() {
       ruidDir="$VM_JOB_DIR_PREFIX/$ruid";
       # remove symlink
       rm -f "$VM_JOB_DIR_PREFIX/$JOBID";
-      mv "$ruidDir" "$VM_JOB_DI_PREFIX/$JOBID";
+      mv "$ruidDir" "$VM_JOB_DIR_PREFIX/$JOBID";
 
       # remove all files ?
       if $MEASURE_TIME; then
         # remove all files and all dirs, but the debug.log
-        find "$VM_JOB_DI_PREFIX/$JOBID" ! -name '$LOG_FILE' -type d -exec rm -rf {} +;
-        find "$VM_JOB_DI_PREFIX/$JOBID" ! -name '$LOG_FILE' -type f -exec rm -f {} +
+        find "$VM_JOB_DIR_PREFIX/$JOBID" ! -name '$LOG_FILE' -type d -exec rm -rf {} +;
+        find "$VM_JOB_DIR_PREFIX/$JOBID" ! -name '$LOG_FILE' -type f -exec rm -f {} +
       else
 	# yes, all
-        rm -rf "$VM_JOB_DI_PREFIX/$JOBID";
+        rm -rf "$VM_JOB_DIR_PREFIX/$JOBID";
       fi
     fi
   fi

@@ -625,8 +625,8 @@ _generateMetaDataFiles() {
     sed -i "s,__USER_NAME__,$JOB_OWNER,g" $metadataFile;
     sed -i "s,__VM_JOB_DIR__,$VM_JOB_DIR,g" $metadataFile;
     # sed -i "s,__VM_NODE_FILE__,$VM_NODE_FILE,g" $metadataFile; // not used in any template, and VM_NODE_FILE in not set
-    sed -i "s,__VM_NODEFILE_DIR__,$VM_NODEFILE_DIR,g" $metadataFile; # /var/spool/torque/aux
-    sed -i "s,__VM_ENV_FILE_DIR__,$PBS_ENV_FILE_PREFIX/$computeNode/$vhostName,g" $metadataFile; #/var/spool/torque/vm
+    sed -i "s,__VM_NODEFILE_DIR__,$VM_NODEFILE_DIR/,g" $metadataFile; # /var/spool/torque/aux
+    sed -i "s,__VM_ENV_FILE_DIR__,$PBS_ENV_FILE_PREFIX/$computeNode/$vhostName/,g" $metadataFile; #/var/spool/torque/vm
     sed -i "s,__VTORQUE_DIR__,$VTORQUE_DIR,g" $metadataFile;
     sed -i "s,__VM_NFS_HOME__,$VM_NFS_HOME,g" $metadataFile; #/home/<username>
     sed -i "s,__VM_NFS_OPT__,$VM_NFS_OPT,g" $metadataFile; #/opt
@@ -1061,7 +1061,7 @@ _bootVMsOnHost() {
   # check if canceled meanwhile
   checkCancelFlag;
   # check if there was an error on remote nodes
-  checkRemoteNodes;
+  checkRemoteNodes "init";
 
   # construct cmd
   local cmd="source /etc/profile; exec $(realpath $(dirname ${BASH_SOURCE[0]}))/vmPrologue.parallel.sh $JOBID $USER_NAME;";
@@ -1163,7 +1163,7 @@ createVNodeFile() {
   #
 
   # check if there was an error or the abort flag is in place
-  checkRemoteNodes;
+  checkRemoteNodes "init";
   checkCancelFlag;
 
   logDebugMsg "Using PBS_NODE_FILE='$PBS_NODEFILE' to create virtual PBS_NODEFILE='$PBS_VM_NODEFILE' for all VMs.";
@@ -1180,7 +1180,7 @@ createVNodeFile() {
 
     # construct node's VM IPs file name based on all hosts vmIP files that have been created
     # previously to this function, takes place after the boot and wait phase
-    vmIPsFile=$VM_IP_FILE_PREFIX/$nodeName/$VM_IP_FILE_NAME;
+    vmIPsFile="$VM_IP_FILE_PREFIX/$nodeName/$VM_IP_FILE_NAME";
 
     # wait for file to appear
     while [ ! -f "$vmIPsFile" ]; do
@@ -1321,7 +1321,7 @@ initializeVMs;
 logDebugMsg "+++++++++++++++++ JOB PROLOGUE :: Waiting for all VMs to become available ++++++++++++++++++++";
 
 # wait for (all job related) VMs to become available
-waitUntilAllReady;
+waitUntilAllReady "init";
 
 # debug log
 logDebugMsg "++++++++++++++++++++++++ JOB PROLOGUE :: All VMs became available ++++++++++++++++++++++++++++";

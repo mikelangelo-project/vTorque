@@ -235,9 +235,14 @@ PINNING_FILE="$VM_JOB_DIR/$LOCALHOST/pinning_frag.txt"; #DO NOT name it .xml
 DOMAIN_XML_PREFIX=$VM_JOB_DIR;
 
 #
-# Shared fs dir that contains locks, one for each VM that is booting/destroyed.
+# Shared fs dir that contains init locks, one for each VM that is booting/destroyed.
 #
-LOCKFILES_DIR="$VM_JOB_DIR/locks";
+LOCKFILES_INIT_DIR="$VM_JOB_DIR/locks-init";
+
+#
+# Shared fs dir that contains tear down locks, one for each VM that is booting/destroyed.
+#
+LOCKFILES_TRDWN_DIR="$VM_JOB_DIR/locks-trdwn";
 
 #
 # Location of cloud-init log inside VM (required to be in sync with the metadata-template(s))
@@ -406,7 +411,12 @@ JOB_ENDED_FLAG="$FLAG_FILE_DIR/.jobIsDone";
 #
 # Lock file that contains started remote processes
 #
-LOCKFILE="$FLAG_FILE_DIR/.remoteProcesses";
+LOCKFILE_INIT="$FLAG_FILE_DIR/.remoteProcessesInit";
+
+#
+# Lock file that contains teared down remote processes
+#
+LOCKFILE_TRDWN="$FLAG_FILE_DIR/.remoteProcessesTrdwn";
 
 #
 # Indicates failures in parallel processes before lock files can be created

@@ -327,6 +327,11 @@ runBatchJobOnSLG() {
   # execute command
   logDebugMsg "Command to execute: 'ssh $SSH_OPTS $FIRST_VM \"$cmd\"'";
   logInfoMsg "===============JOB_OUTPUT_BEGIN====================";
+  # measure time ?
+  if $MEASURE_TIME; then
+    jobStart=$(date +%s);
+  fi
+  # run job
   if $DEBUG; then
     ssh $FIRST_VM "$cmd"; # |& tee -a "$LOG_FILE";
   else
@@ -334,7 +339,11 @@ runBatchJobOnSLG() {
   fi
   # store the return code (ssh returns the return value of the command in
   # question, or 255 if an error occurred in ssh itself.)
-  local result=$?
+  local result=$?;
+  # measure time ?
+  if $MEASURE_TIME; then
+    printRuntime $JOB_SCRIPT $jobStart $LOG_LEVEL_INFO;
+  fi
   logInfoMsg "================JOB_OUTPUT_END=====================";
 
   return $result;
@@ -395,14 +404,14 @@ $(curl --connect-timeout 2 -X GET http://$FIRST_VM:8000/file//pbs_vm_nodefile?op
     key=$(echo "$key_val" | sed 's/=.*$//')
     value=$(echo "$key_val" | sed 's/^[^=]*=//')
     if [ "$key" == "PBS_VM_NODEFILE" ]; then
-      value="/pbs_vm_nodefile"
+      value="/pbs_vm_nodefile";
     fi
     if [ "$key" == "PBS_NP" ]; then
-      value="$VCPUS"
+      value="$VCPUS";
     fi
-    logDebugMsg "Setting in OSv environ: key=$key value=$value"
+    logDebugMsg "Setting in OSv environ: key=$key value=$value";
     curlCmd="curl --connect-timeout 2 \
-              -X POST http://$FIRST_VM:8000/env/$key?val=$value"
+              -X POST http://$FIRST_VM:8000/env/$key?val=$value";
     if $DEBUG; then
       $curlCmd |& tee -a "$LOG_FILE";
     else
@@ -413,43 +422,54 @@ $(curl --connect-timeout 2 -X GET http://$FIRST_VM:8000/file//pbs_vm_nodefile?op
   #
   # run job script
   #
-  local cmd=$(cat "$JOB_SCRIPT" | grep -Ev '^#'); # skip comment lines
+  local cmd=$(cat "$JOB_SCRIPT" | grep -Ev '^\s*#'); # skip comment lines
   # execute command
   logDebugMsg "Command to execute: 'PUT http://$FIRST_VM:8000/app \"$cmd\"'";
+  logInfoMsg "===============JOB_OUTPUT_BEGIN====================";
+  # measure time ?
+  if $MEASURE_TIME; then
+    jobStart=$(date +%s);
+  fi
+  # start application
   local tid=$(curl -X PUT http://$FIRST_VM:8000/app/ --data-urlencode command="$cmd")
   result=$?;
   if [ $result -ne 0 ]; then
     logErrorMsg "Failed to start application!\nError code '$result', cmd:\n$cmd";
   fi
   tid=$(echo $tid | sed -e 's/^\"//' -e 's/\"$//')  # remove "" enclosing thread id.
-  logDebugMsg "Command is running with tid=$tid";
-  # Check that tid is actually a number
-  if ! [[ $tid =~ ^[0-9]+$ ]]; then
-    logErrorMsg "Returned tid='$tid' is not a number";
+  # ensure that tid is actually a number
+  if [[ $tid =~ ^[0-9]+$ ]]; then
+    logDebugMsg "Command is running with tid=$tid";
+  else # no, abort
+    echo $tid;
+    if [[ $tid =~ Bad\ Request ]]; then
+      logErrorMsg "The job failed to run. Check your job script, some of your commands are likely not supported by OSv";
+    else
+      logErrorMsg "Returned tid='$tid' is not a number";
+    fi
   fi
 
-  logInfoMsg "===============JOB_OUTPUT_BEGIN====================";
-  local console_log="$VM_JOB_DIR/`hostname`/1-console.log"
-  exec {CON_FD}<$console_log
-  local con_eof=0
-  local con_part_line=''
+  local console_log="$VM_JOB_DIR/$LOCALHOST/rank0-console.log";
+  exec {CON_FD}<$console_log;
+  local con_eof=0;
+  local con_part_line='';
+
   # wait on executed app to finish
   local app_finished=0;
   logDebugMsg "Command tid=$tid wait to finish...";
   while [ $app_finished -ne 1 ]; do
     if $DEBUG; then
-      con_eof=0
+      con_eof=0;
       while [[ $con_eof -eq 0 ]]
       do
         # this will read also partial lines (with not \n at end)
         if read con_line <&$CON_FD; then
-          # printf "CON: %s\n" "${con_part_line}${con_line}"
           logDebugMsg "CON: ${con_part_line}${con_line}";
-          con_part_line=''
+          con_part_line='';
         else
-          con_part_line+="$con_line"
-          # printf "CON-part: %s\n" "${con_part_line}"
-          con_eof=1
+          con_part_line+="$con_line";
+          logTraceMsg "CON-part: %s\n" "${con_part_line}";
+          con_eof=1;
         fi
       done
     fi
@@ -466,14 +486,18 @@ $(curl --connect-timeout 2 -X GET http://$FIRST_VM:8000/file//pbs_vm_nodefile?op
     # return code is a number ?
     if [ -z ${app_finished-} ]; then
       logDebugMsg "Status code returned by OSv RESTful API is empty.";
-      app_finished=0;
+      app_finished=1; # stop
     elif ! [[ $app_finished =~ ^[0-9]+$ ]]; then
       logWarnMsg "Number expected, but OSv's RESTful API returned '$app_finished' as application status!";
-      app_finished=0;
+      app_finished=1; # stop
     fi
   done
-  exec {CON_FD}>&-
-  logDebugMsg "Command tid=$tid finished";
+  exec {CON_FD}>&-;
+  logDebugMsg "Command tid='$tid' finished";
+  # measure time ?
+  if $MEASURE_TIME; then # NOTE: time may vary up to 'sleep 5' seconds !!!
+    printRuntime $JOB_SCRIPT $jobStart $LOG_LEVEL_INFO;
+  fi
   # store the return code (ssh returns the return value of the command in
   # question, or 255 if an error occurred in ssh itself.)
   # TODO what does curl return on error?
@@ -504,6 +528,11 @@ runSTDINJobOnSLG() {
   # execute command
   logDebugMsg "Command to execute: 'ssh $SSH_OPTS $FIRST_VM \"$cmd\"'";
   logInfoMsg "===============JOB_OUTPUT_BEGIN====================";
+  # measure time ?
+  if $MEASURE_TIME; then
+    jobStart=$(date +%s);
+  fi
+  # run job script
   if $DEBUG; then
     ssh $FIRST_VM "$cmd" |& tee -a "$LOG_FILE";
   else
@@ -512,7 +541,10 @@ runSTDINJobOnSLG() {
   # store the return code (ssh returns the return value of the command in
   # question, or 255 if an error occurred in ssh itself.)
   local result=$?;
-
+  # measure time ?
+  if $MEASURE_TIME; then
+    printRuntime "<STDIN job script>" $jobStart $LOG_LEVEL_INFO;
+  fi
   logInfoMsg "================JOB_OUTPUT_END=====================";
   return $result;
 }
@@ -540,15 +572,26 @@ runInteractiveJobOnSLG(){
     sshOpts="-X";
   fi
 
+  # measure time ?
+  if $MEASURE_TIME; then
+    jobStart=$(date +%s);
+  fi
+
   # debugging ?
   if $DEBUG; then
     ssh $FIRST_VM $sshOpts "$cmd" |& tee -a "$LOG_FILE";
   else
     ssh $FIRST_VM $sshOpts "$cmd" &>> "$LOG_FILE";
   fi
+
   # store the return code (ssh returns the return value of the command in
   # question, or 255 if an error occurred in ssh itself.)
   local result=$?;
+
+  # measure time ?
+  if $MEASURE_TIME; then
+    printRuntime "<interactive job>" $jobStart $LOG_LEVEL_INFO;
+  fi
 
   logInfoMsg "=============INTERACTIVE_JOB_END===================";
   return $result;
@@ -717,7 +760,7 @@ logDebugMsg "***************** END OF JOB WRAPPER ********************";
 
 # measure time ?
 if $MEASURE_TIME; then
-  printRuntime $0 $START;
+  printRuntime $0 $START $LOG_LEVEL_INFO;
 fi
 
 # return job exit code

@@ -1358,7 +1358,7 @@ logInfoMsg "User prologue wrapper script finished.";
 
 # measure time ?
 if $MEASURE_TIME; then
-  printRuntime $0 $START;
+  printRuntime $0 $START $LOG_LEVEL_INFO;
 fi
 
 # done, pass back return code, run the job

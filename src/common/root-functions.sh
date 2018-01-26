@@ -703,7 +703,7 @@ spawnProcess() {
     fi
     # measure time ?
     if $MEASURE_TIME; then
-      printRuntime "<spawn VM boot process>" $start;
+      printRuntime "<spawn VM boot process>" $start $LOG_LEVEL_INFO;
     fi
   } & return 0;
 }

@@ -1387,6 +1387,7 @@ showVTorqueLog() {
       touch "$LOG_FILE";
     fi
     trap _printLogFileName SIGHUP SIGINT SIGTERM SIGKILL;
+    echo ""; # new line otherwise last line is appearing twice
     showLog false & _waitForJob $?;
 }
 
@@ -1529,7 +1530,7 @@ if ! $VMJOB_REQ_DETECTED; then
 
   # measure time ?
   if $MEASURE_TIME; then
-    printRuntime $0 $START;
+    printRuntime $0 $START $LOG_LEVEL_INFO;
   fi
 
   # stop here
@@ -1678,7 +1679,7 @@ logDebugMsg "********************* END OF VSUB ************************";
 
 # measure time ?
 if $MEASURE_TIME; then
-  printRuntime $0 $START;
+  printRuntime $0 $START $LOG_LEVEL_INFO;
 fi
 
 # show log ?

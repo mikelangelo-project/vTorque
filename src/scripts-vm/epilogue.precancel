@@ -134,7 +134,7 @@ logInfoMsg "Root VM epilogue.precancel finished.";
 
 # measure time ?
 if $MEASURE_TIME; then
-  printRuntime $0 $START;
+  printRuntime $0 $START $LOG_LEVEL_INFO;
 fi
 
 # exit the job

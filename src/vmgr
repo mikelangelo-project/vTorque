@@ -593,7 +593,7 @@ esac
 
 # measure time ?
 if $MEASURE_TIME; then
-  printRuntime $START;
+  printRuntime $0 $START $LOG_LEVEL_INFO;
 fi
 
 # done

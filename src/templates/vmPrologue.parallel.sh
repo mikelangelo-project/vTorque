@@ -416,17 +416,15 @@ and VM '$vhostName' with MAC='$mac' is still not available.";
   logTraceMsg "VM IPs cached in file '$LOCAL_VM_IP_FILE':\n-----\n$(cat $LOCAL_VM_IP_FILE)\n-----";
 
   local vmIsAvailCmd;
-  local successCode;
+  local successCode = 0;
   local protocol;
 
   # protocol and code for availability check depends on guest distro
   if [[ $DISTRO =~ $REGEX_OSV ]]; then
     vmIsAvailCmd="curl --connect-timeout 2 http://$vmIP:8000";
-    successCode=200;
     protocol="HTTP";
   else
     vmIsAvailCmd="ssh -n -o BatchMode=yes -o ConnectTimeout=2 $vmIP exit";
-    successCode=0;
     protocol="SSH";
   fi
 
@@ -538,7 +536,7 @@ logInfoMsg "User prologue.parallel wrapper script finished.";
 
 # measure time ?
 if $MEASURE_TIME; then
-  printRuntime $0 $START;
+  printRuntime $0 $START $LOG_LEVEL_INFO;
 fi
 
 # return exit code

@@ -326,10 +326,12 @@ is expected.\nProvided params are: '$@'" 2;
     logTraceMsg "validating parameter set key='$key', value='$value'";
     if [ -z "$key" ]; then
       #empty $key
+      logTraceMsg "Empty key, usage triggered";
+      usage;
       # stop here, nothing to parse
       break;
     fi
-    
+
     if [ ! -n "${REGEXPR[$key]-}" ]; then
       logErrorMsg "No RegExpr found for key '$key'!" 2;
     elif [[ $value =~ ${REGEXPR[$key]} ]]; then
@@ -1401,6 +1403,7 @@ _waitForJob(){
   while [ ! -e $CANCEL_FLAG_FILE ] \
       && [ ! -e $JOB_ENDED_FLAG ] \
       && [ -n "$(ps | grep $tailPID)" ]; do
+    logTraceMsg "Show log function is waiting for Job to complete.";
     sleep 1;
   done
   # remove trap
@@ -1418,6 +1421,7 @@ _waitForJob(){
 #
 # Abort function overriding (global) signal trap.
 # Stops tail if running.
+# Cleans ups the created job dir with generated files if not DEBUG.
 #
 abort() {
 
@@ -1448,7 +1452,9 @@ _printLogFileName() {
   trap - SIGHUP SIGINT SIGTERM SIGKILL;
   # stop log printing with tail
   hideLog;
-  exit;
+  # exit
+  $(jobs -p) 2>/dev/null;
+  kill $$;
 }
 
 
@@ -1634,7 +1640,10 @@ cannot be loaded - No such file or directory.";
     submitCmd="$PBS_QSUB $PARAMETERS_PBS_QSUB";
   fi
 
+  #
   # remove trap for 'strg+c', no longer valid after this point
+  # function 'showVTorqueLog' sets a new trap to close the log
+  #
   trap {} SIGHUP SIGINT SIGTERM SIGKILL;
 
   # pass on to PBS qsub

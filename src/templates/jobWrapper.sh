@@ -464,7 +464,7 @@ $(curl --connect-timeout 2 -X GET http://$FIRST_VM:8000/file//pbs_vm_nodefile?op
       do
         # this will read also partial lines (with not \n at end)
         if read con_line <&$CON_FD; then
-          logDebugMsg "CON: ${con_part_line}${con_line}";
+          logTraceMsg "CON: ${con_part_line}${con_line}";
           con_part_line='';
         else
           con_part_line+="$con_line";
@@ -493,7 +493,7 @@ $(curl --connect-timeout 2 -X GET http://$FIRST_VM:8000/file//pbs_vm_nodefile?op
     fi
   done
   exec {CON_FD}>&-;
-  logDebugMsg "Command tid='$tid' finished";
+  logDebugMsg "Command with tid='$tid' finished";
   # measure time ?
   if $MEASURE_TIME; then # NOTE: time may vary up to 'sleep 5' seconds !!!
     printRuntime $JOB_SCRIPT $jobStart $LOG_LEVEL_INFO;

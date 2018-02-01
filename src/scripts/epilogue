@@ -123,7 +123,8 @@ fi
 # remove all job related tmp files, created by vTorque
 cleanupTmpFiles true;
 
-if isVMJob; then
+# is it a VM job (log has created the dir, so we need to check for flag file dir)
+if isVMJob && [ -e $(dirname $JOB_ENDED_FLAG) ]; then
   # indicate job ended
   su - $USER_NAME -c "touch '$JOB_ENDED_FLAG'";
 fi

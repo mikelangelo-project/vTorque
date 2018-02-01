@@ -625,8 +625,8 @@ _generateMetaDataFiles() {
     sed -i "s,__USER_NAME__,$JOB_OWNER,g" $metadataFile;
     sed -i "s,__VM_JOB_DIR__,$VM_JOB_DIR,g" $metadataFile;
     # sed -i "s,__VM_NODE_FILE__,$VM_NODE_FILE,g" $metadataFile; // not used in any template, and VM_NODE_FILE in not set
-    sed -i "s,__VM_NODEFILE_DIR__,$VM_NODEFILE_DIR/,g" $metadataFile; # /var/spool/torque/aux
-    sed -i "s,__VM_ENV_FILE_DIR__,$PBS_ENV_FILE_PREFIX/$computeNode/$vhostName/,g" $metadataFile; #/var/spool/torque/vm
+    sed -i "s,__VM_NODEFILE_DIR__,$VM_NODEFILE_DIR,g" $metadataFile; # /var/spool/torque/aux
+    sed -i "s,__VM_ENV_FILE_DIR__,$PBS_ENV_FILE_PREFIX/$computeNode/$vhostName,g" $metadataFile; #/var/spool/torque/vm
     sed -i "s,__VTORQUE_DIR__,$VTORQUE_DIR,g" $metadataFile;
     sed -i "s,__VM_NFS_HOME__,$VM_NFS_HOME,g" $metadataFile; #/home/<username>
     sed -i "s,__VM_NFS_OPT__,$VM_NFS_OPT,g" $metadataFile; #/opt
@@ -1072,8 +1072,10 @@ _bootVMsOnHost() {
   local res=$?;
 
   # successful boot init ? (booting still takes place now)
-  if [ $res -eq 0 ]; then
-    logDebugMsg "Starting 'vmPrologue.parallel.sh' on node '$computeNode' was successful.";
+  if [ ! -e "$CANCEL_FLAG_FILE" ] \
+      && [ ! -e "$ERROR_FLAG_FILE" ] \
+      && [ $res -eq 0 ]; then
+    logDebugMsg "Triggering boot of VMs on node '$computeNode' success.";
   else
     # abort with returned exit code
     touch "$ERROR_FLAG_FILE";

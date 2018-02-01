@@ -411,12 +411,12 @@ JOB_ENDED_FLAG="$FLAG_FILE_DIR/.jobIsDone";
 #
 # Lock file that contains started remote processes
 #
-LOCKFILE_INIT="$FLAG_FILE_DIR/.remoteProcessesInit";
+LOCKFILE_INIT="$LOCKFILES_INIT_DIR/.remoteProcesses";
 
 #
 # Lock file that contains teared down remote processes
 #
-LOCKFILE_TRDWN="$FLAG_FILE_DIR/.remoteProcessesTrdwn";
+LOCKFILE_TRDWN="$LOCKFILES_TRDWN_DIR/.remoteProcesses";
 
 #
 # Indicates failures in parallel processes before lock files can be created
